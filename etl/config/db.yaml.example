@@ -1,0 +1,6 @@
+# db.yaml — 실제 파일은 gitignore됨. 이 파일을 복사해서 db.yaml로 저장.
+host: localhost
+port: 5432
+database: canslim
+user: canslim_user
+password: CHANGE_ME

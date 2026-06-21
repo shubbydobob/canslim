@@ -1,0 +1,38 @@
+CREATE TABLE market_config (
+    id                       BIGSERIAL PRIMARY KEY,
+    market                   VARCHAR(10)  NOT NULL,
+    version                  INTEGER      NOT NULL DEFAULT 1,
+    is_active                BOOLEAN      NOT NULL DEFAULT TRUE,
+    c_eps_growth_threshold   NUMERIC(8,4) DEFAULT 0.25,
+    c_use_percentile         BOOLEAN      DEFAULT FALSE,
+    c_percentile_min         NUMERIC(6,4),
+    c_neg_growth_score_cap   NUMERIC(6,2) DEFAULT 20.0,
+    c_accel_max_bonus        NUMERIC(6,2) DEFAULT 20.0,
+    a_eps_cagr_threshold     NUMERIC(8,4) DEFAULT 0.25,
+    a_roe_min                NUMERIC(8,4) DEFAULT 0.17,
+    a_min_years              SMALLINT     DEFAULT 3,
+    n_max_pct_from_high      NUMERIC(8,4) DEFAULT 0.10,
+    n_breakout_vol_min       NUMERIC(8,4) DEFAULT 1.40,
+    s_float_max_billions     NUMERIC(14,4),
+    s_vol_surge_threshold    NUMERIC(8,4) DEFAULT 1.50,
+    l_rs_min_percentile      NUMERIC(6,4) DEFAULT 80.0,
+    l_rs_window_days         SMALLINT     DEFAULT 252,
+    i_net_buy_window_days    SMALLINT     DEFAULT 10,
+    i_net_buy_threshold      NUMERIC(22,4),
+    m_distribution_day_limit SMALLINT     DEFAULT 4,
+    m_gate_phases            VARCHAR(50)  DEFAULT 'BEAR',
+    weight_c                 NUMERIC(6,4) DEFAULT 0.25,
+    weight_a                 NUMERIC(6,4) DEFAULT 0.20,
+    weight_n                 NUMERIC(6,4) DEFAULT 0.15,
+    weight_s                 NUMERIC(6,4) DEFAULT 0.10,
+    weight_l                 NUMERIC(6,4) DEFAULT 0.20,
+    weight_i                 NUMERIC(6,4) DEFAULT 0.10,
+    effective_from           DATE         NOT NULL,
+    effective_to             DATE,
+    created_at               TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
+    CONSTRAINT uq_market_config_market_version UNIQUE (market, version),
+    CONSTRAINT chk_weights_sum CHECK (
+        ABS(weight_c + weight_a + weight_n + weight_s + weight_l + weight_i - 1.0) < 0.001
+    )
+);
+CREATE INDEX idx_market_config_active ON market_config (market, is_active) WHERE is_active = TRUE;

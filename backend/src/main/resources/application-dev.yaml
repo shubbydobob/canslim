@@ -1,0 +1,8 @@
+spring:
+  jpa:
+    show-sql: true
+
+logging:
+  level:
+    com.canslim: DEBUG
+    org.flywaydb: DEBUG

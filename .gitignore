@@ -1,0 +1,26 @@
+# Claude Code / OMC 내부 파일
+.claude/
+.omc/
+backend/.omc/
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+.env
+etl/config/db.yaml
+etl/config/dart.yaml
+
+# Java / Maven
+backend/target/
+*.class
+*.jar
+
+# IDE
+.idea/
+*.iml
+.vscode/
+
+# OS
+.DS_Store
+Thumbs.db

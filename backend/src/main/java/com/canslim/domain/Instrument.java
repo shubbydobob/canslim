@@ -1,0 +1,68 @@
+package com.canslim.domain;
+
+import jakarta.persistence.*;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+
+@Entity
+@Table(name = "instruments")
+public class Instrument {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @Column(nullable = false, length = 20)
+    private String ticker;
+
+    @Column(nullable = false, length = 10)
+    private String market;
+
+    @Column(nullable = false, length = 200)
+    private String name;
+
+    @Column(name = "listing_date")
+    private LocalDate listingDate;
+
+    @Column(name = "float_shares")
+    private Long floatShares;
+
+    @Column(name = "total_shares")
+    private Long totalShares;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "industry_group_id")
+    private IndustryGroup industryGroup;
+
+    /** COMMON / PREFERRED / REIT / SPAC / ETF / ETN / OTHER */
+    @Column(name = "security_type", nullable = false, length = 20)
+    private String securityType;
+
+    @Column(length = 100)
+    private String sector;
+
+    @Column(nullable = false, length = 3)
+    private String currency;
+
+    @Column(name = "is_active", nullable = false)
+    private boolean active;
+
+    @Column(name = "created_at")
+    private LocalDateTime createdAt;
+
+    @Column(name = "updated_at")
+    private LocalDateTime updatedAt;
+
+    public Long getId() { return id; }
+    public String getTicker() { return ticker; }
+    public String getMarket() { return market; }
+    public String getName() { return name; }
+    public LocalDate getListingDate() { return listingDate; }
+    public Long getFloatShares() { return floatShares; }
+    public Long getTotalShares() { return totalShares; }
+    public IndustryGroup getIndustryGroup() { return industryGroup; }
+    public String getSecurityType() { return securityType; }
+    public String getSector() { return sector; }
+    public String getCurrency() { return currency; }
+    public boolean isActive() { return active; }
+}
