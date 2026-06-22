@@ -179,6 +179,36 @@ def upsert_financials(rows: list[dict]) -> tuple[int, int]:
     return inserted, updated
 
 
+def upsert_investor_flow(rows: list[dict]) -> int:
+    """
+    derived_metrics의 투자자 흐름 컬럼만 upsert.
+    행이 없으면 INSERT, 있으면 세 컬럼만 UPDATE (재무·가격 컬럼 불변).
+    """
+    if not rows:
+        return 0
+
+    sql = text("""
+        INSERT INTO derived_metrics (
+            security_id, as_of_date,
+            inst_net_buy_10d, foreign_net_buy_10d, inst_trend_flag,
+            created_at
+        ) VALUES (
+            :security_id, :as_of_date,
+            :inst_net_buy_10d, :foreign_net_buy_10d, :inst_trend_flag,
+            NOW()
+        )
+        ON CONFLICT (security_id, as_of_date) DO UPDATE SET
+            inst_net_buy_10d    = EXCLUDED.inst_net_buy_10d,
+            foreign_net_buy_10d = EXCLUDED.foreign_net_buy_10d,
+            inst_trend_flag     = EXCLUDED.inst_trend_flag
+    """)
+
+    with get_session() as session:
+        for i in range(0, len(rows), 500):
+            session.execute(sql, rows[i:i + 500])
+    return len(rows)
+
+
 def upsert_derived_metrics(rows: list[dict]) -> tuple[int, int]:
     """
     derived_metrics 테이블 upsert (Python ETL 담당 재무 컬럼만).

@@ -7,7 +7,7 @@
 | 종목 목록 | FinanceDataReader (FDR) | `etl/kr_adapter/instrument_loader.py` |
 | 일별 가격 | pykrx `get_market_ohlcv` | `etl/kr_adapter/price_loader.py` |
 | 재무 데이터 | DART OpenAPI | (Phase 2) |
-| 기관/외인 순매수 | pykrx `get_market_net_purchases_of_...` | (Phase 2) |
+| 기관/외인 순매수 | 네이버 금융 `frgn.naver` HTML 스크래핑 | `etl/kr_adapter/investor_flow_loader.py` |
 
 ---
 
@@ -58,6 +58,35 @@
 **한계**:
 - 종목명에 키워드가 없는 일부 REIT/SPAC가 COMMON으로 오분류될 수 있음
 - 코드 끝자리 '0'이지만 SPAC인 종목(예: KOSDAQ 482680)은 이름 기반 우선 필터로 처리됨
+
+---
+
+### 5. I 점수 — 보유잔고 아닌 유량(Flow) 신호
+
+**현황**: 한국 시장에는 미국 SEC 13F(분기별 기관 보유잔고 공시)에 해당하는 데이터가 없음.
+`investor_flow_loader.py`가 수집하는 값은 **당일 기관/외국인 순매수 주수(株數)** 로,
+네이버 금융 `frgn.naver` 페이지에서 스크래핑한 후 당일 종가 × 주수로 원(KRW) 환산.
+
+**단위**: 원(KRW) 근사치 — 실제 체결단가 대신 당일 종가 사용.
+
+**한계**:
+- **유량(Flow) 신호**: 보유잔고(Stock)가 아니라 당일 거래 순매수. 오늘 매수 후 내일 매도하면 두 날 모두 반대 신호 발생.
+- **시가총액 비중 미반영**: 50억 원 순매수가 삼성전자(시총 200조)에는 미미하고 소형주(시총 500억)에는 10%에 해당.
+  `i_net_buy_threshold` 파라미터로 일부 보정 가능하나 완전한 정규화는 아님.
+- **데이터 소스 의존**: 네이버 금융 HTML 구조 변경 시 파서 수정 필요. pykrx KRX 투자자 API(MDCSTAT02302)는
+  현재 400 LOGOUT 반환으로 사용 불가 상태.
+
+---
+
+### 6. M(시장국면) — ETF 대리 지표
+
+**현황**: `market_state_seeder.py`는 KOSPI 지수 ETF(069500 KODEX200)의 주가·이동평균으로
+시장 국면(BULL/NEUTRAL/BEAR)을 판단.
+
+**한계**:
+- **대리 지표(Proxy)**: KOSPI 지수를 직접 조회하는 대신 ETF 주가로 근사. 괴리율(ETF Premium/Discount) 발생 가능.
+- **이진 신호**: KOSPI만 참고. KOSDAQ 강세·KOSPI 약세 시(예: 2020년 바이오 랠리) 국면이 과도하게 BEAR로 판정될 수 있음.
+- **향후 개선**: KOSPI/KOSDAQ 지수 직접 조회(KRX OpenAPI 또는 FDR `KRX:KOSPI`) 및 시장별 독립 국면 판단.
 
 ---
 
