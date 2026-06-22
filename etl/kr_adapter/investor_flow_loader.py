@@ -1,132 +1,161 @@
 """
 KR 투자자별 순매수 흐름 → derived_metrics 적재
 
-데이터 소스: 네이버 금융 frgn.naver 스크래핑 (HTML)
-  - pykrx KRX 투자자 API (MDCSTAT02302)는 현재 400 LOGOUT 반환으로 사용 불가.
-  - 네이버 금융 frgn.naver 는 일별 기관/외국인 순매수 주수(株數)를 제공.
+데이터 소스: 한국투자증권 KIS Developers Open API
+  TR: FHKST01010900 (주식 투자자별 매매동향)
+  - 최근 30 거래일치 일별 개인/외국인/기관 순매수 금액(백만원) 반환
+  - 기존 네이버 금융 HTML 스크래핑(주수×종가 근사) 대비 정확한 실제 체결금액 제공
 
-저장 단위: 원(KRW) 환산
-  - 순매수 주수 × 당일 종가 = 당일 순매수금액 (근사치)
-  - 10일 합산 → inst_net_buy_10d / foreign_net_buy_10d (단위: 원)
-  - i_net_buy_threshold 설정 기준: 5,000,000,000원 (50억) 권장
+저장 단위: 원(KRW)
+  - API 반환값(백만원) × 1,000,000 → 원 환산
+  - 10일 합산 → inst_net_buy_10d / foreign_net_buy_10d
 
 계산 항목:
-  inst_net_buy_10d    : 최근 10 거래일 기관합계 순매수 금액 합산 (원, 근사)
-  foreign_net_buy_10d : 최근 10 거래일 외국인 순매수 금액 합산 (원, 근사)
+  inst_net_buy_10d    : 최근 10 거래일 기관합계 순매수 금액 합산 (원)
+  foreign_net_buy_10d : 최근 10 거래일 외국인 순매수 금액 합산 (원)
   inst_trend_flag     : 최근 3 거래일 기관 트렌드
                         -1 : 3일 모두 순매도
                          0 : 혼조
                          1 : 3일 모두 순매수
-                         2 : 3일 모두 순매수 + 가속 (day[-1] >= day[-2] >= day[-3])
+                         2 : 3일 모두 순매수 + 가속 (d1 >= d2 >= d3, 가장 최근 기준)
 
-한계:
-  - 기관/외국인 순매수는 당일 종가 기반 근사 환산. 실제 체결가와 차이 존재.
-  - 한국에는 미국 SEC 13F 등가 잔고 기반 데이터가 없어 유량(flow) 신호로만 사용.
-  - 네이버 금융 HTML 구조 변경 시 파서 수정 필요.
-
-주의:
-  - 빈 응답·파싱 오류·거래정지 종목은 skip → I 점수 null 유지.
-  - 요청 간 딜레이 0.3s.
-  - 멀티스레드 금지.
+API 제한:
+  - 토큰 발급: 1분 1회. 발급된 토큰은 24시간 유효 → 파일 캐시
+  - TR 호출: 초당 20건 이하 권장 → 0.06s delay
+  - 빈 응답·오류 종목은 skip → I 점수 null 유지
 """
 import os
-import re
+import json
 import time
 import logging
 import argparse
-from datetime import date, timedelta
-
-os.environ.setdefault("PYTHONUTF8", "1")
+import tempfile
+from datetime import date, datetime, timezone
+from pathlib import Path
 
 import requests
-from bs4 import BeautifulSoup
+import yaml
 
 from ..shared.db_writer import get_all_active_security_ids, upsert_investor_flow
 
 logger = logging.getLogger(__name__)
 
-_SLEEP_SEC = 0.3
-_NAVER_URL = "https://finance.naver.com/item/frgn.naver"
-_HEADERS   = {
-    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
-    "Referer":    "https://finance.naver.com/",
-}
+_CONFIG_PATH = Path(__file__).parent.parent / "config" / "kis.yaml"
+_TOKEN_CACHE = Path(tempfile.gettempdir()) / "kis_token_cache.json"
+_SLEEP_SEC   = 0.06
+_BASE_URL    = "https://openapi.koreainvestment.com:9443"
 
 
 # ───────────────────────────────────────────
-# HTML 파싱
+# 설정 / 토큰
 # ───────────────────────────────────────────
 
-def _parse_num(text: str) -> int | None:
-    """'+1,234' / '-5,678' / '' → int or None"""
-    cleaned = re.sub(r"[^\d+\-]", "", text.replace(",", ""))
-    if not cleaned or cleaned in ("+", "-"):
-        return None
-    try:
-        return int(cleaned)
-    except ValueError:
-        return None
+def _load_config() -> dict:
+    if not _CONFIG_PATH.exists():
+        raise FileNotFoundError(f"KIS 설정 파일 없음: {_CONFIG_PATH}")
+    with open(_CONFIG_PATH, encoding="utf-8") as f:
+        return yaml.safe_load(f)
 
 
-def _fetch_investor_rows(ticker: str) -> list[dict] | None:
+def _get_token(cfg: dict) -> str:
     """
-    네이버 금융 frgn.naver page=1 을 파싱하여 일별 기관/외국인 순매수 행 반환.
-
-    반환 형식: [{'date': date, 'close': int, 'inst': int, 'foreign': int}, ...]
-               날짜 내림차순 (가장 최근이 첫 번째)
+    KIS 접근 토큰 반환. 캐시 파일에 유효한 토큰이 있으면 재사용,
+    없거나 만료됐으면 새로 발급 (1분 1회 제한 준수).
     """
+    # 캐시 확인
+    if _TOKEN_CACHE.exists():
+        try:
+            with open(_TOKEN_CACHE, encoding="utf-8") as f:
+                cache = json.load(f)
+            expires_at = datetime.fromisoformat(cache["expires_at"])
+            if datetime.now(tz=timezone.utc) < expires_at:
+                logger.debug("KIS 토큰 캐시 사용 (만료: %s)", expires_at)
+                return cache["access_token"]
+        except Exception:
+            pass  # 캐시 손상 시 재발급
+
+    # 토큰 발급
+    logger.info("KIS 접근 토큰 발급 요청...")
+    r = requests.post(
+        f"{_BASE_URL}/oauth2/tokenP",
+        json={
+            "grant_type": "client_credentials",
+            "appkey":     cfg["app_key"],
+            "appsecret":  cfg["app_secret"],
+        },
+        timeout=15,
+    )
+    r.raise_for_status()
+    data = r.json()
+    token = data["access_token"]
+    expires_in = int(data.get("expires_in", 86400))
+
+    # 만료 10분 전 여유를 두고 캐시
+    from datetime import timedelta
+    expires_at = datetime.now(tz=timezone.utc) + timedelta(seconds=expires_in - 600)
+    with open(_TOKEN_CACHE, "w", encoding="utf-8") as f:
+        json.dump({"access_token": token, "expires_at": expires_at.isoformat()}, f)
+
+    logger.info("KIS 토큰 발급 완료 (유효기간 %ds)", expires_in)
+    return token
+
+
+# ───────────────────────────────────────────
+# KIS API 호출
+# ───────────────────────────────────────────
+
+def _fetch_investor_rows(ticker: str, cfg: dict, token: str) -> list[dict] | None:
+    """
+    FHKST01010900 TR로 종목의 최근 30 거래일 투자자별 매매동향 조회.
+
+    반환: [{'date': date, 'orgn_mn': int, 'frgn_mn': int}, ...]  (날짜 내림차순)
+           orgn_mn / frgn_mn 단위: 백만원 (순매수 양수, 순매도 음수)
+    """
+    headers = {
+        "content-type": "application/json; charset=utf-8",
+        "authorization": f"Bearer {token}",
+        "appkey":        cfg["app_key"],
+        "appsecret":     cfg["app_secret"],
+        "tr_id":         "FHKST01010900",
+    }
+    params = {
+        "fid_cond_mrkt_div_code": "J",
+        "fid_input_iscd":         ticker,
+        "fid_div_cls_code":       "1",   # 1 = 금액 기준
+    }
     try:
-        r = requests.get(_NAVER_URL, params={"code": ticker, "page": "1"},
-                         headers=_HEADERS, timeout=10)
-        r.encoding = "euc-kr"
+        r = requests.get(
+            f"{_BASE_URL}/uapi/domestic-stock/v1/quotations/inquire-investor",
+            headers=headers, params=params, timeout=10,
+        )
         if r.status_code != 200:
+            logger.debug("[%s] HTTP %d", ticker, r.status_code)
             return None
-    except Exception as e:
-        logger.debug("[%s] HTTP 요청 실패: %s", ticker, e)
-        return None
-
-    try:
-        soup = BeautifulSoup(r.text, "html.parser")
-        tables = soup.find_all("table")
-
-        # 테이블 구조가 종목마다 다름:
-        #   KOSPI·고거래량 KOSDAQ (13개 테이블) → data at tables[3]
-        #   소형 KOSDAQ (12개 테이블) → data at tables[2]
-        # 데이터 테이블은 첫 번째 행이 <th> 7개 이상인 테이블. (<td> 페이지네이션과 구분)
-        target_table = None
-        for t in tables:
-            first_row = t.find("tr")
-            if first_row:
-                ths = first_row.find_all("th")
-                if len(ths) >= 7:
-                    target_table = t
-                    break
-        if target_table is None:
+        d = r.json()
+        if d.get("rt_cd") != "0":
+            logger.debug("[%s] rt_cd=%s msg=%s", ticker, d.get("rt_cd"), d.get("msg1", ""))
             return None
 
-        rows = target_table.find_all("tr")
-
-        result = []
-        for row in rows:
-            cells = [td.get_text(strip=True) for td in row.find_all("td")]
-            if len(cells) < 7 or not cells[0]:
+        rows = []
+        for row in d.get("output", []):
+            date_str = row.get("stck_bsop_date", "")
+            if len(date_str) != 8:
                 continue
-            # 날짜 파싱
             try:
-                d = date.fromisoformat(cells[0].replace(".", "-"))
+                d_obj = date(int(date_str[:4]), int(date_str[4:6]), int(date_str[6:]))
             except ValueError:
                 continue
-            close   = _parse_num(cells[1])
-            inst    = _parse_num(cells[5])
-            foreign = _parse_num(cells[6])
-            if close is None or inst is None or foreign is None:
+            try:
+                orgn_mn = int(row["orgn_ntby_tr_pbmn"])
+                frgn_mn = int(row["frgn_ntby_tr_pbmn"])
+            except (KeyError, ValueError):
                 continue
-            result.append({"date": d, "close": close, "inst": inst, "foreign": foreign})
+            rows.append({"date": d_obj, "orgn_mn": orgn_mn, "frgn_mn": frgn_mn})
 
-        return result if result else None
+        return rows if rows else None
 
     except Exception as e:
-        logger.debug("[%s] 파싱 실패: %s", ticker, e)
+        logger.debug("[%s] 요청 실패: %s", ticker, e)
         return None
 
 
@@ -136,41 +165,39 @@ def _fetch_investor_rows(ticker: str) -> list[dict] | None:
 
 def _compute_flow_metrics(rows: list[dict], as_of_date: date) -> dict | None:
     """
-    일별 기관/외국인 순매수 주수 × 종가 → WON 환산 후 합산.
+    일별 기관/외국인 순매수 금액(백만원) → 원 환산 후 10일 합산.
 
-    rows: 날짜 내림차순. as_of_date 이전 데이터만 사용.
+    rows: 날짜 내림차순. as_of_date 이하 데이터만 사용.
     """
     valid = [r for r in rows if r["date"] <= as_of_date]
     if not valid:
         return None
 
-    # 최근 10 거래일 (날짜 내림차순 → 앞에서 10개)
     last10 = valid[:10]
     if len(last10) < 3:
-        return None   # 데이터 너무 적음
+        return None
 
-    # WON 환산: 주수 × 종가
-    inst_won    = [r["inst"]    * r["close"] for r in last10]
-    foreign_won = [r["foreign"] * r["close"] for r in last10]
+    # 백만원 → 원
+    inst_won    = [r["orgn_mn"] * 1_000_000 for r in last10]
+    foreign_won = [r["frgn_mn"] * 1_000_000 for r in last10]
 
     inst_10d    = sum(inst_won)
     foreign_10d = sum(foreign_won)
 
-    # inst_trend_flag: 최근 3 거래일 기관 (날짜 내림차순이므로 인덱스 역전)
-    # last10[0]=가장 최근, last10[2]=3일 전
-    d3, d2, d1 = inst_won[0], inst_won[1], inst_won[2]  # d3=최근
+    # inst_trend_flag: 최근 3 거래일 (last10[0]=가장 최근)
+    d1, d2, d3 = inst_won[0], inst_won[1], inst_won[2]
 
-    all_positive = d1 > 0 and d2 > 0 and d3 > 0
-    all_negative = d1 < 0 and d2 < 0 and d3 < 0
+    all_pos = d1 > 0 and d2 > 0 and d3 > 0
+    all_neg = d1 < 0 and d2 < 0 and d3 < 0
 
-    if all_positive and d3 >= d2 >= d1:
-        trend_flag = 2   # 가속 상승
-    elif all_positive:
-        trend_flag = 1   # 순매수 지속
-    elif all_negative:
-        trend_flag = -1  # 순매도 지속
+    if all_pos and d1 >= d2 >= d3:
+        trend_flag = 2    # 순매수 가속
+    elif all_pos:
+        trend_flag = 1    # 순매수 지속
+    elif all_neg:
+        trend_flag = -1   # 순매도 지속
     else:
-        trend_flag = 0   # 혼조
+        trend_flag = 0    # 혼조
 
     return {
         "inst_net_buy_10d":    inst_10d,
@@ -183,19 +210,18 @@ def _compute_flow_metrics(rows: list[dict], as_of_date: date) -> dict | None:
 # 공개 API
 # ───────────────────────────────────────────
 
-def load_investor_flow(as_of_date: date = None) -> None:
+def load_investor_flow(as_of_date: date | None = None) -> None:
     """
     전 종목 투자자 순매수 흐름 계산 및 derived_metrics 적재.
-
-    Args:
-        as_of_date: 기준일 (기본값: 오늘)
     """
     if as_of_date is None:
         as_of_date = date.today()
 
-    db_markets = ["KOSPI", "KOSDAQ"]
+    cfg = _load_config()
+    token = _get_token(cfg)
+
     all_securities = []
-    for mkt in db_markets:
+    for mkt in ("KOSPI", "KOSDAQ"):
         all_securities.extend(get_all_active_security_ids(mkt))
 
     total   = len(all_securities)
@@ -203,14 +229,11 @@ def load_investor_flow(as_of_date: date = None) -> None:
     skipped = 0
     rows_buf: list[dict] = []
 
-    logger.info("investor_flow 적재 시작 (as_of_date=%s, 종목 수=%d)", as_of_date, total)
+    logger.info("investor_flow 적재 시작 (as_of_date=%s, 종목=%d, 소스=KIS)", as_of_date, total)
 
     for i, (security_id, ticker) in enumerate(all_securities, 1):
-        parsed = _fetch_investor_rows(ticker)
-        if parsed:
-            metrics = _compute_flow_metrics(parsed, as_of_date)
-        else:
-            metrics = None
+        parsed = _fetch_investor_rows(ticker, cfg, token)
+        metrics = _compute_flow_metrics(parsed, as_of_date) if parsed else None
 
         if metrics:
             rows_buf.append({"security_id": security_id, "as_of_date": as_of_date, **metrics})
@@ -223,7 +246,6 @@ def load_investor_flow(as_of_date: date = None) -> None:
 
         time.sleep(_SLEEP_SEC)
 
-        # 500건마다 flush
         if len(rows_buf) >= 500:
             upsert_investor_flow(rows_buf)
             rows_buf.clear()
@@ -231,14 +253,13 @@ def load_investor_flow(as_of_date: date = None) -> None:
     if rows_buf:
         upsert_investor_flow(rows_buf)
 
-    logger.info("investor_flow 완료 — 적재 %d건, skip %d건", loaded, skipped)
+    logger.info("investor_flow 완료 — 적재 %d건, skip %d건 (소스=KIS)", loaded, skipped)
 
 
 if __name__ == "__main__":
-    import logging
     logging.basicConfig(level=logging.INFO,
                         format="%(asctime)s %(levelname)s %(message)s")
-    parser = argparse.ArgumentParser(description="KR 투자자 순매수 흐름 적재")
+    parser = argparse.ArgumentParser(description="KR 투자자 순매수 흐름 적재 (KIS API)")
     parser.add_argument("--date", help="기준일 (YYYY-MM-DD), 기본값: 오늘")
     args = parser.parse_args()
     as_of = date.fromisoformat(args.date) if args.date else None

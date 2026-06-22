@@ -19,6 +19,8 @@ public interface CanslimScoreRepository extends JpaRepository<CanslimScore, Long
 
     List<CanslimScore> findBySecurityIdOrderByScoreDateDesc(Long securityId);
 
+    Optional<CanslimScore> findFirstBySecurityIdOrderByScoreDateDesc(Long securityId);
+
     /** 시장의 가장 최근 채점일 조회 */
     Optional<CanslimScore> findFirstByMarketOrderByScoreDateDesc(String market);
 

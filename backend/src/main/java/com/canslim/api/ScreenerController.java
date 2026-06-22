@@ -87,8 +87,15 @@ public class ScreenerController {
         Instrument inst = instRepo.findById(securityId).orElse(null);
         if (inst == null) return ResponseEntity.notFound().build();
 
-        LocalDate scoreDate = resolveDate(inst.getMarket(), date);
-        if (scoreDate == null) return ResponseEntity.notFound().build();
+        LocalDate scoreDate;
+        if (date != null) {
+            scoreDate = date;
+        } else {
+            Optional<CanslimScore> latest =
+                    scoreRepo.findFirstBySecurityIdOrderByScoreDateDesc(securityId);
+            if (latest.isEmpty()) return ResponseEntity.notFound().build();
+            scoreDate = latest.get().getScoreDate();
+        }
 
         Optional<CanslimScore> score =
                 scoreRepo.findBySecurityIdAndScoreDate(securityId, scoreDate);
