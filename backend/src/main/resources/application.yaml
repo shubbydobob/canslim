@@ -2,7 +2,7 @@ spring:
   datasource:
     url: jdbc:postgresql://localhost:5432/canslim
     username: canslim_user
-    password: ${DB_PASSWORD:changeme}
+    password: ${DB_PASSWORD:1234}
     driver-class-name: org.postgresql.Driver
     hikari:
       pool-name: CanslimPool

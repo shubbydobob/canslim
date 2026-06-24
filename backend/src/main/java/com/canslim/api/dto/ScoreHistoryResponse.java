@@ -16,14 +16,16 @@ public record ScoreHistoryResponse(
         BigDecimal nScore,
         BigDecimal sScore,
         BigDecimal lScore,
-        BigDecimal iScore
+        BigDecimal iScore,
+        BigDecimal mScore
 ) {
     public static ScoreHistoryResponse of(CanslimScore s) {
         return new ScoreHistoryResponse(
                 s.getScoreDate(), s.getCompositeScore(),
                 s.getMarketRank(), s.getMarketPercentile(),
                 s.getCScore(), s.getAScore(), s.getNScore(),
-                s.getSScore(), s.getLScore(), s.getIScore()
+                s.getSScore(), s.getLScore(), s.getIScore(),
+                s.getMScore()
         );
     }
 }

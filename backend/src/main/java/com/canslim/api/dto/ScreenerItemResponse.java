@@ -24,24 +24,29 @@ public record ScreenerItemResponse(
         BigDecimal nScore,
         BigDecimal sScore,
         BigDecimal lScore,
-        BigDecimal iScore
+        BigDecimal iScore,
+        BigDecimal mScore,
+        BigDecimal closePrice,
+        BigDecimal changeRate,
+        BigDecimal weekHigh52,
+        BigDecimal volume,
+        BigDecimal turnover,
+        BigDecimal instNetBuy10d,
+        BigDecimal foreignNetBuy10d,
+        BigDecimal marketCap,
+        String sector
 ) {
-    public static ScreenerItemResponse of(CanslimScore score, Instrument inst) {
+    /** idx: [0]=close [1]=inst [2]=foreign [3]=changeRate [4]=52wHigh [5]=volume [6]=turnover [7]=marketCap */
+    public static ScreenerItemResponse of(CanslimScore score, Instrument inst, BigDecimal[] pf) {
         return new ScreenerItemResponse(
-                inst.getId(),
-                inst.getTicker(),
-                inst.getName(),
-                score.getMarket(),
-                score.getScoreDate(),
-                score.getMarketRank(),
-                score.getMarketPercentile(),
+                inst.getId(), inst.getTicker(), inst.getName(),
+                score.getMarket(), score.getScoreDate(),
+                score.getMarketRank(), score.getMarketPercentile(),
                 score.getCompositeScore(),
-                score.getCScore(),
-                score.getAScore(),
-                score.getNScore(),
-                score.getSScore(),
-                score.getLScore(),
-                score.getIScore()
+                score.getCScore(), score.getAScore(), score.getNScore(),
+                score.getSScore(), score.getLScore(), score.getIScore(), score.getMScore(),
+                pf[0], pf[3], pf[4], pf[5], pf[6], pf[1], pf[2], pf[7],
+                inst.getSector()
         );
     }
 }

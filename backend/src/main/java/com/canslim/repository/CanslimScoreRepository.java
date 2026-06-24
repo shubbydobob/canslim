@@ -1,6 +1,8 @@
 package com.canslim.repository;
 
 import com.canslim.domain.CanslimScore;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
@@ -17,6 +19,11 @@ public interface CanslimScoreRepository extends JpaRepository<CanslimScore, Long
     List<CanslimScore> findByScoreDateAndMarketOrderByCompositeScoreDesc(
             LocalDate scoreDate, String market);
 
+    Page<CanslimScore> findByScoreDateAndMarket(
+            LocalDate scoreDate, String market, Pageable pageable);
+
+    long countByScoreDateAndMarket(LocalDate scoreDate, String market);
+
     List<CanslimScore> findBySecurityIdOrderByScoreDateDesc(Long securityId);
 
     Optional<CanslimScore> findFirstBySecurityIdOrderByScoreDateDesc(Long securityId);
@@ -27,10 +34,10 @@ public interface CanslimScoreRepository extends JpaRepository<CanslimScore, Long
     @Modifying
     @Query(value = """
         INSERT INTO canslim_scores
-            (security_id, score_date, market, c_score, a_score, n_score, s_score, l_score, i_score,
+            (security_id, score_date, market, c_score, a_score, n_score, s_score, l_score, i_score, m_score,
              composite_score, config_version, created_at)
         VALUES
-            (:securityId, :scoreDate, :market, :cScore, :aScore, :nScore, :sScore, :lScore, :iScore,
+            (:securityId, :scoreDate, :market, :cScore, :aScore, :nScore, :sScore, :lScore, :iScore, :mScore,
              :compositeScore, :configVersion, NOW())
         ON CONFLICT (security_id, score_date) DO UPDATE SET
             c_score         = EXCLUDED.c_score,
@@ -39,6 +46,7 @@ public interface CanslimScoreRepository extends JpaRepository<CanslimScore, Long
             s_score         = EXCLUDED.s_score,
             l_score         = EXCLUDED.l_score,
             i_score         = EXCLUDED.i_score,
+            m_score         = EXCLUDED.m_score,
             composite_score = EXCLUDED.composite_score,
             config_version  = EXCLUDED.config_version
         """, nativeQuery = true)
@@ -51,8 +59,22 @@ public interface CanslimScoreRepository extends JpaRepository<CanslimScore, Long
                 @Param("sScore")        Double sScore,
                 @Param("lScore")        Double lScore,
                 @Param("iScore")        Double iScore,
+                @Param("mScore")        Double mScore,
                 @Param("compositeScore") double compositeScore,
                 @Param("configVersion") Integer configVersion);
+
+    /** 시장 내 종목들의 52주 고점 대비 -15% 이내 비율 → M 점수 (0~100) */
+    @Query(value = """
+        SELECT COALESCE(
+            ROUND(COUNT(*) FILTER (WHERE dm.pct_from_52w_high > -15) * 100.0
+                  / NULLIF(COUNT(*), 0), 2),
+            50.0)
+        FROM derived_metrics dm
+        JOIN instruments i ON dm.security_id = i.id
+        WHERE dm.as_of_date = :scoreDate AND i.market IN (:markets)
+        """, nativeQuery = true)
+    Double computeMarketBreadth(@Param("scoreDate") LocalDate scoreDate,
+                                @Param("markets") List<String> markets);
 
     /** 점수 날짜별 랭킹 갱신 */
     @Modifying

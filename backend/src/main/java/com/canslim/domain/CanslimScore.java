@@ -28,6 +28,7 @@ public class CanslimScore {
     @Column(name = "s_score", precision = 6, scale = 2) private BigDecimal sScore;
     @Column(name = "l_score", precision = 6, scale = 2) private BigDecimal lScore;
     @Column(name = "i_score", precision = 6, scale = 2) private BigDecimal iScore;
+    @Column(name = "m_score", precision = 6, scale = 2) private BigDecimal mScore;
 
     @Column(name = "composite_score", nullable = false, precision = 6, scale = 2)
     private BigDecimal compositeScore;
@@ -73,7 +74,9 @@ public class CanslimScore {
     public BigDecimal getSScore()     { return sScore; }
     public BigDecimal getLScore()     { return lScore; }
     public BigDecimal getIScore()     { return iScore; }
+    public BigDecimal getMScore()     { return mScore; }
     public BigDecimal getCompositeScore() { return compositeScore; }
+    public void setMScore(BigDecimal m) { this.mScore = m; }
     public Integer getMarketRank()    { return marketRank; }
     public BigDecimal getMarketPercentile() { return marketPercentile; }
     public Integer getConfigVersion() { return configVersion; }

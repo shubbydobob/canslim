@@ -13,6 +13,7 @@ import csv
 import time
 import zipfile
 import logging
+import itertools
 import xml.etree.ElementTree as ET
 from pathlib import Path
 from typing import Optional
@@ -23,6 +24,52 @@ import yaml
 logger = logging.getLogger(__name__)
 
 DART_BASE         = "https://opendart.fss.or.kr/api"
+
+
+class DartDailyLimitError(Exception):
+    """DART API 일일 호출 한도(10,000건) 초과."""
+
+
+# ────────────────────────────────────────────────
+# API 키 라운드로빈 관리
+# ────────────────────────────────────────────────
+_key_cycle: Optional[itertools.cycle] = None
+_exhausted_keys: set[str] = set()
+
+
+def _load_api_keys() -> list[str]:
+    config_path = Path(__file__).parent.parent / "config" / "dart.yaml"
+    with open(config_path, encoding="utf-8") as f:
+        cfg = yaml.safe_load(f)
+    # 하위 호환: api_key(단일) or api_keys(목록)
+    if "api_keys" in cfg:
+        keys = [k for k in cfg["api_keys"] if k and not k.startswith("#")]
+    else:
+        keys = [cfg["api_key"]]
+    if not keys:
+        raise ValueError("dart.yaml에 유효한 api_keys가 없습니다.")
+    return keys
+
+
+def _get_next_key() -> str:
+    """소진된 키를 건너뛰고 다음 유효한 키 반환. 전부 소진 시 DartDailyLimitError."""
+    global _key_cycle
+    all_keys = _load_api_keys()
+    if _key_cycle is None:
+        _key_cycle = itertools.cycle(all_keys)
+
+    for _ in range(len(all_keys)):
+        key = next(_key_cycle)
+        if key not in _exhausted_keys:
+            return key
+
+    raise DartDailyLimitError(f"모든 API 키({len(all_keys)}개) 일일 한도 초과")
+
+
+def _mark_key_exhausted(api_key: str) -> None:
+    _exhausted_keys.add(api_key)
+    logger.warning("키 [%s...] 소진 처리 (총 %d/%d개 소진)",
+                   api_key[:8], len(_exhausted_keys), len(_load_api_keys()))
 _CORP_CODE_CACHE  = Path(__file__).parent.parent / "config" / "corp_codes.csv"
 
 
@@ -35,10 +82,6 @@ _NET_KW       = ["당기순이익", "당기순손익"]
 _EPS_KW       = ["기본주당순이익", "기본주당이익(손실)", "기본주당이익", "기본주당"]
 
 
-def _load_api_key() -> str:
-    config_path = Path(__file__).parent.parent / "config" / "dart.yaml"
-    with open(config_path, encoding="utf-8") as f:
-        return yaml.safe_load(f)["api_key"]
 
 
 def _parse_amount(s: str) -> Optional[float]:
@@ -66,7 +109,7 @@ def download_corp_codes(force: bool = False) -> dict[str, str]:
         logger.info("corp_code 캐시 로드: %d 상장 기업", len(result))
         return result
 
-    api_key = _load_api_key()
+    api_key = _get_next_key()
     logger.info("DART corp_code 목록 다운로드 중...")
     resp = requests.get(f"{DART_BASE}/corpCode.xml",
                         params={"crtfc_key": api_key}, timeout=60)
@@ -112,7 +155,7 @@ def fetch_financial_statement(
 
     빈 리스트 = 해당 보고서 없음(신규상장·미제출 등).
     """
-    api_key = _load_api_key()
+    api_key = _get_next_key()
     try:
         resp = requests.get(
             f"{DART_BASE}/fnlttSinglAcnt.json",
@@ -133,6 +176,10 @@ def fetch_financial_statement(
             return data.get("list", [])
         if status == "013":   # 조회 데이터 없음 (정상)
             return []
+        if status == "020":   # 일일 한도 초과
+            logger.warning("키 [%s...] 한도 초과, 다음 키로 전환", api_key[:8])
+            _mark_key_exhausted(api_key)   # 모든 키 소진 시 DartDailyLimitError 발생
+            return fetch_financial_statement(corp_code, bsns_year, reprt_code, delay_sec)
         logger.warning("DART API 오류 [%s %s %s]: %s %s",
                        corp_code, bsns_year, reprt_code,
                        status, data.get("message", ""))

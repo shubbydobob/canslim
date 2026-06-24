@@ -88,6 +88,15 @@ public class CanslimScoringService {
         List<Instrument> instruments = port.getActiveInstruments();
         log.info("[{}] 채점 시작: {}종목 (scoreDate={})", market, instruments.size(), scoreDate);
 
+        // M 점수: 시장 내 52주 고점 -15% 이내 종목 비율 (시장 전체 공통값)
+        Double mScore = null;
+        try {
+            mScore = scoreRepository.computeMarketBreadth(scoreDate, port.getDbMarkets());
+            log.info("[{}] M 점수(시장 건전도): {}", market, mScore);
+        } catch (Exception e) {
+            log.warn("[{}] M 점수 계산 실패: {}", market, e.getMessage());
+        }
+
         int done = 0, skipped = 0;
         for (Instrument inst : instruments) {
             try {
@@ -105,6 +114,7 @@ public class CanslimScoringService {
                         inst.getId(), scoreDate, market,
                         result.cScore(), result.aScore(), result.nScore(),
                         result.sScore(), result.lScore(), result.iScore(),
+                        mScore,
                         result.compositeScore(), cfg.getVersion());
                 done++;
             } catch (Exception e) {
@@ -129,7 +139,7 @@ public class CanslimScoringService {
                 new double[]{nullOr(c), nullOr(a), nullOr(n), nullOr(s), nullOr(l), nullOr(i)},
                 new boolean[]{c != null, a != null, n != null, s != null, l != null, i != null});
 
-        return new ScoringResult(c, a, n, s, l, i, composite, false);
+        return new ScoringResult(c, a, n, s, l, i, composite, false, null);
     }
 
     /**

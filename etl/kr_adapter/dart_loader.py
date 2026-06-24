@@ -22,7 +22,7 @@ from typing import Optional
 
 os.environ.setdefault("PYTHONUTF8", "1")
 
-from ..shared.dart_client import download_corp_codes, fetch_financial_statement, extract_is_accounts
+from ..shared.dart_client import download_corp_codes, fetch_financial_statement, extract_is_accounts, DartDailyLimitError
 from ..shared.db_writer import get_all_active_security_ids, upsert_financials, get_session
 from ..shared.ingestion_meta import start_run, finish_run, fail_run
 from sqlalchemy import text
@@ -147,6 +147,7 @@ def load(target_date: date = None, delay_sec: float = 0.35) -> None:
 
         total_shares = _get_total_shares(security_id)
         all_rows = []
+        limit_exceeded = False
         try:
             for reprt_code, period_type, fiscal_quarter, is_cum in _REPORT_SCHEDULE:
                 for year in _FETCH_YEARS:
@@ -167,10 +168,19 @@ def load(target_date: date = None, delay_sec: float = 0.35) -> None:
             finish_run(source, target_date, rows_inserted=ins, rows_updated=upd)
             done += 1
 
+        except DartDailyLimitError as e:
+            logger.error("DART 일일 한도 초과 — 수집 중단 (완료 %d / 스킵 %d / 실패 %d): %s",
+                         done, skipped, failed, e)
+            fail_run(source, target_date, str(e))
+            limit_exceeded = True
+
         except Exception as e:
             logger.warning("[%d/%d] %s 실패: %s", idx, total, ticker, e)
             fail_run(source, target_date, str(e))
             failed += 1
+
+        if limit_exceeded:
+            break
 
         if idx % 50 == 0:
             logger.info(

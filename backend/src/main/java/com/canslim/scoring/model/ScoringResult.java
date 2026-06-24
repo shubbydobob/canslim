@@ -13,9 +13,10 @@ public record ScoringResult(
         Double lScore,
         Double iScore,
         double compositeScore,
-        boolean mGateBlocked
+        boolean mGateBlocked,
+        Double mScore
 ) {
     public static ScoringResult blocked() {
-        return new ScoringResult(null, null, null, null, null, null, 0.0, true);
+        return new ScoringResult(null, null, null, null, null, null, 0.0, true, null);
     }
 }
