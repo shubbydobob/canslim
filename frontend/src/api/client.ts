@@ -31,6 +31,23 @@ export async function fetchSectors(): Promise<string[]> {
   return res.json()
 }
 
+export async function fetchRealtimePrice(ticker: string): Promise<{ price: number; change: number; changeRate: number } | null> {
+  try {
+    const res = await fetch(`${BASE}/realtime/price?ticker=${encodeURIComponent(ticker)}`)
+    if (!res.ok) return null
+    return res.json()
+  } catch { return null }
+}
+
+export async function searchStocks(query: string): Promise<ScreenerItem[]> {
+  if (!query.trim()) return []
+  const params = new URLSearchParams({ market: 'KR', page: '0', size: '8', q: query.trim() })
+  const res = await fetch(`${BASE}/screener?${params}`)
+  if (!res.ok) return []
+  const data = await res.json()
+  return data.items ?? []
+}
+
 export async function fetchStockScore(securityId: number): Promise<ScreenerItem> {
   const res = await fetch(`${BASE}/screener/${securityId}`)
   if (!res.ok) throw new Error('score fetch failed')

@@ -1,5 +1,7 @@
-import React, { useState } from 'react'
+import React, { useCallback, useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { searchStocks, fetchRealtimePrice } from '../api/client'
+import type { ScreenerItem } from '../types'
 
 interface BuyRow {
   price: string
@@ -84,8 +86,56 @@ function numOrNull(s: string): number | null {
 
 export default function TradingCalcPage() {
   const navigate = useNavigate()
-  const [ticker, setTicker] = useState('')
+
+  // ── 자동완성 ────────────────────────────────────────────────
+  const [query, setQuery] = useState('')
+  const [suggestions, setSuggestions] = useState<ScreenerItem[]>([])
+  const [selectedStock, setSelectedStock] = useState<ScreenerItem | null>(null)
+  const [showDrop, setShowDrop] = useState(false)
+  const [loadingPrice, setLoadingPrice] = useState(false)
   const [currentPrice, setCurrentPrice] = useState('')
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const wrapRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    const onClickOutside = (e: MouseEvent) => {
+      if (wrapRef.current && !wrapRef.current.contains(e.target as Node))
+        setShowDrop(false)
+    }
+    document.addEventListener('mousedown', onClickOutside)
+    return () => document.removeEventListener('mousedown', onClickOutside)
+  }, [])
+
+  const handleQueryChange = useCallback((val: string) => {
+    setQuery(val)
+    setSelectedStock(null)
+    if (debounceRef.current) clearTimeout(debounceRef.current)
+    if (!val.trim()) { setSuggestions([]); setShowDrop(false); return }
+    debounceRef.current = setTimeout(async () => {
+      const results = await searchStocks(val)
+      setSuggestions(results)
+      setShowDrop(results.length > 0)
+    }, 250)
+  }, [])
+
+  const handleSelect = useCallback(async (item: ScreenerItem) => {
+    setSelectedStock(item)
+    setQuery(`${item.name} (${item.ticker})`)
+    setShowDrop(false)
+    setSuggestions([])
+    // KIS 실시간 현재가 조회
+    setLoadingPrice(true)
+    try {
+      const rt = await fetchRealtimePrice(item.ticker)
+      if (rt && rt.price > 0)
+        setCurrentPrice(String(rt.price))
+      else if (item.closePrice != null)
+        setCurrentPrice(String(item.closePrice)) // 장 마감 후 폴백
+    } finally {
+      setLoadingPrice(false)
+    }
+  }, [])
+
   const [rows, setRows] = useState<BuyRow[]>([
     { price: '', qty: '' },
     { price: '', qty: '' },
@@ -156,20 +206,66 @@ export default function TradingCalcPage() {
           <div style={S.card}>
             <div style={S.sectionTitle}>종목 정보</div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-              <div>
+              {/* 자동완성 */}
+              <div ref={wrapRef} style={{ position: 'relative' }}>
                 <span style={S.label}>종목명 / 티커</span>
                 <input
                   style={S.input}
-                  placeholder="예: 삼성전자 / 005930"
-                  value={ticker}
-                  onChange={e => setTicker(e.target.value)}
+                  placeholder="종목명 또는 티커 검색"
+                  value={query}
+                  onChange={e => handleQueryChange(e.target.value)}
+                  onFocus={() => suggestions.length > 0 && setShowDrop(true)}
+                  autoComplete="off"
                 />
+                {showDrop && (
+                  <div style={{
+                    position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 50,
+                    background: '#161b22', border: '1px solid #21262d', borderRadius: 4,
+                    boxShadow: '0 4px 16px rgba(0,0,0,0.5)', marginTop: 2,
+                  }}>
+                    {suggestions.map(s => (
+                      <div key={s.securityId}
+                        onMouseDown={() => handleSelect(s)}
+                        style={{
+                          padding: '7px 12px', cursor: 'pointer', display: 'flex',
+                          alignItems: 'center', justifyContent: 'space-between',
+                          borderBottom: '1px solid #0d1117',
+                        }}
+                        onMouseEnter={e => (e.currentTarget.style.background = '#1f2937')}
+                        onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+                      >
+                        <div>
+                          <span style={{ fontSize: 12, color: '#e6edf3', fontWeight: 600 }}>{s.name}</span>
+                          <span style={{ fontSize: 10, color: '#4b5563', marginLeft: 6 }}>{s.sector ?? ''}</span>
+                        </div>
+                        <div style={{ textAlign: 'right' }}>
+                          <span style={{ fontSize: 11, color: '#3b82f6', fontFamily: 'monospace', fontWeight: 700 }}>{s.ticker}</span>
+                          {s.closePrice != null && (
+                            <div style={{ fontSize: 10, color: '#6b7280' }}>
+                              {s.closePrice.toLocaleString('ko-KR')}원
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {selectedStock && (
+                  <div style={{ fontSize: 10, color: '#4b5563', marginTop: 3 }}>
+                    SCORE {selectedStock.compositeScore.toFixed(1)} · RS {(selectedStock.marketPercentile * 100).toFixed(0)}%
+                  </div>
+                )}
               </div>
+
+              {/* 현재가 */}
               <div>
-                <span style={S.label}>현재가 (원)</span>
+                <span style={S.label}>
+                  현재가 (원)
+                  {loadingPrice && <span style={{ color: '#4b5563', fontWeight: 400 }}> 조회중...</span>}
+                </span>
                 <input
                   style={S.input}
-                  placeholder="직접 입력"
+                  placeholder="종목 선택 시 자동 입력"
                   value={currentPrice}
                   onChange={e => setCurrentPrice(e.target.value)}
                 />

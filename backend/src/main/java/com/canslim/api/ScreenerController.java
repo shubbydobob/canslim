@@ -453,20 +453,38 @@ public class ScreenerController {
     private Set<Long> loadBreakouts(List<Long> ids, LocalDate scoreDate) {
         if (ids.isEmpty()) return Set.of();
         Set<Long> result = new HashSet<>();
+        // 오늘 종가가 52주 신고가의 99% 이상이고 어제는 그 미만인 종목 (breakout)
         String sql = """
             SELECT today.security_id
             FROM (
-                SELECT security_id, pct_from_52w_high
-                FROM derived_metrics
-                WHERE security_id = ANY(?) AND as_of_date = ?
+                SELECT p.security_id,
+                       p.close_adj,
+                       MAX(p2.close_adj) AS high_52w
+                FROM price_daily p
+                JOIN price_daily p2 ON p2.security_id = p.security_id
+                    AND p2.trade_date > p.trade_date - INTERVAL '365 days'
+                    AND p2.trade_date <= p.trade_date
+                WHERE p.security_id = ANY(?) AND p.trade_date = ?
+                GROUP BY p.security_id, p.close_adj
             ) today
-            JOIN (
-                SELECT security_id, pct_from_52w_high
-                FROM derived_metrics
-                WHERE security_id = ANY(?) AND as_of_date = ? - INTERVAL '1 day'
+            LEFT JOIN (
+                SELECT p.security_id,
+                       p.close_adj,
+                       MAX(p2.close_adj) AS high_52w
+                FROM price_daily p
+                JOIN price_daily p2 ON p2.security_id = p.security_id
+                    AND p2.trade_date > p.trade_date - INTERVAL '365 days'
+                    AND p2.trade_date <= p.trade_date
+                WHERE p.security_id = ANY(?)
+                  AND p.trade_date = (
+                      SELECT MAX(trade_date) FROM price_daily
+                      WHERE security_id = p.security_id AND trade_date < ?
+                  )
+                GROUP BY p.security_id, p.close_adj
             ) prev ON prev.security_id = today.security_id
-            WHERE today.pct_from_52w_high >= -1.0
-              AND (prev.pct_from_52w_high < -1.0 OR prev.pct_from_52w_high IS NULL)
+            WHERE today.high_52w > 0
+              AND today.close_adj >= today.high_52w * 0.99
+              AND (prev.high_52w IS NULL OR prev.close_adj < prev.high_52w * 0.99)
             """;
         try {
             Long[] idArr = ids.toArray(new Long[0]);
@@ -487,14 +505,24 @@ public class ScreenerController {
     private Map<Long, Integer> loadBaseDays(List<Long> ids, LocalDate scoreDate) {
         if (ids.isEmpty()) return Map.of();
         Map<Long, Integer> result = new HashMap<>();
+        // 최근 1년 중 52주 신고가 대비 -15% 이내에 있었던 일수 = 베이스 기간
         String sql = """
-            SELECT security_id, COUNT(*) AS base_days
-            FROM derived_metrics
-            WHERE security_id = ANY(?)
-              AND as_of_date <= ?
-              AND as_of_date >= ? - INTERVAL '365 days'
-              AND pct_from_52w_high >= -15.0
-            GROUP BY security_id
+            SELECT p.security_id, COUNT(*) AS base_days
+            FROM price_daily p
+            JOIN (
+                SELECT security_id, MAX(close_adj) AS high_52w
+                FROM price_daily
+                WHERE security_id = ANY(?)
+                  AND trade_date > ? - INTERVAL '365 days'
+                  AND trade_date <= ?
+                GROUP BY security_id
+            ) h ON h.security_id = p.security_id
+            WHERE p.security_id = ANY(?)
+              AND p.trade_date > ? - INTERVAL '365 days'
+              AND p.trade_date <= ?
+              AND h.high_52w > 0
+              AND p.close_adj >= h.high_52w * 0.85
+            GROUP BY p.security_id
             """;
         try {
             Long[] idArr = ids.toArray(new Long[0]);
@@ -503,6 +531,9 @@ public class ScreenerController {
                 ps.setArray(1, con.createArrayOf("bigint", idArr));
                 ps.setDate(2, java.sql.Date.valueOf(scoreDate));
                 ps.setDate(3, java.sql.Date.valueOf(scoreDate));
+                ps.setArray(4, con.createArrayOf("bigint", idArr));
+                ps.setDate(5, java.sql.Date.valueOf(scoreDate));
+                ps.setDate(6, java.sql.Date.valueOf(scoreDate));
                 return ps;
             }, rs -> { result.put(rs.getLong("security_id"), rs.getInt("base_days")); });
         } catch (Exception e) {
