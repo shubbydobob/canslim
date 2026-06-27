@@ -348,17 +348,24 @@ public class ScreenerController {
             """;
 
         List<SectorPeer> peers = jdbc.query(sql,
-                (rs, i) -> new SectorPeer(
+                (rs, i) -> {
+                    java.math.BigDecimal c = rs.getBigDecimal("c_score");
+                    java.math.BigDecimal a = rs.getBigDecimal("a_score");
+                    java.math.BigDecimal n = rs.getBigDecimal("n_score");
+                    java.math.BigDecimal s = rs.getBigDecimal("s_score");
+                    java.math.BigDecimal ii = rs.getBigDecimal("i_score");
+                    return new SectorPeer(
                         rs.getString("ticker"),
                         rs.getString("name"),
                         rs.getDouble("composite_score"),
-                        (Double) rs.getObject("c_score"),
-                        (Double) rs.getObject("a_score"),
-                        (Double) rs.getObject("n_score"),
-                        (Double) rs.getObject("s_score"),
-                        (Double) rs.getObject("i_score"),
+                        c  != null ? c.doubleValue()  : null,
+                        a  != null ? a.doubleValue()  : null,
+                        n  != null ? n.doubleValue()  : null,
+                        s  != null ? s.doubleValue()  : null,
+                        ii != null ? ii.doubleValue() : null,
                         rs.getBigDecimal("close_adj"),
-                        rs.getString("ticker").equals(self.getTicker())),
+                        rs.getString("ticker").equals(self.getTicker()));
+                },
                 "KR", self.getSector());
 
         return ResponseEntity.ok(peers);

@@ -1,0 +1,16 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: canslim-postgres
+    environment:
+      POSTGRES_DB: canslim
+      POSTGRES_USER: canslim_user
+      POSTGRES_PASSWORD: "1234"
+    ports:
+      - "5432:5432"
+    volumes:
+      - canslim-pgdata:/var/lib/postgresql/data
+    restart: unless-stopped
+
+volumes:
+  canslim-pgdata:

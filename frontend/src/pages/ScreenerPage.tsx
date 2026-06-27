@@ -373,7 +373,7 @@ export default function ScreenerPage() {
 
   // ── table header & row per tab ──────────────────────────────
   const renderHead = () => {
-    const Th = (props: React.ComponentProps<typeof SortTh>) =>
+    const Th = (props: Omit<React.ComponentProps<typeof SortTh>, 'current' | 'dir' | 'onSort'>) =>
       <SortTh {...props} current={sortKey} dir={sortDir} onSort={handleSort} />
 
     if (viewTab === 'overview') return (
@@ -433,9 +433,8 @@ export default function ScreenerPage() {
     )
   }
 
-  const renderRow = (item: ScreenerItem, idx: number) => {
+  const renderRow = (item: ScreenerItem, _idx: number) => {
     const hovered = hoveredId === item.securityId
-    const rowBg = hovered ? '#161b22' : idx % 2 === 0 ? '#0b0f17' : '#0d1117'
     const grade = compositeGrade(item.compositeScore)
     const isWatched = watchlist.has(item.securityId)
 

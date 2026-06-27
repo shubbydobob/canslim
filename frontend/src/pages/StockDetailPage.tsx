@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { isPremium, isLoggedIn } from '../api/auth'
 import {
-  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
+  Bar, XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer, Legend, AreaChart, Area,
   RadarChart, Radar, PolarGrid, PolarAngleAxis,
   ComposedChart, Line,
@@ -221,7 +221,7 @@ export default function StockDetailPage() {
     .slice(0, 8)
     .reverse()
 
-  const quarterFin = quarterRaw.map((f, idx) => {
+  const quarterFin = quarterRaw.map((f) => {
     const prev = quarterRaw.find(p => p.fiscalYear === f.fiscalYear - 1 && p.fiscalQuarter === f.fiscalQuarter)
     const yoyGrowth = prev?.eps != null && prev.eps !== 0 && f.eps != null
       ? Math.round(((f.eps - prev.eps) / Math.abs(prev.eps)) * 1000) / 10
@@ -573,7 +573,7 @@ export default function StockDetailPage() {
                     tickFormatter={v => v >= 1000 ? (v / 1000).toFixed(1) + 'k' : String(v)} />
                   <YAxis yAxisId="growth" orientation="right" tick={{ fontSize: 10, fill: '#76e4f7' }} tickLine={false} axisLine={false}
                     tickFormatter={v => v + '%'} width={44} />
-                  <Tooltip formatter={(v: any, name: string) =>
+                  <Tooltip formatter={(v: any, name: any) =>
                     name === '전년동기성장' ? [`${v}%`, name] : [Number(v).toLocaleString('ko-KR') + '원', name]
                   } contentStyle={{ background: '#161b22', border: '1px solid #30363d', borderRadius: 8, fontSize: 11 }}
                     labelStyle={{ color: '#8b949e' }} />
