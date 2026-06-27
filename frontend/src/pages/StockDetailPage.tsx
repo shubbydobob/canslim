@@ -13,13 +13,13 @@ import type { ScreenerItem, ScoreHistory, FinancialRecord } from '../types'
 type ScoreKey = 'cScore' | 'aScore' | 'nScore' | 'sScore' | 'lScore' | 'iScore' | 'mScore'
 
 const FACTORS: { key: ScoreKey; label: string; desc: string; color: string }[] = [
-  { key: 'cScore', label: 'C', desc: '분기실적',  color: '#f6ad55' },
-  { key: 'aScore', label: 'A', desc: '연간성장',  color: '#68d391' },
-  { key: 'nScore', label: 'N', desc: '신고가',    color: '#76e4f7' },
-  { key: 'sScore', label: 'S', desc: '수급강도',  color: '#b794f4' },
-  { key: 'lScore', label: 'L', desc: '상대강도',  color: '#fc8181' },
-  { key: 'iScore', label: 'I', desc: '기관수급',  color: '#63b3ed' },
-  { key: 'mScore', label: 'M', desc: '시장방향',  color: '#d6bcfa' },
+  { key: 'cScore', label: '1', desc: '분기실적',  color: '#f6ad55' },
+  { key: 'aScore', label: '2', desc: '연간성장',  color: '#68d391' },
+  { key: 'nScore', label: '3', desc: '신고가',    color: '#76e4f7' },
+  { key: 'sScore', label: '4', desc: '수급강도',  color: '#b794f4' },
+  { key: 'lScore', label: '5', desc: '상대강도',  color: '#fc8181' },
+  { key: 'iScore', label: '6', desc: '기관수급',  color: '#63b3ed' },
+  { key: 'mScore', label: '7', desc: '시장방향',  color: '#d6bcfa' },
 ]
 
 function scoreGrade(v: number | null): { grade: string; color: string } {
