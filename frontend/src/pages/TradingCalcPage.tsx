@@ -416,7 +416,7 @@ export default function TradingCalcPage() {
           </div>
 
           <div style={{ ...S.card, fontSize: 10, color: '#374151', lineHeight: 1.6 }}>
-            <div style={{ fontWeight: 700, color: '#4b5563', marginBottom: 6 }}>CAN SLIM 매수 원칙</div>
+            <div style={{ fontWeight: 700, color: '#4b5563', marginBottom: 6 }}>성장주 매수 원칙</div>
             <div>• 1차: 계획 물량의 50%</div>
             <div>• 2차: 상승 확인 후 30%</div>
             <div>• 3차: 추세 강화 시 20%</div>

@@ -118,6 +118,92 @@ function SortTh({ label, sortKey: sk, current, dir, onSort, align = 'right', sty
   )
 }
 
+// ── 지표 안내 팝업 ─────────────────────────────────────────────
+const GUIDE_KEY = 'score_guide_hidden_until'
+
+const FACTORS = [
+  { letter: 'C', name: '현재 분기 실적', desc: '최근 분기 EPS가 전년 동기 대비 크게 증가한 종목을 선별합니다. 일시적 이익이 아닌 핵심 사업에서의 실적 개선이 기준입니다.' },
+  { letter: 'A', name: '연간 순이익 성장', desc: '최근 3개년 연평균 순이익 성장률을 측정합니다. 일관된 복리 성장을 보여주는 기업이 높은 점수를 받습니다.' },
+  { letter: 'N', name: '신고가 / 신성장 동력', desc: '52주 신고가 대비 근접도와 신제품·신사업 모멘텀을 반영합니다. 박스권 돌파 여부가 핵심 신호입니다.' },
+  { letter: 'S', name: '수요·공급 (수급)', desc: '주가 상승 시 거래량 증가, 하락 시 거래량 감소 패턴을 분석합니다. 기관·외인의 집중 매수 여부도 반영합니다.' },
+  { letter: 'L', name: '업종 선도주 여부', desc: '동종 업종 내 상대강도 순위를 측정합니다. 상위 10~15%의 선도주에 집중하고 후발주는 배제합니다.' },
+  { letter: 'I', name: '기관 투자자 참여', desc: '외국인·기관의 최근 10거래일 순매수 강도를 반영합니다. 스마트머니의 방향성이 중요한 선행 지표입니다.' },
+  { letter: 'M', name: '시장 방향성', desc: '코스피·코스닥 전반의 추세와 지수 건전도를 평가합니다. 시장이 약세일 때는 우량주도 하락하므로 가장 중요한 필터입니다.' },
+]
+
+function GuidePopup({ onClose }: { onClose: (hide24h: boolean) => void }) {
+  const [hide24h, setHide24h] = useState(false)
+  return (
+    <div style={{
+      position: 'fixed', inset: 0, zIndex: 1000,
+      background: 'rgba(0,0,0,0.75)', display: 'flex',
+      alignItems: 'center', justifyContent: 'center',
+    }} onClick={() => onClose(hide24h)}>
+      <div style={{
+        background: '#0d1117', border: '1px solid #21262d', borderRadius: 10,
+        width: '90%', maxWidth: 560, maxHeight: '85vh', overflowY: 'auto',
+        padding: '28px 28px 20px', boxShadow: '0 20px 60px rgba(0,0,0,0.8)',
+      }} onClick={e => e.stopPropagation()}>
+        {/* 헤더 */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 20 }}>
+          <div>
+            <div style={{ fontSize: 16, fontWeight: 700, color: '#e6edf3', marginBottom: 4 }}>
+              성장주 7대 핵심지표 안내
+            </div>
+            <div style={{ fontSize: 11, color: '#4b5563' }}>
+              각 지표는 0~100점으로 환산되며 가중 합산하여 종합점수를 산출합니다
+            </div>
+          </div>
+          <button onClick={() => onClose(hide24h)} style={{
+            background: 'none', border: 'none', color: '#4b5563', cursor: 'pointer',
+            fontSize: 18, padding: '0 0 0 12px', lineHeight: 1,
+          }}>✕</button>
+        </div>
+
+        {/* 지표 목록 */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          {FACTORS.map(f => (
+            <div key={f.letter} style={{
+              display: 'flex', gap: 12, alignItems: 'flex-start',
+              padding: '10px 12px', borderRadius: 6,
+              background: '#161b22', border: '1px solid #21262d',
+            }}>
+              <div style={{
+                width: 28, height: 28, borderRadius: 6, flexShrink: 0,
+                background: '#1f6feb22', border: '1px solid #1f6feb55',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                fontSize: 13, fontWeight: 800, color: '#58a6ff',
+              }}>{f.letter}</div>
+              <div>
+                <div style={{ fontSize: 12, fontWeight: 600, color: '#c9d1d9', marginBottom: 3 }}>
+                  {f.name}
+                </div>
+                <div style={{ fontSize: 11, color: '#6b7280', lineHeight: 1.6 }}>
+                  {f.desc}
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* 하단 */}
+        <div style={{ marginTop: 18, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <label style={{ display: 'flex', alignItems: 'center', gap: 7, cursor: 'pointer', fontSize: 11, color: '#4b5563' }}>
+            <input type="checkbox" checked={hide24h} onChange={e => setHide24h(e.target.checked)}
+              style={{ width: 13, height: 13, accentColor: '#1f6feb', cursor: 'pointer' }} />
+            24시간 보지 않기
+          </label>
+          <button onClick={() => onClose(hide24h)} style={{
+            background: '#1f6feb', border: 'none', borderRadius: 6,
+            color: '#fff', fontSize: 12, fontWeight: 600,
+            padding: '7px 20px', cursor: 'pointer',
+          }}>확인</button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // ── main component ─────────────────────────────────────────────
 export default function ScreenerPage() {
   const [items, setItems] = useState<ScreenerItem[]>([])
@@ -138,11 +224,19 @@ export default function ScreenerPage() {
   const [minScore, setMinScore] = useState(0)
   const [watchlist, setWatchlist] = useState<Set<number>>(() => {
     try {
-      const raw = localStorage.getItem('canslim_watchlist')
+      const raw = localStorage.getItem('screener_watchlist')
       return raw ? new Set<number>(JSON.parse(raw)) : new Set<number>()
     } catch { return new Set<number>() }
   })
   const [showWatchOnly, setShowWatchOnly] = useState(false)
+  const [showGuide, setShowGuide] = useState(() => {
+    const until = localStorage.getItem(GUIDE_KEY)
+    return !until || Date.now() > parseInt(until)
+  })
+  const closeGuide = (hide24h: boolean) => {
+    if (hide24h) localStorage.setItem(GUIDE_KEY, String(Date.now() + 24 * 60 * 60 * 1000))
+    setShowGuide(false)
+  }
   const navigate = useNavigate()
   const scrollRef = useRef<HTMLDivElement>(null)
   const mirrorRef = useRef<HTMLDivElement>(null)
@@ -171,7 +265,7 @@ export default function ScreenerPage() {
       const next = new Set(prev)
       if (next.has(id)) next.delete(id)
       else next.add(id)
-      try { localStorage.setItem('canslim_watchlist', JSON.stringify([...next])) } catch {}
+      try { localStorage.setItem('screener_watchlist', JSON.stringify([...next])) } catch {}
       return next
     })
   }
@@ -242,13 +336,13 @@ export default function ScreenerPage() {
         <Th label="섹터" align="left" style={{ width: 80 }} />
         <Th label="SCORE" sortKey="compositeScore" style={{ width: 70 }} />
         <Th label="Δ" style={{ width: 48, textAlign: 'center' as any }} />
-        <Th label="C분기" sortKey="cScore" align="center" style={{ width: 52 }} />
-        <Th label="A연간" sortKey="aScore" align="center" style={{ width: 52 }} />
-        <Th label="N신고가" sortKey="nScore" align="center" style={{ width: 52 }} />
-        <Th label="S수급" sortKey="sScore" align="center" style={{ width: 52 }} />
-        <Th label="L강도" sortKey="lScore" align="center" style={{ width: 52 }} />
-        <Th label="I기관" sortKey="iScore" align="center" style={{ width: 52 }} />
-        <Th label="M시장" sortKey="mScore" align="center" style={{ width: 48 }} />
+        <Th label="분기실적" sortKey="cScore" align="center" style={{ width: 52 }} />
+        <Th label="연간성장" sortKey="aScore" align="center" style={{ width: 52 }} />
+        <Th label="신고가" sortKey="nScore" align="center" style={{ width: 52 }} />
+        <Th label="수급" sortKey="sScore" align="center" style={{ width: 52 }} />
+        <Th label="선도성" sortKey="lScore" align="center" style={{ width: 52 }} />
+        <Th label="기관" sortKey="iScore" align="center" style={{ width: 52 }} />
+        <Th label="시장" sortKey="mScore" align="center" style={{ width: 48 }} />
         <Th label="종가" sortKey="closePrice" style={{ width: 78 }} />
         <Th label="등락률" sortKey="changeRate" style={{ width: 64 }} />
         <Th label="시가총액" sortKey="marketCap" style={{ width: 78 }} />
@@ -282,8 +376,8 @@ export default function ScreenerPage() {
         <Th label={flowColLabel('기관')} sortKey="instNetBuy10d" style={{ width: 88, color: '#a78bfa' }} />
         <Th label="거래대금" sortKey="turnover" style={{ width: 88 }} />
         <Th label="거래량" sortKey="volume" style={{ width: 80 }} />
-        <Th label="S수급" sortKey="sScore" align="center" style={{ width: 56 }} />
-        <Th label="I기관" sortKey="iScore" align="center" style={{ width: 56 }} />
+        <Th label="수급" sortKey="sScore" align="center" style={{ width: 56 }} />
+        <Th label="기관" sortKey="iScore" align="center" style={{ width: 56 }} />
         <Th label="RS%" sortKey="marketPercentile" style={{ width: 60 }} />
         <Th label="SCORE" sortKey="compositeScore" style={{ width: 68 }} />
       </tr>
@@ -451,6 +545,7 @@ export default function ScreenerPage() {
 
   return (
     <div style={{ minHeight: '100vh', background: '#0b0f17', color: '#e6edf3' }}>
+      {showGuide && <GuidePopup onClose={closeGuide} />}
       <MacroTicker />
 
       {/* ══ Section 1: 브랜드 네비게이션 ═══════════════════════ */}
@@ -461,8 +556,9 @@ export default function ScreenerPage() {
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 24 }}>
           <div style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
-            <span style={{ fontSize: 14, fontWeight: 800, letterSpacing: '-0.5px' }}>
-              CAN<span style={{ color: '#1f6feb' }}>SLIM</span>
+            <span style={{ fontSize: 14, fontWeight: 800, letterSpacing: '-0.5px', cursor: 'pointer' }}
+              onClick={() => setShowGuide(true)}>
+              성장주<span style={{ color: '#1f6feb' }}>스크리너</span>
             </span>
           </div>
           <nav style={{ display: 'flex', gap: 0 }}>
