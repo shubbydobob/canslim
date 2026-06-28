@@ -236,10 +236,16 @@ export default function ScreenerPage() {
     const until = localStorage.getItem(GUIDE_KEY)
     return !until || Date.now() > parseInt(until)
   })
+  const [mainTab, setMainTab] = useState<'screener' | 'market'>('screener')
+  const [histTab, setHistTab] = useState<'KOSPI' | 'KOSDAQ'>('KOSPI')
   const [marketStates, setMarketStates] = useState<Array<{
     market: string; marketPhase?: string; trendDirection?: string; stateDate?: string
-    indexClose?: number; ma50d?: number; ma200d?: number
+    indexClose?: number; ma50d?: number; ma200d?: number; distributionDayCount?: number
   }>>([])
+  const [marketHistory, setMarketHistory] = useState<Record<string, Array<{
+    stateDate: string; marketPhase: string; trendDirection: string
+    indexClose: number; ma50d: number; ma200d: number
+  }>>>({})
   const closeGuide = (hide24h: boolean) => {
     if (hide24h) localStorage.setItem(GUIDE_KEY, String(Date.now() + 24 * 60 * 60 * 1000))
     setShowGuide(false)
@@ -259,6 +265,14 @@ export default function ScreenerPage() {
   useEffect(() => {
     fetch('/api/admin/market-state').then(r => r.json()).then(setMarketStates).catch(() => {})
   }, [])
+  useEffect(() => {
+    if (mainTab !== 'market') return
+    Promise.all(['KOSPI', 'KOSDAQ'].map(m =>
+      fetch(`/api/admin/market-state/history?market=${m}&days=60`)
+        .then(r => r.json())
+        .then((rows: typeof marketHistory[string]) => [m, [...rows].reverse()] as const)
+    )).then(pairs => setMarketHistory(Object.fromEntries(pairs))).catch(() => {})
+  }, [mainTab])
 
   useEffect(() => {
     setLoading(true)
@@ -658,42 +672,20 @@ export default function ScreenerPage() {
             </span>
           </div>
           <nav style={{ display: 'flex', gap: 0 }}>
-            {(['스크리너', '포지션 플래너'] as const).map((label, i) => (
-              <span key={label} onClick={i === 1 ? () => navigate('/calc') : undefined} style={{
-                padding: '0 12px', fontSize: 12, color: i === 0 ? '#e6edf3' : '#4b5563',
-                fontWeight: i === 0 ? 600 : 400, cursor: i === 1 ? 'pointer' : 'default', lineHeight: '40px',
-                borderBottom: i === 0 ? '2px solid #1f6feb' : '2px solid transparent',
+            {([
+              { label: '스크리너', action: () => setMainTab('screener'), active: mainTab === 'screener' },
+              { label: '시장',     action: () => setMainTab('market'),   active: mainTab === 'market' },
+              { label: '플래너',   action: () => navigate('/calc'),      active: false },
+            ]).map(({ label, action, active }) => (
+              <span key={label} onClick={action} style={{
+                padding: '0 12px', fontSize: 12,
+                color: active ? '#e6edf3' : '#4b5563',
+                fontWeight: active ? 600 : 400,
+                cursor: 'pointer', lineHeight: '40px',
+                borderBottom: active ? '2px solid #1f6feb' : '2px solid transparent',
               }}>{label}</span>
             ))}
           </nav>
-          {/* 시장 국면 뱃지 */}
-          {marketStates.length > 0 && (
-            <div style={{ display: 'flex', gap: 6, marginLeft: 8 }}>
-              {marketStates.map(ms => {
-                const phase = ms.marketPhase ?? 'UNKNOWN'
-                const phaseColor = phase === 'BULL' ? { bg: 'rgba(74,222,128,0.12)', border: '#166534', text: '#4ade80' }
-                  : phase === 'BEAR' ? { bg: 'rgba(248,113,113,0.12)', border: '#7f1d1d', text: '#f87171' }
-                  : { bg: 'rgba(250,189,68,0.12)', border: '#78350f', text: '#fabd44' }
-                const aboveMa200 = ms.indexClose && ms.ma200d && ms.indexClose > ms.ma200d
-                const trend = ms.trendDirection === 'UP' ? '↑' : ms.trendDirection === 'DOWN' ? '↓' : '→'
-                return (
-                  <div key={ms.market} title={`${ms.market} | MA50: ${ms.ma50d?.toFixed(0)} | MA200: ${ms.ma200d?.toFixed(0)} | 기준: ${ms.stateDate}`}
-                    style={{
-                      display: 'flex', alignItems: 'center', gap: 4,
-                      padding: '2px 8px', borderRadius: 4,
-                      background: phaseColor.bg, border: `1px solid ${phaseColor.border}`,
-                      fontSize: 11, cursor: 'pointer', lineHeight: 1,
-                    }}
-                    onClick={() => navigate('/admin')}
-                  >
-                    <span style={{ color: '#6b7280' }}>{ms.market}</span>
-                    <span style={{ color: phaseColor.text, fontWeight: 700 }}>{phase}</span>
-                    <span style={{ color: aboveMa200 ? '#4ade80' : '#f87171' }}>{trend}</span>
-                  </div>
-                )
-              })}
-            </div>
-          )}
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           {isPremium() && (
@@ -732,8 +724,110 @@ export default function ScreenerPage() {
         )}
       </div>
 
+      {/* ══ 시장 탭 ══════════════════════════════════════════════ */}
+      {mainTab === 'market' && (() => {
+        const phaseStyle = (p?: string) =>
+          p === 'BULL' ? { bg: 'rgba(74,222,128,0.10)', border: '#166534', text: '#4ade80' }
+          : p === 'BEAR' ? { bg: 'rgba(248,113,113,0.10)', border: '#7f1d1d', text: '#f87171' }
+          : { bg: 'rgba(250,189,68,0.10)', border: '#78350f', text: '#fabd44' }
+        const trendIcon = (d?: string) => d === 'UP' ? '↑' : d === 'DOWN' ? '↓' : '→'
+        const phaseLabel = (p?: string) => p === 'BULL' ? '강세장' : p === 'BEAR' ? '약세장' : p === 'CORRECTION' ? '조정' : '불명'
+        const hist = marketHistory[histTab] ?? []
+        return (
+          <div style={{ padding: '20px', maxWidth: 960, margin: '0 auto' }}>
+            {/* 요약 카드 2개 */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 20 }}>
+              {marketStates.map(ms => {
+                const ps = phaseStyle(ms.marketPhase)
+                const aboveMa50  = ms.indexClose && ms.ma50d  && ms.indexClose > ms.ma50d
+                const aboveMa200 = ms.indexClose && ms.ma200d && ms.indexClose > ms.ma200d
+                return (
+                  <div key={ms.market} style={{
+                    background: '#0d1117', border: '1px solid #21262d',
+                    borderRadius: 10, padding: '16px 20px',
+                  }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+                      <span style={{ fontSize: 15, fontWeight: 700 }}>{ms.market}</span>
+                      <span style={{
+                        fontSize: 12, fontWeight: 700, padding: '3px 10px', borderRadius: 6,
+                        background: ps.bg, border: `1px solid ${ps.border}`, color: ps.text,
+                      }}>{phaseLabel(ms.marketPhase)} {trendIcon(ms.trendDirection)}</span>
+                    </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px 16px', fontSize: 12 }}>
+                      {[
+                        { label: '기준일', val: ms.stateDate ?? '-', c: '#9ca3af' },
+                        { label: '프록시 종가', val: ms.indexClose?.toLocaleString('ko-KR', { maximumFractionDigits: 0 }) ?? '-', c: '#e6edf3' },
+                        { label: 'MA50',  val: ms.ma50d?.toLocaleString('ko-KR', { maximumFractionDigits: 0 }) ?? '-',  c: aboveMa50  ? '#4ade80' : '#f87171' },
+                        { label: 'MA200', val: ms.ma200d?.toLocaleString('ko-KR', { maximumFractionDigits: 0 }) ?? '-', c: aboveMa200 ? '#4ade80' : '#f87171' },
+                        { label: '배분일', val: `${ms.distributionDayCount ?? 0}일`, c: (ms.distributionDayCount ?? 0) >= 4 ? '#f87171' : '#9ca3af' },
+                      ].map(({ label, val, c }) => (
+                        <div key={label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                          padding: '3px 0', borderBottom: '1px solid #161b22' }}>
+                          <span style={{ color: '#4b5563' }}>{label}</span>
+                          <span style={{ color: c, fontWeight: 600 }}>{val}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+
+            {/* 국면 이력 */}
+            <div style={{ background: '#0d1117', border: '1px solid #21262d', borderRadius: 10, overflow: 'hidden' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                padding: '10px 16px', borderBottom: '1px solid #21262d', background: '#161b22' }}>
+                <span style={{ fontSize: 11, fontWeight: 700, color: '#4b5563', letterSpacing: '0.06em' }}>국면 이력 (최근 60일)</span>
+                <div style={{ display: 'flex', gap: 6 }}>
+                  {(['KOSPI', 'KOSDAQ'] as const).map(m => (
+                    <button key={m} onClick={() => setHistTab(m)} style={{
+                      fontSize: 11, padding: '2px 10px', borderRadius: 4, cursor: 'pointer',
+                      background: histTab === m ? 'rgba(31,111,235,0.2)' : 'none',
+                      border: histTab === m ? '1px solid #1f6feb' : '1px solid #21262d',
+                      color: histTab === m ? '#58a6ff' : '#4b5563',
+                    }}>{m}</button>
+                  ))}
+                </div>
+              </div>
+              <div style={{ overflowX: 'auto' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 11 }}>
+                  <thead>
+                    <tr style={{ borderBottom: '1px solid #21262d' }}>
+                      {['날짜', '국면', '추세', '종가', 'MA50', 'MA200'].map(h => (
+                        <th key={h} style={{ padding: '6px 12px', textAlign: h === '날짜' || h === '국면' || h === '추세' ? 'left' : 'right',
+                          color: '#374151', fontWeight: 600 }}>{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {hist.map(h => {
+                      const ps = phaseStyle(h.marketPhase)
+                      return (
+                        <tr key={h.stateDate} style={{ borderBottom: '1px solid #161b22' }}>
+                          <td style={{ padding: '5px 12px', color: '#6b7280' }}>{h.stateDate}</td>
+                          <td style={{ padding: '5px 12px' }}>
+                            <span style={{ fontSize: 10, fontWeight: 700, padding: '1px 6px', borderRadius: 3,
+                              background: ps.bg, border: `1px solid ${ps.border}`, color: ps.text }}>
+                              {phaseLabel(h.marketPhase)}
+                            </span>
+                          </td>
+                          <td style={{ padding: '5px 12px', color: '#9ca3af' }}>{trendIcon(h.trendDirection)}</td>
+                          <td style={{ padding: '5px 12px', textAlign: 'right', color: '#e6edf3' }}>{Number(h.indexClose).toLocaleString('ko-KR', { maximumFractionDigits: 0 })}</td>
+                          <td style={{ padding: '5px 12px', textAlign: 'right', color: '#4b5563' }}>{Number(h.ma50d).toLocaleString('ko-KR', { maximumFractionDigits: 0 })}</td>
+                          <td style={{ padding: '5px 12px', textAlign: 'right', color: '#4b5563' }}>{Number(h.ma200d).toLocaleString('ko-KR', { maximumFractionDigits: 0 })}</td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        )
+      })()}
+
       {/* ══ 시장 M 배너 ══════════════════════════════════════════ */}
-      {!loading && items.length > 0 && (() => {
+      {mainTab === 'screener' && !loading && items.length > 0 && (() => {
         const avgM = items.reduce((s, i) => s + (i.mScore ?? 0), 0) / items.length
         const { bg, border, label, desc } = avgM >= 60
           ? { bg: 'rgba(74,222,128,0.08)', border: '#4ade80', label: '매수 구간', desc: '시장 모멘텀 양호' }
@@ -756,6 +850,7 @@ export default function ScreenerPage() {
         )
       })()}
 
+      {mainTab === 'screener' && <>
       {/* ══ Section 2: 필터 패널 ════════════════════════════════ */}
       <div style={{ background: '#0d1117', borderBottom: '2px solid #21262d', padding: '12px 20px' }}>
         <div style={{
@@ -1026,6 +1121,7 @@ export default function ScreenerPage() {
           <div style={{ width: 120 }} />
         </div>
       )}
+      </>}
     </div>
   )
 }
