@@ -11,10 +11,17 @@ __pycache__/
 etl/config/db.yaml
 etl/config/dart.yaml
 
-# Java / Maven
+# Java / Gradle
 backend/target/
+backend/.gradle/
+backend/build/
+backend/bin/
 *.class
 *.jar
+
+# Logs & output
+*.log
+output/
 
 # IDE
 .idea/
