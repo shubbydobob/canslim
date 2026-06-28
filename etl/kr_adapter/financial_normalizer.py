@@ -31,9 +31,11 @@ logger = logging.getLogger(__name__)
 # ───────────────────────────────────────────
 
 def _load_quarterly(session, security_id: int) -> list[dict]:
-    """누적 분기 재무 데이터 로드 (CFS 우선, 없으면 OFS)."""
+    """누적 분기 재무 데이터 로드 (CFS 우선, 없으면 OFS).
+    period_end_date를 함께 로드하여 as_of_date 필터에 사용.
+    """
     sql = text("""
-        SELECT fiscal_year, fiscal_quarter, eps, is_consolidated
+        SELECT fiscal_year, fiscal_quarter, eps, is_consolidated, period_end_date
         FROM   financials
         WHERE  security_id  = :sid
           AND  period_type  = 'QUARTER'
@@ -49,9 +51,10 @@ def _load_quarterly(session, security_id: int) -> list[dict]:
         if key not in seen:
             seen.add(key)
             result.append({
-                "year": r.fiscal_year,
-                "quarter": r.fiscal_quarter,
-                "eps_cum": float(r.eps) if r.eps is not None else None,
+                "year":           r.fiscal_year,
+                "quarter":        r.fiscal_quarter,
+                "eps_cum":        float(r.eps) if r.eps is not None else None,
+                "period_end_date": r.period_end_date,
             })
     return result
 
@@ -59,7 +62,7 @@ def _load_quarterly(session, security_id: int) -> list[dict]:
 def _load_annual(session, security_id: int) -> list[dict]:
     """연간 재무 데이터 로드 (CFS 우선)."""
     sql = text("""
-        SELECT fiscal_year, eps, roe, is_consolidated
+        SELECT fiscal_year, eps, roe, is_consolidated, period_end_date
         FROM   financials
         WHERE  security_id   = :sid
           AND  period_type   = 'ANNUAL'
@@ -73,9 +76,10 @@ def _load_annual(session, security_id: int) -> list[dict]:
         if r.fiscal_year not in seen:
             seen.add(r.fiscal_year)
             result.append({
-                "year": r.fiscal_year,
-                "eps": float(r.eps) if r.eps is not None else None,
-                "roe": float(r.roe) if r.roe is not None else None,
+                "year":           r.fiscal_year,
+                "eps":            float(r.eps) if r.eps is not None else None,
+                "roe":            float(r.roe) if r.roe is not None else None,
+                "period_end_date": r.period_end_date,
             })
     return result
 
@@ -121,11 +125,23 @@ def _compute_metrics(
     standalone: dict[tuple, float],
     annual: list[dict],
     as_of_date: date,
+    period_ends: dict[tuple, "date"] | None = None,
 ) -> dict:
     """단독분기·연간 EPS로 CANSLIM C·A 지표 계산."""
-    # 기준일 이전 단독분기만 사용
-    valid = {k: v for k, v in standalone.items()
-             if date(k[0], k[1] * 3, 28) <= as_of_date}
+    # 기준일 이전 단독분기만 사용 — period_end_date 기준(정확), 없으면 분기 종료일 근사
+    def _is_valid(k):
+        if period_ends and period_ends.get(k) is not None:
+            return period_ends[k] <= as_of_date   # DB의 실제 분기종료일 사용
+        # fallback: 분기 실제 종료일 (3/31, 6/30, 9/30, 12/31)
+        q_end_month = k[1] * 3
+        q_end_day   = 31 if k[1] in (1, 3, 4) else 30
+        return date(k[0], q_end_month, q_end_day) <= as_of_date
+
+    valid = {k: v for k, v in standalone.items() if _is_valid(k)}
+
+    # 연간도 period_end_date 기준 필터
+    annual = [r for r in annual
+              if r.get("period_end_date") is None or r["period_end_date"] <= as_of_date]
 
     # 분기 데이터가 없어도 연간 데이터만으로 A 지표는 계산 가능
     has_quarterly = bool(valid)
@@ -233,8 +249,9 @@ def normalize_security(security_id: int, as_of_date: date) -> bool:
     if not quarterly and not annual:
         return False
 
-    standalone = _to_standalone(quarterly)
-    metrics    = _compute_metrics(standalone, annual, as_of_date)
+    standalone   = _to_standalone(quarterly)
+    period_ends  = {(r["year"], r["quarter"]): r["period_end_date"] for r in quarterly}
+    metrics      = _compute_metrics(standalone, annual, as_of_date, period_ends)
 
     if not metrics:
         return False
@@ -275,6 +292,44 @@ def normalize_all(as_of_date: date = None) -> None:
             skipped += 1
 
     logger.info("계산 완료: %d건 적재, %d건 데이터 부족 스킵", done, skipped)
+
+    # ── EPS carry-forward ──────────────────────────────────────────
+    # Java DerivedMetricsJob이 오늘 날짜 행을 EPS=null로 생성하면,
+    # 재무 데이터가 없어 Python이 skip한 종목은 직전 행의 EPS를 복사한다.
+    # (EPS는 분기 1회 변경 → 새 분기보고서 없으면 이전 값 유지가 정확)
+    carry_sql = text("""
+        UPDATE derived_metrics dm
+        SET
+            eps_standalone_latest  = prev.eps_standalone_latest,
+            eps_standalone_prev_yq = prev.eps_standalone_prev_yq,
+            eps_qoq_yoy_pct        = prev.eps_qoq_yoy_pct,
+            eps_qoq_accel          = prev.eps_qoq_accel,
+            eps_3yr_cagr           = prev.eps_3yr_cagr,
+            eps_annual_consistency = prev.eps_annual_consistency,
+            roe_latest             = prev.roe_latest
+        FROM (
+            SELECT DISTINCT ON (security_id)
+                security_id,
+                eps_standalone_latest,
+                eps_standalone_prev_yq,
+                eps_qoq_yoy_pct,
+                eps_qoq_accel,
+                eps_3yr_cagr,
+                eps_annual_consistency,
+                roe_latest
+            FROM derived_metrics
+            WHERE as_of_date < :d
+              AND eps_qoq_yoy_pct IS NOT NULL
+            ORDER BY security_id, as_of_date DESC
+        ) prev
+        WHERE dm.security_id  = prev.security_id
+          AND dm.as_of_date   = :d
+          AND dm.eps_qoq_yoy_pct IS NULL
+    """)
+    with get_session() as session:
+        result = session.execute(carry_sql, {"d": as_of_date})
+        session.commit()
+        logger.info("EPS carry-forward: %d건 보완", result.rowcount)
 
 
 if __name__ == "__main__":

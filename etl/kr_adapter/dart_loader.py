@@ -39,7 +39,7 @@ _REPORT_SCHEDULE = [
     ("11011", "ANNUAL",  4, False),  # 연간 — 12개월 (fiscal_quarter=4, NULL 방지)
 ]
 
-_FETCH_YEARS = list(range(2016, 2026))  # 10년치 (2016~2025)
+_FETCH_YEARS = list(range(2016, 2027))  # 10년치 (2016~2026)
 
 _QUARTER_END = {1: (3, 31), 2: (6, 30), 3: (9, 30), 4: (12, 31)}
 
