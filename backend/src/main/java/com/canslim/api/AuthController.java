@@ -8,7 +8,9 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 
+import java.security.MessageDigest;
 import java.time.OffsetDateTime;
+import java.util.HexFormat;
 import java.util.Map;
 import java.util.UUID;
 
@@ -36,6 +38,16 @@ public class AuthController {
     record RegisterResponse(Long userId, String email) {}
     record LoginResponse(String token) {}
     record MeResponse(String email, String plan, OffsetDateTime expiresAt) {}
+
+    // ── SHA-256 토큰 해시 ────────────────────────────────────────
+    private static String sha256(String input) {
+        try {
+            byte[] bytes = MessageDigest.getInstance("SHA-256").digest(input.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+            return HexFormat.of().formatHex(bytes);
+        } catch (Exception e) {
+            throw new RuntimeException("SHA-256 실패", e);
+        }
+    }
 
     // ── POST /api/auth/register ─────────────────────────────────
     @PostMapping("/register")
@@ -92,9 +104,9 @@ public class AuthController {
 
         Long userId = ((Number) user.get("id")).longValue();
 
-        // 토큰 생성 (UUID) + 저장 (BCrypt 해시)
+        // 토큰 생성 (UUID) + 저장 (SHA-256 해시 — 빠른 직접 조회용)
         String rawToken = UUID.randomUUID().toString();
-        String tokenHash = bcrypt.encode(rawToken);
+        String tokenHash = sha256(rawToken);
         jdbc.update("INSERT INTO api_keys (user_id, key_hash) VALUES (?, ?)", userId, tokenHash);
 
         log.info("로그인: userId={}", userId);
@@ -110,28 +122,21 @@ public class AuthController {
         }
 
         String rawToken = authHeader.substring(7).trim();
+        String tokenHash = sha256(rawToken);
 
-        // 모든 api_keys 조회 후 BCrypt 매칭 (토큰 수가 적으므로 허용 가능)
-        var keys = jdbc.queryForList(
-                "SELECT ak.id, ak.user_id, ak.key_hash, u.email " +
-                "FROM api_keys ak JOIN users u ON u.id = ak.user_id " +
-                "ORDER BY ak.created_at DESC LIMIT 200");
-
-        Long userId = null;
-        String email = null;
-        for (var row : keys) {
-            String hash = (String) row.get("key_hash");
-            if (bcrypt.matches(rawToken, hash)) {
-                userId = ((Number) row.get("user_id")).longValue();
-                email  = (String) row.get("email");
-                break;
-            }
-        }
-
-        if (userId == null) {
+        // SHA-256 해시로 직접 조회 — O(1)
+        Map<String, Object> keyRow;
+        try {
+            keyRow = jdbc.queryForMap(
+                    "SELECT ak.user_id, u.email FROM api_keys ak " +
+                    "JOIN users u ON u.id = ak.user_id WHERE ak.key_hash = ?", tokenHash);
+        } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                     .body(Map.of("error", "유효하지 않은 토큰입니다."));
         }
+
+        Long userId = ((Number) keyRow.get("user_id")).longValue();
+        String email = (String) keyRow.get("email");
 
         // 구독 정보
         Map<String, Object> sub;
