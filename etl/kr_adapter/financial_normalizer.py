@@ -127,27 +127,36 @@ def _compute_metrics(
     valid = {k: v for k, v in standalone.items()
              if date(k[0], k[1] * 3, 28) <= as_of_date}
 
-    if not valid:
+    # 분기 데이터가 없어도 연간 데이터만으로 A 지표는 계산 가능
+    has_quarterly = bool(valid)
+
+    latest_eps  = None
+    prev_yq_eps = None
+    yoy         = None
+    accel       = None
+
+    if has_quarterly:
+        sorted_keys = sorted(valid.keys())
+        latest_k  = sorted_keys[-1]
+        latest_yq = k_minus_4(sorted_keys)   # 1년 전 동일 분기
+
+        latest_eps  = valid.get(latest_k)
+        prev_yq_eps = valid.get(latest_yq) if latest_yq else None
+
+        # YoY%
+        yoy = _safe_yoy(latest_eps, prev_yq_eps)
+
+        # 가속도: 현분기 YoY - 전분기 YoY
+        if len(sorted_keys) >= 2:
+            prev_k = sorted_keys[-2]
+            prev_yq2 = k_minus_4_from(sorted_keys, prev_k)
+            prev_yoy = _safe_yoy(valid.get(prev_k), valid.get(prev_yq2) if prev_yq2 else None)
+            if yoy is not None and prev_yoy is not None:
+                accel = yoy - prev_yoy
+
+    # 연간 데이터도 없으면 전부 스킵
+    if not has_quarterly and not annual:
         return {}
-
-    sorted_keys = sorted(valid.keys())
-    latest_k  = sorted_keys[-1]
-    latest_yq = k_minus_4(sorted_keys)   # 1년 전 동일 분기
-
-    latest_eps  = valid.get(latest_k)
-    prev_yq_eps = valid.get(latest_yq) if latest_yq else None
-
-    # YoY%
-    yoy = _safe_yoy(latest_eps, prev_yq_eps)
-
-    # 가속도: 현분기 YoY - 전분기 YoY
-    accel = None
-    if len(sorted_keys) >= 2:
-        prev_k = sorted_keys[-2]
-        prev_yq2 = k_minus_4_from(sorted_keys, prev_k)
-        prev_yoy = _safe_yoy(valid.get(prev_k), valid.get(prev_yq2) if prev_yq2 else None)
-        if yoy is not None and prev_yoy is not None:
-            accel = yoy - prev_yoy
 
     # EPS CAGR (3yr → 2yr → 1yr 순서로 폴백; 적자 기준연도 건너뜀)
     annual_by_year = {r["year"]: r["eps"] for r in annual}
