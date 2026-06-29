@@ -147,6 +147,8 @@ export default function StockDetailPage() {
   const [correlations, setCorrelations] = useState<CorrelationStock[]>([])
   const [showPremiumModal, setShowPremiumModal] = useState(false)
   const [watched, setWatched] = useState(false)
+  const [userIsPremium] = useState(() => userIsPremium)
+  const [userIsLoggedIn] = useState(() => userIsLoggedIn)
 
   // C-4: id 변경 시 watched 동기화
   useEffect(() => {
@@ -158,17 +160,22 @@ export default function StockDetailPage() {
   }, [id])
 
   useEffect(() => {
+    let cancelled = false
+    setLoading(true)
+    setError(null)
     Promise.all([fetchStockScore(id), fetchStockHistory(id), fetchStockFinancials(id)])
       .then(([s, h, f]) => {
+        if (cancelled) return
         setStock(s)
         setHistory([...h].reverse())
         setFinancials(f)
-        fetchStockNews(s.ticker).then(setNews)
-        fetchSectorPeers(id).then(setPeers)
-        fetchCorrelations(id).then(setCorrelations)
+        fetchStockNews(s.ticker).then(r => { if (!cancelled) setNews(r) })
+        fetchSectorPeers(id).then(r => { if (!cancelled) setPeers(r) })
+        fetchCorrelations(id).then(r => { if (!cancelled) setCorrelations(r) })
       })
-      .catch(e => setError(e.message))
-      .finally(() => setLoading(false))
+      .catch(e => { if (!cancelled) setError(e.message) })
+      .finally(() => { if (!cancelled) setLoading(false) })
+    return () => { cancelled = true }
   }, [id])
 
   if (loading) return (
@@ -238,20 +245,20 @@ export default function StockDetailPage() {
           {/* PDF 리포트 버튼 (프리미엄 전용) */}
           <button
             onClick={() => {
-              if (!isLoggedIn() || !isPremium()) {
+              if (!userIsLoggedIn || !userIsPremium) {
                 setShowPremiumModal(true)
               } else {
                 window.print()
               }
             }}
             style={{
-              background: isPremium() ? 'rgba(31,111,235,0.1)' : 'none',
-              border: `1px solid ${isPremium() ? 'rgba(31,111,235,0.3)' : '#21262d'}`,
+              background: userIsPremium ? 'rgba(31,111,235,0.1)' : 'none',
+              border: `1px solid ${userIsPremium ? 'rgba(31,111,235,0.3)' : '#21262d'}`,
               borderRadius: 6, padding: '4px 12px', cursor: 'pointer',
-              color: isPremium() ? '#58a6ff' : '#4b5563', fontSize: 12, fontWeight: 600,
+              color: userIsPremium ? '#58a6ff' : '#4b5563', fontSize: 12, fontWeight: 600,
             }}
           >
-            {isPremium() ? '📄 PDF 다운로드' : '🔒 PDF 리포트'}
+            {userIsPremium ? '📄 PDF 다운로드' : '🔒 PDF 리포트'}
           </button>
 
           <button

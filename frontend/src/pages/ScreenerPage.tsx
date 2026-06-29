@@ -26,7 +26,7 @@ const scoreColor = (v: number | null) => {
   return 'rgba(248,113,113,0.15)'
 }
 const scoreText = (v: number | null) => {
-  if (v === null) return '#3d4451'
+  if (v === null) return 'var(--text-4)'
   if (v >= 70) return '#4ade80'
   if (v >= 55) return '#fabd44'
   if (v >= 40) return '#f97316'
@@ -61,9 +61,9 @@ function ScoreCell({ value }: { value: number | null }) {
       padding: '0 5px', textAlign: 'center',
       background: scoreColor(value), color: scoreText(value),
       fontWeight: value !== null ? 600 : 400, fontSize: 11,
-      borderRight: '1px solid #1c2230',
+      borderRight: '1px solid var(--score-sep)',
     }}>
-      {value !== null ? value.toFixed(1) : <span style={{ color: '#2d3748' }}>·</span>}
+      {value !== null ? value.toFixed(1) : <span style={{ color: 'var(--text-4)' }}>·</span>}
     </td>
   )
 }
@@ -78,10 +78,10 @@ function SortTh({ label, sortKey: sk, current, dir, onSort, align = 'right', sty
       onClick={sk ? () => onSort(sk) : undefined}
       style={{
         padding: '7px 6px', textAlign: align, fontSize: 10, fontWeight: 600,
-        color: active ? '#c9d1d9' : '#4b5563', letterSpacing: '0.05em',
+        color: active ? 'var(--text-1)' : 'var(--text-3)', letterSpacing: '0.05em',
         cursor: sk ? 'pointer' : 'default', userSelect: 'none',
-        whiteSpace: 'nowrap', borderBottom: '1px solid #21262d',
-        background: '#0d1117', ...style,
+        whiteSpace: 'nowrap', borderBottom: '1px solid var(--border)',
+        background: 'var(--bg-nav)', ...style,
       }}
     >
       {label}
@@ -114,22 +114,22 @@ function GuidePopup({ onClose }: { onClose: (hide24h: boolean) => void }) {
       alignItems: 'center', justifyContent: 'center',
     }} onClick={() => onClose(hide24h)}>
       <div style={{
-        background: '#0d1117', border: '1px solid #21262d', borderRadius: 10,
+        background: 'var(--bg-nav)', border: '1px solid var(--border)', borderRadius: 10,
         width: '90%', maxWidth: 560, maxHeight: '85vh', overflowY: 'auto',
         padding: '28px 28px 20px', boxShadow: '0 20px 60px rgba(0,0,0,0.8)',
       }} onClick={e => e.stopPropagation()}>
         {/* 헤더 */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 20 }}>
           <div>
-            <div style={{ fontSize: 16, fontWeight: 700, color: '#e6edf3', marginBottom: 4 }}>
+            <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--text-1)', marginBottom: 4 }}>
               성장주 7대 핵심지표 안내
             </div>
-            <div style={{ fontSize: 11, color: '#4b5563' }}>
+            <div style={{ fontSize: 11, color: 'var(--text-3)' }}>
               각 지표는 0~100점으로 환산되며 가중 합산하여 종합점수를 산출합니다
             </div>
           </div>
           <button onClick={() => onClose(hide24h)} style={{
-            background: 'none', border: 'none', color: '#4b5563', cursor: 'pointer',
+            background: 'none', border: 'none', color: 'var(--text-3)', cursor: 'pointer',
             fontSize: 18, padding: '0 0 0 12px', lineHeight: 1,
           }}>✕</button>
         </div>
@@ -140,7 +140,7 @@ function GuidePopup({ onClose }: { onClose: (hide24h: boolean) => void }) {
             <div key={f.num} style={{
               display: 'flex', gap: 12, alignItems: 'flex-start',
               padding: '10px 12px', borderRadius: 6,
-              background: '#161b22', border: '1px solid #21262d',
+              background: 'var(--bg-surface)', border: '1px solid var(--border)',
             }}>
               <div style={{
                 width: 28, height: 28, borderRadius: 6, flexShrink: 0,
@@ -149,10 +149,10 @@ function GuidePopup({ onClose }: { onClose: (hide24h: boolean) => void }) {
                 fontSize: 13, fontWeight: 800, color: '#58a6ff',
               }}>{f.num}</div>
               <div>
-                <div style={{ fontSize: 12, fontWeight: 600, color: '#c9d1d9', marginBottom: 3 }}>
+                <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-1)', marginBottom: 3 }}>
                   {f.name}
                 </div>
-                <div style={{ fontSize: 11, color: '#6b7280', lineHeight: 1.6 }}>
+                <div style={{ fontSize: 11, color: 'var(--text-3)', lineHeight: 1.6 }}>
                   {f.desc}
                 </div>
               </div>
@@ -162,7 +162,7 @@ function GuidePopup({ onClose }: { onClose: (hide24h: boolean) => void }) {
 
         {/* 하단 */}
         <div style={{ marginTop: 18, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <label style={{ display: 'flex', alignItems: 'center', gap: 7, cursor: 'pointer', fontSize: 11, color: '#4b5563' }}>
+          <label style={{ display: 'flex', alignItems: 'center', gap: 7, cursor: 'pointer', fontSize: 11, color: 'var(--text-3)' }}>
             <input type="checkbox" checked={hide24h} onChange={e => setHide24h(e.target.checked)}
               style={{ width: 13, height: 13, accentColor: '#1f6feb', cursor: 'pointer' }} />
             24시간 보지 않기
@@ -262,6 +262,7 @@ export default function ScreenerPage() {
 
   useEffect(() => {
     setLoading(true)
+    setError(null)
     const { minCap, maxCap } = CAP_PARAMS[capRange]
     fetchScreener('KR', page, size, query.trim(), sector, minCap, maxCap, sortKey, sortDir, minScore)
       .then(d => {
@@ -347,31 +348,31 @@ export default function ScreenerPage() {
   // ── styles ──────────────────────────────────────────────────
   const S = {
     filterSelect: {
-      background: '#161b22', border: '1px solid #21262d', borderRadius: 4,
+      background: 'var(--bg-surface)', border: '1px solid var(--border)', borderRadius: 4,
       color: '#9ca3af', padding: '4px 8px', fontSize: 11, outline: 'none',
       cursor: 'pointer',
     } as React.CSSProperties,
     filterInput: {
-      background: '#161b22', border: '1px solid #21262d', borderRadius: 4,
-      color: '#e6edf3', padding: '4px 10px', fontSize: 12, outline: 'none', width: 200,
+      background: 'var(--bg-surface)', border: '1px solid var(--border)', borderRadius: 4,
+      color: 'var(--text-1)', padding: '4px 10px', fontSize: 12, outline: 'none', width: 200,
     } as React.CSSProperties,
     capBtn: (active: boolean) => ({
       padding: '4px 9px', fontSize: 10, fontWeight: 600,
       background: active ? '#1f3a5f' : 'transparent',
-      color: active ? '#58a6ff' : '#4b5563',
+      color: active ? '#58a6ff' : 'var(--text-3)',
       border: 'none', cursor: 'pointer',
-      borderRight: '1px solid #21262d',
+      borderRight: '1px solid var(--border)',
     } as React.CSSProperties),
     tab: (active: boolean) => ({
       padding: '8px 16px', fontSize: 12, fontWeight: active ? 600 : 400,
-      color: active ? '#e6edf3' : '#4b5563',
+      color: active ? 'var(--text-1)' : 'var(--text-3)',
       background: 'none', border: 'none', cursor: 'pointer',
       borderBottom: active ? '2px solid #1f6feb' : '2px solid transparent',
       marginBottom: -1,
     } as React.CSSProperties),
     td: {
       padding: '5px 6px', fontSize: 11, color: '#9ca3af',
-      borderBottom: '1px solid #0d1117',
+      borderBottom: '1px solid var(--bg-nav)',
     } as React.CSSProperties,
   }
 
@@ -385,8 +386,8 @@ export default function ScreenerPage() {
 
     if (viewTab === 'overview') return (
       <tr>
-        <th style={{ ...S.td, width: 28, textAlign: 'center', color: '#4b5563', fontSize: 10, borderBottom: '1px solid #21262d', background: '#0d1117' }}>★</th>
-        <th style={{ ...S.td, width: 36, textAlign: 'center', color: '#4b5563', fontSize: 10, borderBottom: '1px solid #21262d', background: '#0d1117' }}>#</th>
+        <th style={{ ...S.td, width: 28, textAlign: 'center', color: 'var(--text-3)', fontSize: 10, borderBottom: '1px solid var(--border)', background: 'var(--bg-nav)' }}>★</th>
+        <th style={{ ...S.td, width: 36, textAlign: 'center', color: 'var(--text-3)', fontSize: 10, borderBottom: '1px solid var(--border)', background: 'var(--bg-nav)' }}>#</th>
         <Th label="티커" align="center" style={{ width: 72 }} />
         <Th label="종목명" align="left" style={{ width: 140 }} />
         <Th label="섹터" align="left" style={{ width: 80 }} />
@@ -408,7 +409,7 @@ export default function ScreenerPage() {
 
     if (viewTab === 'technical') return (
       <tr>
-        <th style={{ ...S.td, width: 36, textAlign: 'center', color: '#4b5563', fontSize: 10, borderBottom: '1px solid #21262d', background: '#0d1117' }}>#</th>
+        <th style={{ ...S.td, width: 36, textAlign: 'center', color: 'var(--text-3)', fontSize: 10, borderBottom: '1px solid var(--border)', background: 'var(--bg-nav)' }}>#</th>
         <Th label="티커" align="center" style={{ width: 72 }} />
         <Th label="종목명" align="left" style={{ width: 160 }} />
         <Th label="종가" sortKey="closePrice" style={{ width: 88 }} />
@@ -425,7 +426,7 @@ export default function ScreenerPage() {
     // flow
     return (
       <tr>
-        <th style={{ ...S.td, width: 36, textAlign: 'center', color: '#4b5563', fontSize: 10, borderBottom: '1px solid #21262d', background: '#0d1117' }}>#</th>
+        <th style={{ ...S.td, width: 36, textAlign: 'center', color: 'var(--text-3)', fontSize: 10, borderBottom: '1px solid var(--border)', background: 'var(--bg-nav)' }}>#</th>
         <Th label="티커" align="center" style={{ width: 72 }} />
         <Th label="종목명" align="left" style={{ width: 160 }} />
         <Th label={flowColLabel('외국인')} sortKey="foreignNetBuy10d" style={{ width: 96, color: '#22d3ee' }} />
@@ -448,7 +449,7 @@ export default function ScreenerPage() {
     const watchBtn = (
       <td style={{ ...S.td, textAlign: 'center', padding: '0 2px' }}
         onClick={e => toggleWatch(item.securityId, e)}>
-        <span style={{ fontSize: 13, cursor: 'pointer', color: isWatched ? '#facc15' : '#374151',
+        <span style={{ fontSize: 13, cursor: 'pointer', color: isWatched ? '#facc15' : 'var(--text-4)',
           lineHeight: 1, userSelect: 'none' }}>
           {isWatched ? '★' : '☆'}
         </span>
@@ -457,7 +458,7 @@ export default function ScreenerPage() {
 
     const base = (
       <>
-        <td style={{ ...S.td, textAlign: 'center', color: '#374151', fontSize: 10 }}>
+        <td style={{ ...S.td, textAlign: 'center', color: 'var(--text-4)', fontSize: 10 }}>
           {item.marketRank}
         </td>
         <td style={{ ...S.td, textAlign: 'center', fontWeight: 700, fontFamily: 'monospace',
@@ -467,7 +468,7 @@ export default function ScreenerPage() {
             <span style={{ fontSize: 8, background: '#16a34a', color: '#fff', borderRadius: 3, padding: '1px 3px', marginLeft: 3 }}>NEW</span>
           )}
         </td>
-        <td style={{ ...S.td, fontSize: 12, color: hovered ? '#e6edf3' : '#d1d5db',
+        <td style={{ ...S.td, fontSize: 12, color: hovered ? 'var(--text-1)' : 'var(--text-1)',
           overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 160 }}>
           {item.name}
         </td>
@@ -484,7 +485,7 @@ export default function ScreenerPage() {
     const deltaCell = (() => {
       const d = item.scoreDelta
       if (d === null || d === undefined) return (
-        <td style={{ ...S.td, textAlign: 'center', color: '#374151' }}>-</td>
+        <td style={{ ...S.td, textAlign: 'center', color: 'var(--text-4)' }}>-</td>
       )
       const abs = Math.abs(d)
       const bold = abs >= 2
@@ -514,16 +515,16 @@ export default function ScreenerPage() {
         <ScoreCell value={item.lScore} />
         <ScoreCell value={item.iScore} />
         <ScoreCell value={item.mScore} />
-        <td style={{ ...S.td, textAlign: 'right', fontFamily: 'monospace', color: '#d1d5db' }}>
+        <td style={{ ...S.td, textAlign: 'right', fontFamily: 'monospace', color: 'var(--text-1)' }}>
           {fmtPrice(item.closePrice)}
         </td>
         <td style={{ ...S.td, textAlign: 'right', fontWeight: 600, color: changeColor(item.changeRate) }}>
           {fmtRate(item.changeRate)}
         </td>
-        <td style={{ ...S.td, textAlign: 'right', color: '#6b7280' }}>
+        <td style={{ ...S.td, textAlign: 'right', color: 'var(--text-3)' }}>
           {fmtMarketCap(item.marketCap)}
         </td>
-        <td style={{ ...S.td, textAlign: 'center', fontSize: 10, color: '#6b7280' }}>
+        <td style={{ ...S.td, textAlign: 'center', fontSize: 10, color: 'var(--text-3)' }}>
           {item.baseDays ? `${item.baseDays}일` : '-'}
         </td>
       </>
@@ -536,7 +537,7 @@ export default function ScreenerPage() {
       return (
         <>
           {base}
-          <td style={{ ...S.td, textAlign: 'right', fontFamily: 'monospace', color: '#d1d5db', fontSize: 12, fontWeight: 600 }}>
+          <td style={{ ...S.td, textAlign: 'right', fontFamily: 'monospace', color: 'var(--text-1)', fontSize: 12, fontWeight: 600 }}>
             {fmtPrice(item.closePrice)}
           </td>
           <td style={{ ...S.td, textAlign: 'right', fontWeight: 600, color: changeColor(item.changeRate) }}>
@@ -550,7 +551,7 @@ export default function ScreenerPage() {
           <td style={{ ...S.td, textAlign: 'right', color: '#9ca3af' }}>
             {(item.marketPercentile * 100).toFixed(0)}
           </td>
-          <td style={{ ...S.td, textAlign: 'right', color: '#6b7280' }}>
+          <td style={{ ...S.td, textAlign: 'right', color: 'var(--text-3)' }}>
             {fmtMarketCap(item.marketCap)}
           </td>
           {scoreChip}
@@ -601,7 +602,7 @@ export default function ScreenerPage() {
   const activeFilterCount = [sector !== '', capRange !== 'all', query !== '', minScore > 0, showWatchOnly, showBreakoutOnly].filter(Boolean).length
 
   return (
-    <div style={{ minHeight: '100vh', background: '#0b0f17', color: '#e6edf3' }}>
+    <div style={{ minHeight: '100vh', background: 'var(--bg-base)', color: 'var(--text-1)' }}>
       {showGuide && <GuidePopup onClose={closeGuide} />}
 
       {/* 프리미엄 게이팅 모달 */}
@@ -612,17 +613,17 @@ export default function ScreenerPage() {
           display: 'flex', alignItems: 'center', justifyContent: 'center',
         }} onClick={() => setShowPremiumModal(null)}>
           <div style={{
-            background: '#161b22', border: '1px solid #30363d', borderRadius: 10,
+            background: 'var(--bg-surface)', border: '1px solid var(--border-sub)', borderRadius: 10,
             padding: '28px 32px', maxWidth: 400, width: '90%',
             boxShadow: '0 20px 60px rgba(0,0,0,0.8)',
           }} onClick={e => e.stopPropagation()}>
             <div style={{ fontSize: 20, marginBottom: 8 }}>✦</div>
-            <div style={{ fontSize: 16, fontWeight: 700, color: '#e6edf3', marginBottom: 8 }}>
+            <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--text-1)', marginBottom: 8 }}>
               {showPremiumModal === 'watchlist'
                 ? '관심종목은 프리미엄에서 무제한으로'
                 : 'PDF 리포트는 프리미엄 전용'}
             </div>
-            <div style={{ fontSize: 12, color: '#6b7280', lineHeight: 1.7, marginBottom: 20 }}>
+            <div style={{ fontSize: 12, color: 'var(--text-3)', lineHeight: 1.7, marginBottom: 20 }}>
               {showPremiumModal === 'watchlist'
                 ? `무료 플랜은 관심종목을 최대 ${FREE_WATCHLIST_LIMIT}개까지 등록할 수 있습니다.\n프리미엄으로 업그레이드하면 무제한으로 이용하실 수 있습니다.`
                 : '종목 상세 PDF 리포트는 프리미엄 전용 기능입니다.'}
@@ -630,7 +631,7 @@ export default function ScreenerPage() {
             <div style={{ display: 'flex', gap: 8 }}>
               <button onClick={() => setShowPremiumModal(null)}
                 style={{ flex: 1, padding: '8px 0', fontSize: 12, background: 'none',
-                  border: '1px solid #21262d', borderRadius: 6, color: '#6b7280', cursor: 'pointer' }}>
+                  border: '1px solid var(--border)', borderRadius: 6, color: 'var(--text-3)', cursor: 'pointer' }}>
                 닫기
               </button>
               <button onClick={() => { setShowPremiumModal(null); navigate('/premium') }}
@@ -646,7 +647,7 @@ export default function ScreenerPage() {
 
       {/* ══ Section 1: 브랜드 네비게이션 ═══════════════════════ */}
       <div style={{
-        background: '#0d1117', borderBottom: '1px solid #21262d',
+        background: 'var(--bg-nav)', borderBottom: '1px solid var(--border)',
         padding: '0 20px', display: 'flex', alignItems: 'center',
         justifyContent: 'space-between', height: 40,
       }}>
@@ -665,7 +666,7 @@ export default function ScreenerPage() {
             ]).map(({ label, action, active }) => (
               <span key={label} onClick={action} style={{
                 padding: '0 12px', fontSize: 12,
-                color: active ? '#e6edf3' : '#4b5563',
+                color: active ? 'var(--text-1)' : 'var(--text-3)',
                 fontWeight: active ? 600 : 400,
                 cursor: 'pointer', lineHeight: '40px',
                 borderBottom: active ? '2px solid #1f6feb' : '2px solid transparent',
@@ -691,8 +692,8 @@ export default function ScreenerPage() {
             }}
             title={theme === 'dark' ? '라이트 모드' : '다크 모드'}
             style={{
-              width: 32, height: 18, borderRadius: 9, border: '1px solid #30363d',
-              background: theme === 'light' ? '#e2e8f0' : '#21262d',
+              width: 32, height: 18, borderRadius: 9, border: '1px solid var(--border-sub)',
+              background: theme === 'light' ? '#e2e8f0' : 'var(--bg-elevated)',
               padding: 0, position: 'relative', flexShrink: 0,
               display: 'flex', alignItems: 'center', transition: 'background 0.2s',
             }}
@@ -705,7 +706,7 @@ export default function ScreenerPage() {
             }} />
           </button>
           {visitCount !== null && (
-            <span style={{ fontSize: 11, color: '#4b5563', display: 'flex', alignItems: 'center', gap: 3, whiteSpace: 'nowrap' }}>
+            <span style={{ fontSize: 11, color: 'var(--text-3)', display: 'flex', alignItems: 'center', gap: 3, whiteSpace: 'nowrap' }}>
               <span style={{ fontSize: 10 }}>👥</span>
               {visitCount.toLocaleString()}
             </span>
@@ -747,13 +748,13 @@ export default function ScreenerPage() {
 
             {/* ① 종합 투자 의견 */}
             <div style={{
-              background: '#0d1117', border: `1px solid ${advice.color}33`,
+              background: 'var(--bg-nav)', border: `1px solid ${advice.color}33`,
               borderRadius: 10, padding: '16px 20px', marginBottom: 16,
               display: 'flex', alignItems: 'center', gap: 12,
             }}>
               <div style={{ fontSize: 22 }}>💡</div>
               <div>
-                <div style={{ fontSize: 11, color: '#4b5563', marginBottom: 4, fontWeight: 600, letterSpacing: '0.05em' }}>오늘의 투자 의견</div>
+                <div style={{ fontSize: 11, color: 'var(--text-3)', marginBottom: 4, fontWeight: 600, letterSpacing: '0.05em' }}>오늘의 투자 의견</div>
                 <div style={{ fontSize: 14, fontWeight: 700, color: advice.color }}>{advice.text}</div>
               </div>
             </div>
@@ -765,18 +766,18 @@ export default function ScreenerPage() {
                 const pi = phaseInfo(ms.marketPhase)
                 return (
                   <div key={ms.market} style={{
-                    background: '#0d1117', border: `1px solid #21262d`,
+                    background: 'var(--bg-nav)', border: `1px solid var(--border)`,
                     borderRadius: 10, padding: '16px 20px',
                   }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
                       <span style={{ fontSize: 18 }}>{pi.icon}</span>
                       <div>
-                        <div style={{ fontSize: 13, fontWeight: 700, color: '#e6edf3' }}>{ms.market} · {pi.label}</div>
+                        <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-1)' }}>{ms.market} · {pi.label}</div>
                         <div style={{ fontSize: 11, color: pi.text, fontWeight: 600 }}>{pi.verdict}</div>
                       </div>
                     </div>
-                    <div style={{ fontSize: 12, color: '#6b7280', lineHeight: 1.6 }}>{pi.desc}</div>
-                    <div style={{ fontSize: 10, color: '#374151', marginTop: 8 }}>기준일 {ms.stateDate}</div>
+                    <div style={{ fontSize: 12, color: 'var(--text-3)', lineHeight: 1.6 }}>{pi.desc}</div>
+                    <div style={{ fontSize: 10, color: 'var(--text-4)', marginTop: 8 }}>기준일 {ms.stateDate}</div>
                   </div>
                 )
               })}
@@ -784,15 +785,15 @@ export default function ScreenerPage() {
 
             {/* ③ 시장 건강도 (M스코어) */}
             <div style={{
-              background: '#0d1117', border: '1px solid #21262d',
+              background: 'var(--bg-nav)', border: '1px solid var(--border)',
               borderRadius: 10, padding: '16px 20px', marginBottom: 16,
             }}>
-              <div style={{ fontSize: 11, fontWeight: 700, color: '#4b5563', letterSpacing: '0.06em', marginBottom: 10 }}>시장 건강도</div>
+              <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-3)', letterSpacing: '0.06em', marginBottom: 10 }}>시장 건강도</div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-                <div style={{ fontSize: 32, fontWeight: 800, color: mColor, minWidth: 70 }}>{mScore.toFixed(1)}<span style={{ fontSize: 14, color: '#4b5563' }}>점</span></div>
+                <div style={{ fontSize: 32, fontWeight: 800, color: mColor, minWidth: 70 }}>{mScore.toFixed(1)}<span style={{ fontSize: 14, color: 'var(--text-3)' }}>점</span></div>
                 <div style={{ flex: 1 }}>
                   {/* 게이지 바 */}
-                  <div style={{ height: 6, background: '#21262d', borderRadius: 3, marginBottom: 8, overflow: 'hidden' }}>
+                  <div style={{ height: 6, background: 'var(--border)', borderRadius: 3, marginBottom: 8, overflow: 'hidden' }}>
                     <div style={{ height: '100%', width: `${mScore}%`, background: mColor, borderRadius: 3, transition: 'width 0.5s' }} />
                   </div>
                   <div style={{ fontSize: 12, color: '#9ca3af', lineHeight: 1.5 }}>{mVerdict}</div>
@@ -801,17 +802,17 @@ export default function ScreenerPage() {
             </div>
 
             {/* ④ 국면 변화 이력 (타임라인) */}
-            <div style={{ background: '#0d1117', border: '1px solid #21262d', borderRadius: 10, overflow: 'hidden' }}>
+            <div style={{ background: 'var(--bg-nav)', border: '1px solid var(--border)', borderRadius: 10, overflow: 'hidden' }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                padding: '10px 16px', borderBottom: '1px solid #21262d', background: '#161b22' }}>
-                <span style={{ fontSize: 11, fontWeight: 700, color: '#4b5563', letterSpacing: '0.06em' }}>최근 60일 국면 변화</span>
+                padding: '10px 16px', borderBottom: '1px solid var(--border)', background: 'var(--bg-surface)' }}>
+                <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-3)', letterSpacing: '0.06em' }}>최근 60일 국면 변화</span>
                 <div style={{ display: 'flex', gap: 6 }}>
                   {(['KOSPI', 'KOSDAQ'] as const).map(m => (
                     <button key={m} onClick={() => setHistTab(m)} style={{
                       fontSize: 11, padding: '2px 10px', borderRadius: 4, cursor: 'pointer',
                       background: histTab === m ? 'rgba(31,111,235,0.2)' : 'none',
-                      border: histTab === m ? '1px solid #1f6feb' : '1px solid #21262d',
-                      color: histTab === m ? '#58a6ff' : '#4b5563',
+                      border: histTab === m ? '1px solid #1f6feb' : '1px solid var(--border)',
+                      color: histTab === m ? '#58a6ff' : 'var(--text-3)',
                     }}>{m}</button>
                   ))}
                 </div>
@@ -830,11 +831,11 @@ export default function ScreenerPage() {
                 {/* 범례 + 최근 변화 */}
                 <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginTop: 10 }}>
                   {[['#4ade80', '강세장'], ['#fabd44', '조정'], ['#f87171', '약세장']].map(([c, l]) => (
-                    <div key={l} style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 10, color: '#4b5563' }}>
+                    <div key={l} style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 10, color: 'var(--text-3)' }}>
                       <div style={{ width: 10, height: 10, borderRadius: 2, background: c }} />{l}
                     </div>
                   ))}
-                  <span style={{ marginLeft: 'auto', fontSize: 10, color: '#374151' }}>← 과거 · 최근 →</span>
+                  <span style={{ marginLeft: 'auto', fontSize: 10, color: 'var(--text-4)' }}>← 과거 · 최근 →</span>
                 </div>
               </div>
             </div>
@@ -858,27 +859,27 @@ export default function ScreenerPage() {
             borderRadius: 6, padding: '5px 14px',
             display: 'flex', alignItems: 'center', justifyContent: 'space-between',
           }}>
-            <span style={{ fontSize: 12, fontWeight: 600, color: '#e6edf3' }}>
+            <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-1)' }}>
               {dot} 시장 M 지수: {avgM.toFixed(1)} · {label}
             </span>
-            <span style={{ fontSize: 10, color: '#6b7280' }}>{desc}</span>
+            <span style={{ fontSize: 10, color: 'var(--text-3)' }}>{desc}</span>
           </div>
         )
       })()}
 
       {mainTab === 'screener' && <>
       {/* ══ Section 2: 필터 패널 ════════════════════════════════ */}
-      <div style={{ background: '#0d1117', borderBottom: '2px solid #21262d', padding: '12px 20px' }}>
+      <div style={{ background: 'var(--bg-nav)', borderBottom: '2px solid var(--border)', padding: '12px 20px' }}>
         <div style={{
-          border: '1px solid #21262d', borderRadius: 6, background: '#0b0f17',
+          border: '1px solid var(--border)', borderRadius: 6, background: 'var(--bg-base)',
           overflow: 'hidden',
         }}>
           {/* 패널 헤더 */}
           <div style={{
             display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-            padding: '6px 12px', background: '#161b22', borderBottom: '1px solid #21262d',
+            padding: '6px 12px', background: 'var(--bg-surface)', borderBottom: '1px solid var(--border)',
           }}>
-            <span style={{ fontSize: 10, fontWeight: 700, color: '#4b5563', letterSpacing: '0.08em' }}>
+            <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-3)', letterSpacing: '0.08em' }}>
               스크리너 필터
               {activeFilterCount > 0 && (
                 <span style={{
@@ -889,7 +890,7 @@ export default function ScreenerPage() {
             </span>
             {hasActiveFilter && (
               <button onClick={() => { setSector(''); setCapRange('all'); setQuery(''); setMinScore(0); setShowWatchOnly(false); setShowBreakoutOnly(false); setPage(0) }}
-                style={{ fontSize: 10, color: '#6b7280', background: 'none', border: 'none', cursor: 'pointer' }}>
+                style={{ fontSize: 10, color: 'var(--text-3)', background: 'none', border: 'none', cursor: 'pointer' }}>
                 초기화
               </button>
             )}
@@ -898,7 +899,7 @@ export default function ScreenerPage() {
           {/* 필터 그리드 */}
           <div style={{
             display: 'grid', gridTemplateColumns: 'auto 1fr auto 1fr',
-            gap: '1px', background: '#21262d',
+            gap: '1px', background: 'var(--border)',
           }}>
             {/* 섹터 */}
             <FilterCell label="섹터">
@@ -915,9 +916,9 @@ export default function ScreenerPage() {
                 {(['all', 'large', 'mid', 'small'] as const).map(k => (
                   <button key={k} onClick={() => { setCapRange(k); setPage(0) }} style={{
                     padding: '3px 9px', fontSize: 10, fontWeight: 600, borderRadius: 3,
-                    background: capRange === k ? '#1f3a5f' : '#161b22',
-                    color: capRange === k ? '#58a6ff' : '#4b5563',
-                    border: `1px solid ${capRange === k ? '#1d4ed8' : '#21262d'}`,
+                    background: capRange === k ? '#1f3a5f' : 'var(--bg-surface)',
+                    color: capRange === k ? '#58a6ff' : 'var(--text-3)',
+                    border: `1px solid ${capRange === k ? '#1d4ed8' : 'var(--border)'}`,
                     cursor: 'pointer',
                   }}>
                     {k === 'all' ? '전체' : k === 'large' ? '대형(1조↑)' : k === 'mid' ? '중형' : '소형'}
@@ -939,9 +940,9 @@ export default function ScreenerPage() {
                 {(['억원', '백만원'] as FlowUnit[]).map(u => (
                   <button key={u} onClick={() => setFlowUnit(u)} style={{
                     padding: '3px 10px', fontSize: 10, fontWeight: 600, borderRadius: 3,
-                    background: flowUnit === u ? '#1a2a40' : '#161b22',
-                    color: flowUnit === u ? '#38bdf8' : '#4b5563',
-                    border: `1px solid ${flowUnit === u ? '#0e7490' : '#21262d'}`,
+                    background: flowUnit === u ? '#1a2a40' : 'var(--bg-surface)',
+                    color: flowUnit === u ? '#38bdf8' : 'var(--text-3)',
+                    border: `1px solid ${flowUnit === u ? '#0e7490' : 'var(--border)'}`,
                     cursor: 'pointer',
                   }}>{u}</button>
                 ))}
@@ -954,9 +955,9 @@ export default function ScreenerPage() {
                 {([0, 60, 70, 80] as const).map(v => (
                   <button key={v} onClick={() => { setMinScore(v); setPage(0) }} style={{
                     padding: '3px 9px', fontSize: 10, fontWeight: 600, borderRadius: 3,
-                    background: minScore === v ? '#1f3a5f' : '#161b22',
-                    color: minScore === v ? '#58a6ff' : '#4b5563',
-                    border: `1px solid ${minScore === v ? '#1d4ed8' : '#21262d'}`,
+                    background: minScore === v ? '#1f3a5f' : 'var(--bg-surface)',
+                    color: minScore === v ? '#58a6ff' : 'var(--text-3)',
+                    border: `1px solid ${minScore === v ? '#1d4ed8' : 'var(--border)'}`,
                     cursor: 'pointer',
                   }}>
                     {v === 0 ? '전체' : String(v)}
@@ -969,18 +970,23 @@ export default function ScreenerPage() {
             <FilterCell label="관심종목">
               <button onClick={() => setShowWatchOnly(v => !v)} style={{
                 padding: '3px 12px', fontSize: 10, fontWeight: 600, borderRadius: 3,
-                background: showWatchOnly ? '#2d1a4a' : '#161b22',
-                color: showWatchOnly ? '#c084fc' : '#4b5563',
-                border: `1px solid ${showWatchOnly ? '#7c3aed' : '#21262d'}`,
+                background: showWatchOnly ? '#2d1a4a' : 'var(--bg-surface)',
+                color: showWatchOnly ? '#c084fc' : 'var(--text-3)',
+                border: `1px solid ${showWatchOnly ? '#7c3aed' : 'var(--border)'}`,
                 cursor: 'pointer',
               }}>
                 {showWatchOnly ? '★ 관심종목만' : '☆ 전체보기'}
               </button>
+              {showWatchOnly && (
+                <span style={{ fontSize: 9, color: '#6b7280', marginTop: 2 }}>
+                  현재 페이지 내 필터
+                </span>
+              )}
               <button onClick={() => { setShowBreakoutOnly(v => !v); setPage(0) }} style={{
                 padding: '3px 12px', fontSize: 10, fontWeight: 600, borderRadius: 3,
-                background: showBreakoutOnly ? '#052e16' : '#161b22',
-                color: showBreakoutOnly ? '#4ade80' : '#4b5563',
-                border: `1px solid ${showBreakoutOnly ? '#16a34a' : '#21262d'}`,
+                background: showBreakoutOnly ? '#052e16' : 'var(--bg-surface)',
+                color: showBreakoutOnly ? '#4ade80' : 'var(--text-3)',
+                border: `1px solid ${showBreakoutOnly ? '#16a34a' : 'var(--border)'}`,
                 cursor: 'pointer',
               }}>
                 {showBreakoutOnly ? '🚀 돌파 종목만' : '⬆ 오늘 돌파'}
@@ -1000,11 +1006,11 @@ export default function ScreenerPage() {
         return (
           <div style={{ padding: '6px 20px 0' }}>
             <div style={{
-              background: '#0d1117', border: '1px solid #21262d',
+              background: 'var(--bg-nav)', border: '1px solid var(--border)',
               borderRadius: 6, padding: '8px 12px',
               display: 'flex', alignItems: 'center', gap: 10,
             }}>
-              <span style={{ fontSize: 10, fontWeight: 700, color: '#4b5563', letterSpacing: '0.06em', flexShrink: 0 }}>
+              <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-3)', letterSpacing: '0.06em', flexShrink: 0 }}>
                 이번주 상승
               </span>
               <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
@@ -1016,7 +1022,7 @@ export default function ScreenerPage() {
                       background: 'rgba(74,222,128,0.08)', border: '1px solid rgba(74,222,128,0.25)',
                       borderRadius: 4, padding: '2px 8px', cursor: 'pointer',
                     }}>
-                    <span style={{ fontSize: 11, color: '#c9d1d9', fontWeight: 600 }}>{item.name}</span>
+                    <span style={{ fontSize: 11, color: 'var(--text-1)', fontWeight: 600 }}>{item.name}</span>
                     <span style={{ fontSize: 11, color: '#4ade80', fontWeight: 700 }}>
                       +{(item.scoreDelta ?? 0).toFixed(1)}
                     </span>
@@ -1031,7 +1037,7 @@ export default function ScreenerPage() {
       {/* ══ Section 3: 결과바 + 뷰탭 (sticky) ══════════════════ */}
       <div style={{
         position: 'sticky', top: 0, zIndex: 20,
-        background: '#0d1117', borderBottom: '1px solid #21262d',
+        background: 'var(--bg-nav)', borderBottom: '1px solid var(--border)',
         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
         padding: '0 20px',
       }}>
@@ -1051,8 +1057,8 @@ export default function ScreenerPage() {
         {/* 결과 카운트 + 행수 */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           {!loading && (
-            <span style={{ fontSize: 11, color: '#4b5563' }}>
-              <span style={{ color: '#6b7280', fontWeight: 600 }}>{total.toLocaleString()}</span>
+            <span style={{ fontSize: 11, color: 'var(--text-3)' }}>
+              <span style={{ color: 'var(--text-3)', fontWeight: 600 }}>{total.toLocaleString()}</span>
               {' '}종목
               {hasActiveFilter && <span style={{ color: '#1d4ed8' }}> (필터 적용)</span>}
             </span>
@@ -1069,7 +1075,7 @@ export default function ScreenerPage() {
         <div ref={scrollRef} onScroll={onTableScroll} className="hide-scrollbar"
           style={{ overflowX: 'auto' }}>
           {loading ? (
-            <div style={{ textAlign: 'center', padding: '80px 0', color: '#374151', fontSize: 13 }}>
+            <div style={{ textAlign: 'center', padding: '80px 0', color: 'var(--text-4)', fontSize: 13 }}>
               <span style={{ display: 'inline-block', animation: 'spin 1s linear infinite' }}>⟳</span>
               {' '}데이터 로딩 중...
             </div>
@@ -1087,8 +1093,8 @@ export default function ScreenerPage() {
                     onMouseLeave={() => setHoveredId(null)}
                     style={{
                       cursor: 'pointer',
-                      background: hoveredId === item.securityId ? '#161b22'
-                        : idx % 2 === 0 ? '#0b0f17' : '#0d1117',
+                      background: hoveredId === item.securityId ? 'var(--bg-surface)'
+                        : idx % 2 === 0 ? 'var(--bg-base)' : 'var(--bg-nav)',
                       transition: 'background 0.08s',
                     }}>
                     {renderRow(item, idx)}
@@ -1099,7 +1105,7 @@ export default function ScreenerPage() {
           )}
 
           {!loading && items.length === 0 && (
-            <div style={{ textAlign: 'center', padding: '60px 0', color: '#374151', fontSize: 13 }}>
+            <div style={{ textAlign: 'center', padding: '60px 0', color: 'var(--text-4)', fontSize: 13 }}>
               검색 결과 없음
             </div>
           )}
@@ -1108,7 +1114,7 @@ export default function ScreenerPage() {
         {/* sticky mirror scrollbar */}
         <div ref={mirrorRef} onScroll={onMirrorScroll} style={{
           position: 'sticky', bottom: 0, overflowX: 'auto', overflowY: 'hidden',
-          zIndex: 5, background: '#0b0f17', borderTop: '1px solid #161b22',
+          zIndex: 5, background: 'var(--bg-base)', borderTop: '1px solid var(--bg-surface)',
         }}>
           <div style={{
             minWidth: viewTab === 'overview' ? 900 : 700, height: 1,
@@ -1120,9 +1126,9 @@ export default function ScreenerPage() {
       {!loading && totalPages > 1 && (
         <div style={{
           display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-          padding: '12px 20px 32px', borderTop: '1px solid #161b22',
+          padding: '12px 20px 32px', borderTop: '1px solid var(--bg-surface)',
         }}>
-          <span style={{ fontSize: 11, color: '#374151' }}>
+          <span style={{ fontSize: 11, color: 'var(--text-4)' }}>
             {total.toLocaleString()}종목 · {page + 1}/{totalPages}페이지
           </span>
           <div style={{ display: 'flex', gap: 3 }}>
@@ -1146,8 +1152,8 @@ export default function ScreenerPage() {
 function Stat({ label, value, color }: { label: string; value: string; color?: string }) {
   return (
     <div style={{ display: 'flex', alignItems: 'baseline', gap: 4 }}>
-      <span style={{ fontSize: 9, color: '#374151', fontWeight: 600, letterSpacing: '0.05em' }}>{label}</span>
-      <span style={{ fontSize: 12, color: color ?? '#6b7280', fontWeight: 600 }}>{value}</span>
+      <span style={{ fontSize: 9, color: 'var(--text-4)', fontWeight: 600, letterSpacing: '0.05em' }}>{label}</span>
+      <span style={{ fontSize: 12, color: color ?? 'var(--text-3)', fontWeight: 600 }}>{value}</span>
     </div>
   )
 }
@@ -1161,7 +1167,7 @@ function FilterCell({ label, children }: { label: string; children: React.ReactN
         borderRight: '1px solid #21262d',
       }}>
         <span style={{
-          fontSize: 10, fontWeight: 700, color: '#374151',
+          fontSize: 10, fontWeight: 700, color: 'var(--text-4)',
           letterSpacing: '0.06em', whiteSpace: 'nowrap',
         }}>{label}</span>
       </div>
