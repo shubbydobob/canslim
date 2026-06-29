@@ -229,14 +229,14 @@ export default function StockDetailPage() {
   return (
     <div style={{ minHeight: '100vh', background: '#0d1117' }}>
       {/* Top bar */}
-      <div style={{
+      <div className="detail-topbar" style={{
         borderBottom: '1px solid #21262d', padding: '12px 28px',
         display: 'flex', alignItems: 'center', gap: 14,
         position: 'sticky', top: 0, zIndex: 10, background: '#0d1117',
       }}>
         <button onClick={() => navigate('/')}
           style={{ color: '#8b949e', fontSize: 13, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}>
-          ← 종목 레이더
+          ← 스크리너
         </button>
         <span style={{ color: '#30363d' }}>|</span>
         <span style={{ fontFamily: 'monospace', fontWeight: 700, color: '#58a6ff', fontSize: 14 }}>{stock.ticker}</span>

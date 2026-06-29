@@ -188,10 +188,10 @@ export default function TradingCalcPage() {
   return (
     <div style={S.page}>
       {/* nav */}
-      <div style={S.nav}>
+      <div className="calc-nav nav-bar" style={S.nav}>
         <div style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
           <span style={S.brand}>
-            CAN<span style={{ color: '#1f6feb' }}>SLIM</span>
+            성장주<span style={{ color: '#1f6feb' }}>스크리너</span>
           </span>
         </div>
         <nav style={{ display: 'flex', gap: 0 }}>
@@ -201,7 +201,7 @@ export default function TradingCalcPage() {
         </nav>
       </div>
 
-      <div style={S.body}>
+      <div className="calc-body" style={S.body}>
         {/* ── 입력 패널 ── */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           {/* 종목 + 현재가 */}

@@ -646,14 +646,14 @@ export default function ScreenerPage() {
       <MacroTicker />
 
       {/* ══ Section 1: 브랜드 네비게이션 ═══════════════════════ */}
-      <div style={{
+      <div className="nav-bar" style={{
         background: 'var(--bg-nav)', borderBottom: '1px solid var(--border)',
         padding: '0 20px', display: 'flex', alignItems: 'center',
         justifyContent: 'space-between', height: 40,
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 24 }}>
+        <div className="nav-left" style={{ display: 'flex', alignItems: 'center', gap: 24 }}>
           <div style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
-            <span style={{ fontSize: 14, fontWeight: 800, letterSpacing: '-0.5px', cursor: 'pointer' }}
+            <span style={{ fontSize: 14, fontWeight: 800, letterSpacing: '-0.5px', cursor: 'pointer', whiteSpace: 'nowrap' }}
               onClick={() => setShowGuide(true)}>
               성장주<span style={{ color: '#1f6feb' }}>스크리너</span>
             </span>
@@ -670,11 +670,12 @@ export default function ScreenerPage() {
                 fontWeight: active ? 600 : 400,
                 cursor: 'pointer', lineHeight: '40px',
                 borderBottom: active ? '2px solid #1f6feb' : '2px solid transparent',
+                whiteSpace: 'nowrap',
               }}>{label}</span>
             ))}
           </nav>
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 20 }}>
+        <div className="nav-right" style={{ display: 'flex', alignItems: 'center', gap: 20 }}>
           {items[0] && (
             <div style={{ display: 'flex', gap: 20 }}>
               <Stat label="기준일" value={items[0].scoreDate} />
@@ -691,6 +692,36 @@ export default function ScreenerPage() {
               setTheme(next as 'dark' | 'light')
             }}
             title={theme === 'dark' ? '라이트 모드' : '다크 모드'}
+            style={{
+              width: 32, height: 18, borderRadius: 9, border: '1px solid var(--border-sub)',
+              background: theme === 'light' ? '#e2e8f0' : 'var(--bg-elevated)',
+              padding: 0, position: 'relative', flexShrink: 0,
+              display: 'flex', alignItems: 'center', transition: 'background 0.2s',
+            }}
+          >
+            <span style={{
+              position: 'absolute', width: 12, height: 12, borderRadius: '50%',
+              background: theme === 'light' ? '#fabd44' : '#58a6ff',
+              top: 2, left: theme === 'light' ? 16 : 2,
+              transition: 'left 0.2s, background 0.2s',
+            }} />
+          </button>
+          {visitCount !== null && (
+            <span style={{ fontSize: 11, color: 'var(--text-3)', display: 'flex', alignItems: 'center', gap: 3, whiteSpace: 'nowrap' }}>
+              <span style={{ fontSize: 10 }}>👥</span>
+              {visitCount.toLocaleString()}
+            </span>
+          )}
+        </div>
+        {/* Mobile: only show toggle + visitor */}
+        <div className="nav-right-mobile" style={{ display: 'none', alignItems: 'center', gap: 12 }}>
+          <button
+            onClick={() => {
+              const next = document.documentElement.getAttribute('data-theme') === 'light' ? 'dark' : 'light'
+              document.documentElement.setAttribute('data-theme', next)
+              localStorage.setItem('canslim_theme', next)
+              setTheme(next as 'dark' | 'light')
+            }}
             style={{
               width: 32, height: 18, borderRadius: 9, border: '1px solid var(--border-sub)',
               background: theme === 'light' ? '#e2e8f0' : 'var(--bg-elevated)',
@@ -744,7 +775,7 @@ export default function ScreenerPage() {
         const hist = marketHistory[histTab] ?? []
 
         return (
-          <div style={{ padding: '20px', maxWidth: 900, margin: '0 auto' }}>
+          <div className="market-section" style={{ padding: '20px', maxWidth: 900, margin: '0 auto' }}>
 
             {/* ① 종합 투자 의견 */}
             <div style={{
@@ -760,7 +791,7 @@ export default function ScreenerPage() {
             </div>
 
             {/* ② KOSPI / KOSDAQ 국면 카드 */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 16 }}>
+            <div className="market-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 16 }}>
               {[kospi, kosdaq].map(ms => {
                 if (!ms) return null
                 const pi = phaseInfo(ms.marketPhase)
@@ -853,11 +884,12 @@ export default function ScreenerPage() {
           : { bg: 'rgba(248,113,113,0.08)', border: '#f87171', label: '약세 구간 — 신규 매수 자제', desc: '하락 압력 우세' }
         const dot = avgM >= 60 ? '🟢' : avgM >= 40 ? '🟡' : '🔴'
         return (
-          <div style={{
+          <div className="m-banner" style={{
             margin: '0 20px', marginTop: 8, marginBottom: 4,
             background: bg, border: `1px solid ${border}`,
             borderRadius: 6, padding: '5px 14px',
             display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+            flexWrap: 'wrap', gap: 4,
           }}>
             <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-1)' }}>
               {dot} 시장 M 지수: {avgM.toFixed(1)} · {label}
@@ -869,7 +901,7 @@ export default function ScreenerPage() {
 
       {mainTab === 'screener' && <>
       {/* ══ Section 2: 필터 패널 ════════════════════════════════ */}
-      <div style={{ background: 'var(--bg-nav)', borderBottom: '2px solid var(--border)', padding: '12px 20px' }}>
+      <div className="screener-filter-wrap" style={{ background: 'var(--bg-nav)', borderBottom: '2px solid var(--border)', padding: '12px 20px' }}>
         <div style={{
           border: '1px solid var(--border)', borderRadius: 6, background: 'var(--bg-base)',
           overflow: 'hidden',
@@ -897,7 +929,7 @@ export default function ScreenerPage() {
           </div>
 
           {/* 필터 그리드 */}
-          <div style={{
+          <div className="filter-grid" style={{
             display: 'grid', gridTemplateColumns: 'auto 1fr auto 1fr',
             gap: '1px', background: 'var(--border)',
           }}>
@@ -1004,7 +1036,7 @@ export default function ScreenerPage() {
           .slice(0, 5)
         if (risers.length === 0) return null
         return (
-          <div style={{ padding: '6px 20px 0' }}>
+          <div className="rising-wrap" style={{ padding: '6px 20px 0' }}>
             <div style={{
               background: 'var(--bg-nav)', border: '1px solid var(--border)',
               borderRadius: 6, padding: '8px 12px',
@@ -1035,7 +1067,7 @@ export default function ScreenerPage() {
       })()}
 
       {/* ══ Section 3: 결과바 + 뷰탭 (sticky) ══════════════════ */}
-      <div style={{
+      <div className="result-bar" style={{
         position: 'sticky', top: 0, zIndex: 20,
         background: 'var(--bg-nav)', borderBottom: '1px solid var(--border)',
         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
@@ -1071,7 +1103,7 @@ export default function ScreenerPage() {
       </div>
 
       {/* ── Table area ───────────────────────────────────────── */}
-      <div style={{ padding: '0 20px' }}>
+      <div className="table-wrap" style={{ padding: '0 20px' }}>
         <div ref={scrollRef} onScroll={onTableScroll} className="hide-scrollbar"
           style={{ overflowX: 'auto' }}>
           {loading ? (
@@ -1124,14 +1156,14 @@ export default function ScreenerPage() {
 
       {/* ── Pagination ───────────────────────────────────────── */}
       {!loading && totalPages > 1 && (
-        <div style={{
+        <div className="pagination" style={{
           display: 'flex', justifyContent: 'space-between', alignItems: 'center',
           padding: '12px 20px 32px', borderTop: '1px solid var(--bg-surface)',
         }}>
           <span style={{ fontSize: 11, color: 'var(--text-4)' }}>
             {total.toLocaleString()}종목 · {page + 1}/{totalPages}페이지
           </span>
-          <div style={{ display: 'flex', gap: 3 }}>
+          <div style={{ display: 'flex', gap: 3, flexWrap: 'wrap', justifyContent: 'center' }}>
             <PgBtn label="«" onClick={() => setPage(0)} disabled={page === 0} />
             <PgBtn label="‹" onClick={() => setPage(p => p - 1)} disabled={page === 0} />
             {pageNums.map(p => (
@@ -1140,7 +1172,7 @@ export default function ScreenerPage() {
             <PgBtn label="›" onClick={() => setPage(p => p + 1)} disabled={page >= totalPages - 1} />
             <PgBtn label="»" onClick={() => setPage(totalPages - 1)} disabled={page >= totalPages - 1} />
           </div>
-          <div style={{ width: 120 }} />
+          <div className="pg-spacer" style={{ width: 120 }} />
         </div>
       )}
       </>}

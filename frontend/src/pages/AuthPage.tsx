@@ -28,8 +28,8 @@ export default function AuthPage() {
         setTab('login')
         setPassword('')
       }
-    } catch (err: any) {
-      setError(err.message ?? '오류가 발생했습니다.')
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : '오류가 발생했습니다.')
     } finally {
       setLoading(false)
     }
@@ -41,7 +41,7 @@ export default function AuthPage() {
       display: 'flex', alignItems: 'center', justifyContent: 'center',
     }}>
       <div style={{
-        width: '100%', maxWidth: 400,
+        width: '100%', maxWidth: 400, margin: '0 16px',
         background: '#161b22', border: '1px solid #21262d',
         borderRadius: 12, padding: '36px 32px',
       }}>

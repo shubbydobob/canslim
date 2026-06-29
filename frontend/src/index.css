@@ -55,3 +55,108 @@ button {
   font: inherit;
   color: inherit;
 }
+
+/* ── Mobile responsive ─────────────────────────────────── */
+@media (max-width: 768px) {
+  /* Navbar: stack brand + nav, hide stats */
+  .nav-bar {
+    flex-wrap: wrap !important;
+    height: auto !important;
+    padding: 6px 12px !important;
+    gap: 4px !important;
+  }
+  .nav-bar .nav-left {
+    gap: 12px !important;
+  }
+  .nav-bar .nav-right {
+    display: none !important;
+  }
+  .nav-bar .nav-right-mobile {
+    display: flex !important;
+  }
+
+  /* Filter grid: 2 columns on mobile */
+  .filter-grid {
+    grid-template-columns: auto 1fr !important;
+  }
+
+  /* Filter input width */
+  .filter-grid input {
+    width: 100% !important;
+    min-width: 0 !important;
+  }
+
+  /* Market tab cards: single column */
+  .market-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* Screener padding reduce */
+  .screener-filter-wrap {
+    padding: 8px 10px !important;
+  }
+
+  /* Sticky result bar */
+  .result-bar {
+    padding: 0 10px !important;
+  }
+
+  /* Table wrapper reduce padding */
+  .table-wrap {
+    padding: 0 6px !important;
+  }
+
+  /* Pagination */
+  .pagination {
+    padding: 12px 10px 24px !important;
+    flex-direction: column !important;
+    gap: 8px !important;
+  }
+  .pagination .pg-spacer {
+    display: none !important;
+  }
+
+  /* Rising stocks row */
+  .rising-wrap {
+    padding: 6px 10px 0 !important;
+  }
+
+  /* TradingCalc: stack layout */
+  .calc-body {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* StockDetail top bar */
+  .detail-topbar {
+    padding: 10px 12px !important;
+    flex-wrap: wrap !important;
+    gap: 8px !important;
+  }
+
+  /* Market tab section padding */
+  .market-section {
+    padding: 14px !important;
+  }
+
+  /* Market advice/opinion cards */
+  .market-section > div {
+    max-width: 100% !important;
+  }
+
+  /* M-index banner */
+  .m-banner {
+    margin: 8px 10px 4px !important;
+    padding: 5px 10px !important;
+    font-size: 11px !important;
+  }
+
+  /* TradingCalc nav */
+  .calc-nav {
+    padding: 0 12px !important;
+    flex-wrap: wrap !important;
+    height: auto !important;
+    padding-top: 6px !important;
+    padding-bottom: 6px !important;
+    gap: 4px !important;
+  }
+}
