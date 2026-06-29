@@ -106,6 +106,8 @@ export default function TradingCalcPage() {
     return () => document.removeEventListener('mousedown', onClickOutside)
   }, [])
 
+  useEffect(() => () => { if (debounceRef.current) clearTimeout(debounceRef.current) }, [])
+
   const handleQueryChange = useCallback((val: string) => {
     setQuery(val)
     setSelectedStock(null)
