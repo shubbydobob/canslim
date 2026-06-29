@@ -147,8 +147,8 @@ export default function StockDetailPage() {
   const [correlations, setCorrelations] = useState<CorrelationStock[]>([])
   const [showPremiumModal, setShowPremiumModal] = useState(false)
   const [watched, setWatched] = useState(false)
-  const [userIsPremium] = useState(() => userIsPremium)
-  const [userIsLoggedIn] = useState(() => userIsLoggedIn)
+  const [userIsPremium] = useState(() => isPremium())
+  const [userIsLoggedIn] = useState(() => isLoggedIn())
 
   // C-4: id 변경 시 watched 동기화
   useEffect(() => {

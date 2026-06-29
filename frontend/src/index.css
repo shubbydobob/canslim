@@ -1,25 +1,31 @@
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 :root, [data-theme='dark'] {
-  --bg-base:    #0b0f17;
-  --bg-nav:     #0d1117;
-  --bg-surface: #161b22;
-  --border:     #21262d;
-  --border-sub: #30363d;
-  --text-1:     #e6edf3;
-  --text-2:     #8b949e;
-  --text-3:     #4b5563;
+  --bg-base:     #0b0f17;
+  --bg-nav:      #0d1117;
+  --bg-surface:  #161b22;
+  --bg-elevated: #21262d;
+  --border:      #21262d;
+  --border-sub:  #30363d;
+  --text-1:      #e6edf3;
+  --text-2:      #8b949e;
+  --text-3:      #4b5563;
+  --text-4:      #3d4451;
+  --score-sep:   #1c2230;
 }
 
 [data-theme='light'] {
-  --bg-base:    #f0f4f8;
-  --bg-nav:     #ffffff;
-  --bg-surface: #ffffff;
-  --border:     #d0d7de;
-  --border-sub: #d0d7de;
-  --text-1:     #1c2128;
-  --text-2:     #57606a;
-  --text-3:     #8c959f;
+  --bg-base:     #f0f4f8;
+  --bg-nav:      #ffffff;
+  --bg-surface:  #ffffff;
+  --bg-elevated: #eaeef2;
+  --border:      #d0d7de;
+  --border-sub:  #d0d7de;
+  --text-1:      #1c2128;
+  --text-2:      #57606a;
+  --text-3:      #8c959f;
+  --text-4:      #bdc4cd;
+  --score-sep:   #e0e5eb;
 }
 
 body {

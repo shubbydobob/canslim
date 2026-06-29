@@ -41,10 +41,10 @@ const compositeGrade = (v: number) => {
   return { color: '#f87171', label: 'D' }
 }
 const changeColor = (v: number | null) => {
-  if (v === null) return '#4b5563'
+  if (v === null) return 'var(--text-3)'
   if (v > 0) return '#4ade80'
   if (v < 0) return '#f87171'
-  return '#6b7280'
+  return 'var(--text-3)'
 }
 
 // ── format helpers ─────────────────────────────────────────────
@@ -489,7 +489,7 @@ export default function ScreenerPage() {
       )
       const abs = Math.abs(d)
       const bold = abs >= 2
-      const color = d > 0 ? '#4ade80' : d < 0 ? '#f87171' : '#6b7280'
+      const color = d > 0 ? '#4ade80' : d < 0 ? '#f87171' : 'var(--text-3)'
       const text = d > 0 ? `+${d.toFixed(1)}` : d.toFixed(1)
       return (
         <td style={{ ...S.td, textAlign: 'center', color, fontWeight: bold ? 700 : 400, fontSize: 11 }}>
@@ -543,7 +543,7 @@ export default function ScreenerPage() {
           <td style={{ ...S.td, textAlign: 'right', fontWeight: 600, color: changeColor(item.changeRate) }}>
             {fmtRate(item.changeRate)}
           </td>
-          <td style={{ ...S.td, textAlign: 'right', color: isNearHigh ? '#4ade80' : '#6b7280' }}>
+          <td style={{ ...S.td, textAlign: 'right', color: isNearHigh ? '#4ade80' : 'var(--text-3)' }}>
             {high52pct}
           </td>
           <td style={{ ...S.td, textAlign: 'right' }}>{fmtVolume(item.volume)}</td>
@@ -978,7 +978,7 @@ export default function ScreenerPage() {
                 {showWatchOnly ? '★ 관심종목만' : '☆ 전체보기'}
               </button>
               {showWatchOnly && (
-                <span style={{ fontSize: 9, color: '#6b7280', marginTop: 2 }}>
+                <span style={{ fontSize: 9, color: 'var(--text-3)', marginTop: 2 }}>
                   현재 페이지 내 필터
                 </span>
               )}
@@ -1162,9 +1162,9 @@ function FilterCell({ label, children }: { label: string; children: React.ReactN
   return (
     <>
       <div style={{
-        background: '#0d1117', padding: '8px 12px',
+        background: 'var(--bg-nav)', padding: '8px 12px',
         display: 'flex', alignItems: 'center',
-        borderRight: '1px solid #21262d',
+        borderRight: '1px solid var(--border)',
       }}>
         <span style={{
           fontSize: 10, fontWeight: 700, color: 'var(--text-4)',
@@ -1172,9 +1172,9 @@ function FilterCell({ label, children }: { label: string; children: React.ReactN
         }}>{label}</span>
       </div>
       <div style={{
-        background: '#0b0f17', padding: '8px 12px',
+        background: 'var(--bg-base)', padding: '8px 12px',
         display: 'flex', alignItems: 'center',
-        borderRight: '1px solid #21262d',
+        borderRight: '1px solid var(--border)',
       }}>
         {children}
       </div>
@@ -1189,8 +1189,8 @@ function PgBtn({ label, onClick, disabled, active }: {
     <button onClick={onClick} disabled={disabled} style={{
       minWidth: 28, height: 26, padding: '0 6px',
       background: active ? '#1f3a5f' : 'transparent',
-      border: `1px solid ${active ? '#1f6feb' : '#21262d'}`,
-      borderRadius: 4, color: disabled ? '#21262d' : active ? '#58a6ff' : '#4b5563',
+      border: `1px solid ${active ? '#1f6feb' : 'var(--border)'}`,
+      borderRadius: 4, color: disabled ? 'var(--border)' : active ? '#58a6ff' : 'var(--text-3)',
       fontSize: 11, cursor: disabled ? 'default' : 'pointer', fontWeight: active ? 700 : 400,
     }}>
       {label}
