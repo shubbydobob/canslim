@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { getToken } from '../api/auth'
 
 interface MarketStateRow {
   market: string
@@ -33,22 +34,30 @@ const TREND_SYMBOL: Record<string, string> = {
   SIDEWAYS: '→',
 }
 
+function adminHeaders(): HeadersInit {
+  const token = getToken()
+  return token ? { Authorization: `Bearer ${token}` } : {}
+}
+
 export default function AdminPage() {
   const [states, setStates] = useState<MarketStateRow[]>([])
   const [history, setHistory] = useState<HistoryRow[]>([])
   const [historyMarket, setHistoryMarket] = useState('KOSPI')
   const [scoring, setScoring] = useState<{ status: string; elapsedMs?: number } | null>(null)
   const [scoringLoading, setScoringLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
   const fetchState = () =>
-    fetch('/api/admin/market-state')
-      .then(r => r.json())
+    fetch('/api/admin/market-state', { headers: adminHeaders() })
+      .then(r => { if (!r.ok) throw new Error(`${r.status}`); return r.json() })
       .then(setStates)
+      .catch(e => setError(`시장 국면 조회 실패: ${e.message}`))
 
   const fetchHistory = (market: string) =>
-    fetch(`/api/admin/market-state/history?market=${market}&days=30`)
-      .then(r => r.json())
+    fetch(`/api/admin/market-state/history?market=${market}&days=30`, { headers: adminHeaders() })
+      .then(r => { if (!r.ok) throw new Error(`${r.status}`); return r.json() })
       .then((data: HistoryRow[]) => setHistory([...data].reverse()))
+      .catch(e => setError(`이력 조회 실패: ${e.message}`))
 
   useEffect(() => { fetchState() }, [])
   useEffect(() => { fetchHistory(historyMarket) }, [historyMarket])
@@ -56,11 +65,15 @@ export default function AdminPage() {
   const runScoring = async () => {
     setScoringLoading(true)
     setScoring(null)
+    setError(null)
     try {
-      const r = await fetch('/api/admin/scoring/run', { method: 'POST' })
+      const r = await fetch('/api/admin/scoring/run', { method: 'POST', headers: adminHeaders() })
+      if (!r.ok) throw new Error(`${r.status}`)
       const d = await r.json()
       setScoring(d)
       fetchState()
+    } catch (e) {
+      setError(`스코어링 실행 실패: ${e instanceof Error ? e.message : e}`)
     } finally {
       setScoringLoading(false)
     }
@@ -75,6 +88,12 @@ export default function AdminPage() {
           <h1 className="text-2xl font-bold text-white">Admin</h1>
           <a href="/" className="text-sm text-gray-400 hover:text-white">← 스크리너</a>
         </div>
+
+        {error && (
+          <div className="bg-red-900/50 border border-red-700 text-red-300 text-sm rounded-lg px-4 py-3">
+            {error}
+          </div>
+        )}
 
         {/* 시장 국면 카드 */}
         <section>

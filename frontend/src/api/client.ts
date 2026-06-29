@@ -81,7 +81,7 @@ export async function fetchStockPrices(securityId: number, days = 365): Promise<
 }
 
 export interface SectorPeer {
-  ticker: string; name: string; compositeScore: number
+  securityId: number; ticker: string; name: string; compositeScore: number
   cScore: number | null; aScore: number | null; nScore: number | null
   sScore: number | null; iScore: number | null; closePrice: number | null
   isSelf: boolean

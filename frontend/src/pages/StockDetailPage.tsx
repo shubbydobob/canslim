@@ -130,6 +130,12 @@ export default function StockDetailPage() {
   const navigate = useNavigate()
   const id = Number(securityId)
 
+  // C-3: NaN guard — invalid securityId는 즉시 홈으로
+  if (isNaN(id) || id <= 0) {
+    navigate('/', { replace: true })
+    return null
+  }
+
   const [stock, setStock] = useState<ScreenerItem | null>(null)
   const [history, setHistory] = useState<ScoreHistory[]>([])
   const [financials, setFinancials] = useState<FinancialRecord[]>([])
@@ -140,13 +146,16 @@ export default function StockDetailPage() {
   const [peers, setPeers] = useState<SectorPeer[]>([])
   const [correlations, setCorrelations] = useState<CorrelationStock[]>([])
   const [showPremiumModal, setShowPremiumModal] = useState(false)
-  const [watched, setWatched] = useState<boolean>(() => {
+  const [watched, setWatched] = useState(false)
+
+  // C-4: id 변경 시 watched 동기화
+  useEffect(() => {
     try {
       const raw = localStorage.getItem('screener_watchlist')
       const ids: number[] = raw ? JSON.parse(raw) : []
-      return ids.includes(Number(securityId))
-    } catch { return false }
-  })
+      setWatched(ids.includes(id))
+    } catch { setWatched(false) }
+  }, [id])
 
   useEffect(() => {
     Promise.all([fetchStockScore(id), fetchStockHistory(id), fetchStockFinancials(id)])
@@ -587,7 +596,7 @@ export default function StockDetailPage() {
                     const isSelf = p.isSelf
                     const f = (v: number | null) => v != null ? Math.round(v) : '-'
                     return (
-                      <tr key={p.ticker} onClick={() => !isSelf && navigate(`/stock/${p.ticker}`)}
+                      <tr key={p.ticker} onClick={() => !isSelf && navigate(`/stock/${p.securityId}`)}
                         style={{ borderBottom: '1px solid #161b22', cursor: isSelf ? 'default' : 'pointer',
                           background: isSelf ? 'rgba(31,111,235,0.08)' : 'transparent' }}
                         onMouseEnter={e => { if (!isSelf) (e.currentTarget as HTMLElement).style.background = '#161b22' }}
