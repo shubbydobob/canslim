@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { fmtPrice, fmtRate, fmtMarketCap, fmtAmt, fmtFinAmt } from '../utils/format'
 import { useParams, useNavigate } from 'react-router-dom'
 import { isPremium, isLoggedIn } from '../api/auth'
 import {
@@ -7,6 +8,7 @@ import {
   RadarChart, Radar, PolarGrid, PolarAngleAxis,
   ComposedChart, Line,
 } from 'recharts'
+import type { TooltipProps } from 'recharts'
 import { fetchStockScore, fetchStockHistory, fetchStockFinancials, fetchStockNews, fetchSectorPeers, fetchCorrelations } from '../api/client'
 import type { NewsItem, SectorPeer, CorrelationStock } from '../api/client'
 import PriceChart from '../components/PriceChart'
@@ -34,41 +36,15 @@ function scoreGrade(v: number | null): { grade: string; color: string } {
   return { grade: 'D', color: '#f56565' }
 }
 
-function fmtPrice(v: number | null) {
-  if (v === null) return '—'
-  return v.toLocaleString('ko-KR', { maximumFractionDigits: 0 })
-}
-function fmtRate(v: number | null) {
-  if (v === null) return '—'
-  return (v > 0 ? '+' : '') + v.toFixed(2) + '%'
-}
-function fmtAmt(v: number | null) {
-  if (v === null) return '—'
-  const b = v / 100_000_000
-  if (b >= 1000) return (b / 1000).toFixed(1) + '천억'
-  return b.toFixed(0) + '억'
-}
 function fmtVol(v: number | null) {
   if (v === null) return '—'
   if (v >= 10_000_000) return (v / 10_000_000).toFixed(1) + '천만주'
   return (v / 10_000).toFixed(0) + '만주'
 }
-function fmtCap(v: number | null) {
-  if (v === null) return '—'
-  const b = v / 1e8
-  if (b >= 10000) return (b / 10000).toFixed(1) + '조'
-  if (b >= 1000) return (b / 1000).toFixed(1) + '천억'
-  return b.toFixed(0) + '억'
-}
 function fmtFlow(v: number | null) {
   if (v === null) return '—'
   const b = v / 1e8
   return (b > 0 ? '+' : '') + b.toFixed(1) + '억'
-}
-function fmtFinAmt(v: number | null) {
-  if (v === null) return null
-  const b = v / 100_000_000
-  return Math.round(b)
 }
 
 function FactorCard({ label, desc, value, color }: {
@@ -104,28 +80,28 @@ function FactorCard({ label, desc, value, color }: {
   )
 }
 
-const ScoreTooltip = ({ active, payload, label }: any) => {
+const ScoreTooltip = ({ active, payload, label }: TooltipProps<number, string>) => {
   if (!active || !payload?.length) return null
   return (
     <div style={{ background: '#161b22', border: '1px solid #30363d', borderRadius: 8, padding: '10px 14px', fontSize: 12 }}>
       <div style={{ color: '#8b949e', marginBottom: 6 }}>{label}</div>
-      {payload.map((p: any) => (
-        <div key={p.dataKey} style={{ display: 'flex', justifyContent: 'space-between', gap: 16, color: p.stroke || p.fill }}>
+      {payload.map((p) => (
+        <div key={String(p.dataKey)} style={{ display: 'flex', justifyContent: 'space-between', gap: 16, color: p.stroke || p.fill }}>
           <span>{p.name}</span>
-          <span style={{ fontWeight: 600 }}>{p.value?.toFixed ? p.value.toFixed(1) : p.value ?? '—'}</span>
+          <span style={{ fontWeight: 600 }}>{typeof p.value === 'number' ? p.value.toFixed(1) : p.value ?? '—'}</span>
         </div>
       ))}
     </div>
   )
 }
 
-const FinTooltip = ({ active, payload, label }: any) => {
+const FinTooltip = ({ active, payload, label }: TooltipProps<number, string>) => {
   if (!active || !payload?.length) return null
   return (
     <div style={{ background: '#161b22', border: '1px solid #30363d', borderRadius: 8, padding: '10px 14px', fontSize: 12 }}>
       <div style={{ color: '#8b949e', marginBottom: 6 }}>{label}</div>
-      {payload.map((p: any) => (
-        <div key={p.dataKey} style={{ display: 'flex', justifyContent: 'space-between', gap: 16, color: p.fill }}>
+      {payload.map((p) => (
+        <div key={String(p.dataKey)} style={{ display: 'flex', justifyContent: 'space-between', gap: 16, color: p.fill }}>
           <span>{p.name}</span>
           <span style={{ fontWeight: 600 }}>{p.value != null ? p.value.toLocaleString() + '억' : '—'}</span>
         </div>
@@ -387,7 +363,7 @@ export default function StockDetailPage() {
             { label: '현재가', value: fmtPrice(stock.closePrice), mono: true },
             { label: '등락률', value: fmtRate(stock.changeRate), color: stock.changeRate !== null ? (stock.changeRate > 0 ? '#68d391' : stock.changeRate < 0 ? '#fc8181' : '#8b949e') : '#8b949e' },
             { label: '52주 신고가', value: fmtPrice(stock.weekHigh52) },
-            { label: '시가총액', value: fmtCap(stock.marketCap) },
+            { label: '시가총액', value: fmtMarketCap(stock.marketCap) },
             { label: '거래대금', value: fmtAmt(stock.turnover) },
             { label: '거래량', value: fmtVol(stock.volume) },
           ].map(({ label, value, color, mono }, i) => (
@@ -573,7 +549,7 @@ export default function StockDetailPage() {
                     tickFormatter={v => v >= 1000 ? (v / 1000).toFixed(1) + 'k' : String(v)} />
                   <YAxis yAxisId="growth" orientation="right" tick={{ fontSize: 10, fill: '#76e4f7' }} tickLine={false} axisLine={false}
                     tickFormatter={v => v + '%'} width={44} />
-                  <Tooltip formatter={(v: any, name: any) =>
+                  <Tooltip formatter={(v: number | string, name: string | number) =>
                     name === '전년동기성장' ? [`${v}%`, name] : [Number(v).toLocaleString('ko-KR') + '원', name]
                   } contentStyle={{ background: '#161b22', border: '1px solid #30363d', borderRadius: 8, fontSize: 11 }}
                     labelStyle={{ color: '#8b949e' }} />

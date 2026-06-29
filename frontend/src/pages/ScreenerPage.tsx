@@ -4,6 +4,7 @@ import { fetchScreener, fetchSectors } from '../api/client'
 import { isLoggedIn, isPremium, logout } from '../api/auth'
 import MacroTicker from '../components/MacroTicker'
 import type { ScreenerItem } from '../types'
+import { fmtPrice, fmtRate, fmtMarketCap, fmtAmt, fmtVolume, fmtHigh52pct } from '../utils/format'
 
 // ── types ──────────────────────────────────────────────────────
 type ViewTab = 'overview' | 'technical' | 'flow'
@@ -47,38 +48,10 @@ const changeColor = (v: number | null) => {
 }
 
 // ── format helpers ─────────────────────────────────────────────
-const fmtPrice = (v: number | null) =>
-  v === null ? '-' : v.toLocaleString('ko-KR', { maximumFractionDigits: 0 })
-const fmtRate = (v: number | null) =>
-  v === null ? '-' : (v > 0 ? '+' : '') + v.toFixed(2) + '%'
-const fmtMarketCap = (v: number | null) => {
-  if (v === null) return '-'
-  const b = v / 1e8
-  if (b >= 10000) return (b / 10000).toFixed(1) + '조'
-  if (b >= 1000) return (b / 1000).toFixed(1) + '천억'
-  return b.toFixed(0) + '억'
-}
-const fmtTurnover = (v: number | null) => {
-  if (v === null) return '-'
-  const b = v / 1e8
-  if (b >= 1000) return (b / 1000).toFixed(1) + '천억'
-  return b.toFixed(0) + '억'
-}
-const fmtVolume = (v: number | null) => {
-  if (v === null) return '-'
-  if (v >= 1e7) return (v / 1e7).toFixed(1) + '천만'
-  if (v >= 1e4) return (v / 1e4).toFixed(0) + '만'
-  return v.toLocaleString()
-}
 const fmtFlow = (v: number | null, unit: FlowUnit) => {
-  if (v === null) return '-'
+  if (v === null) return '—'
   if (unit === '억원') return (v > 0 ? '+' : '') + (v / 1e8).toFixed(1)
   return (v > 0 ? '+' : '') + (v / 1e6).toFixed(0)
-}
-const fmtHigh52pct = (close: number | null, high: number | null) => {
-  if (!close || !high || high <= 0) return '-'
-  const pct = (close - high) / high * 100
-  return (pct >= 0 ? '+' : '') + pct.toFixed(1) + '%'
 }
 
 // ── sub-components ─────────────────────────────────────────────
@@ -97,14 +70,14 @@ function ScoreCell({ value }: { value: number | null }) {
 
 function SortTh({ label, sortKey: sk, current, dir, onSort, align = 'right', style = {} }: {
   label: string; sortKey?: SortKey; current: SortKey; dir: SortDir
-  onSort: (k: SortKey) => void; align?: string; style?: React.CSSProperties
+  onSort: (k: SortKey) => void; align?: React.CSSProperties['textAlign']; style?: React.CSSProperties
 }) {
   const active = sk && current === sk
   return (
     <th
       onClick={sk ? () => onSort(sk) : undefined}
       style={{
-        padding: '7px 6px', textAlign: align as any, fontSize: 10, fontWeight: 600,
+        padding: '7px 6px', textAlign: align, fontSize: 10, fontWeight: 600,
         color: active ? '#c9d1d9' : '#4b5563', letterSpacing: '0.05em',
         cursor: sk ? 'pointer' : 'default', userSelect: 'none',
         whiteSpace: 'nowrap', borderBottom: '1px solid #21262d',
@@ -405,7 +378,7 @@ export default function ScreenerPage() {
         <Th label="종목명" align="left" style={{ width: 140 }} />
         <Th label="섹터" align="left" style={{ width: 80 }} />
         <Th label="SCORE" sortKey="compositeScore" style={{ width: 70 }} />
-        <Th label="Δ" style={{ width: 48, textAlign: 'center' as any }} />
+        <Th label="Δ" style={{ width: 48, textAlign: 'center' }} />
         <Th label="분기실적" sortKey="cScore" align="center" style={{ width: 52 }} />
         <Th label="연간성장" sortKey="aScore" align="center" style={{ width: 52 }} />
         <Th label="신고가" sortKey="nScore" align="center" style={{ width: 52 }} />
@@ -560,7 +533,7 @@ export default function ScreenerPage() {
             {high52pct}
           </td>
           <td style={{ ...S.td, textAlign: 'right' }}>{fmtVolume(item.volume)}</td>
-          <td style={{ ...S.td, textAlign: 'right' }}>{fmtTurnover(item.turnover)}</td>
+          <td style={{ ...S.td, textAlign: 'right' }}>{fmtAmt(item.turnover)}</td>
           <td style={{ ...S.td, textAlign: 'right', color: '#9ca3af' }}>
             {(item.marketPercentile * 100).toFixed(0)}
           </td>
@@ -584,7 +557,7 @@ export default function ScreenerPage() {
           color: item.instNetBuy10d === null ? '#374151' : item.instNetBuy10d > 0 ? '#a78bfa' : '#f87171' }}>
           {fmtFlow(item.instNetBuy10d, flowUnit)}
         </td>
-        <td style={{ ...S.td, textAlign: 'right' }}>{fmtTurnover(item.turnover)}</td>
+        <td style={{ ...S.td, textAlign: 'right' }}>{fmtAmt(item.turnover)}</td>
         <td style={{ ...S.td, textAlign: 'right' }}>{fmtVolume(item.volume)}</td>
         <ScoreCell value={item.sScore} />
         <ScoreCell value={item.iScore} />
