@@ -211,6 +211,9 @@ export default function ScreenerPage() {
   })
   const [mainTab, setMainTab] = useState<'screener' | 'market'>('screener')
   const [visitCount, setVisitCount] = useState<number | null>(null)
+  const [theme, setTheme] = useState<'dark' | 'light'>(() =>
+    (localStorage.getItem('canslim_theme') as 'dark' | 'light') ?? 'dark'
+  )
   const [histTab, setHistTab] = useState<'KOSPI' | 'KOSDAQ'>('KOSPI')
   const [marketStates, setMarketStates] = useState<Array<{
     market: string; marketPhase?: string; trendDirection?: string; stateDate?: string
@@ -235,6 +238,9 @@ export default function ScreenerPage() {
     small: { maxCap: 200_000_000_000 },
   }
 
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', theme)
+  }, [theme])
   useEffect(() => {
     fetch('/api/stats/visit', { method: 'POST' })
       .then(r => r.json())
@@ -295,7 +301,7 @@ export default function ScreenerPage() {
       })
       .catch(e => setError(e.message))
       .finally(() => setLoading(false))
-  }, [page, size, query, sector, capRange, sortKey, sortDir, minScore])
+  }, [page, size, query, sector, capRange, sortKey, sortDir, minScore, watchlist])
 
   const FREE_WATCHLIST_LIMIT = 5
 
@@ -667,21 +673,44 @@ export default function ScreenerPage() {
             ))}
           </nav>
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 20 }}>
+          {items[0] && (
+            <div style={{ display: 'flex', gap: 20 }}>
+              <Stat label="기준일" value={items[0].scoreDate} />
+              <Stat label="Top" value={String(items[0].compositeScore)} color="#4ade80" />
+              <Stat label="Avg" value={(items.reduce((s, i) => s + i.compositeScore, 0) / items.length).toFixed(1)} />
+            </div>
+          )}
+          {/* 다크/라이트 토글 */}
+          <button
+            onClick={() => {
+              const next = document.documentElement.getAttribute('data-theme') === 'light' ? 'dark' : 'light'
+              document.documentElement.setAttribute('data-theme', next)
+              localStorage.setItem('canslim_theme', next)
+              setTheme(next as 'dark' | 'light')
+            }}
+            title={theme === 'dark' ? '라이트 모드' : '다크 모드'}
+            style={{
+              width: 32, height: 18, borderRadius: 9, border: '1px solid #30363d',
+              background: theme === 'light' ? '#e2e8f0' : '#21262d',
+              padding: 0, position: 'relative', flexShrink: 0,
+              display: 'flex', alignItems: 'center', transition: 'background 0.2s',
+            }}
+          >
+            <span style={{
+              position: 'absolute', width: 12, height: 12, borderRadius: '50%',
+              background: theme === 'light' ? '#fabd44' : '#58a6ff',
+              top: 2, left: theme === 'light' ? 16 : 2,
+              transition: 'left 0.2s, background 0.2s',
+            }} />
+          </button>
           {visitCount !== null && (
-            <span style={{ fontSize: 11, color: '#4b5563', display: 'flex', alignItems: 'center', gap: 4 }}>
+            <span style={{ fontSize: 11, color: '#4b5563', display: 'flex', alignItems: 'center', gap: 3, whiteSpace: 'nowrap' }}>
               <span style={{ fontSize: 10 }}>👥</span>
               {visitCount.toLocaleString()}
             </span>
           )}
         </div>
-        {items[0] && (
-          <div style={{ display: 'flex', gap: 20 }}>
-            <Stat label="기준일" value={items[0].scoreDate} />
-            <Stat label="Top" value={String(items[0].compositeScore)} color="#4ade80" />
-            <Stat label="Avg" value={(items.reduce((s, i) => s + i.compositeScore, 0) / items.length).toFixed(1)} />
-          </div>
-        )}
       </div>
 
       {/* ══ 시장 탭 ══════════════════════════════════════════════ */}
