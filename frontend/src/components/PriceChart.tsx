@@ -42,26 +42,36 @@ export default function PriceChart({ securityId, height = 480 }: Props) {
     const cutoffStr = cutoff.toISOString().slice(0, 10)
     const filtered = range === 'all' ? allData : allData.filter(d => d.date >= cutoffStr)
 
+    // 현재 테마(CSS 변수)에 맞춰 차트 색 결정 — lightweight-charts는 concrete color 필요
+    const css = getComputedStyle(document.documentElement)
+    const cssVar = (n: string, fallback: string) => css.getPropertyValue(n).trim() || fallback
+    const isLight = document.documentElement.getAttribute('data-theme') === 'light'
+    const gridColor = isLight ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.04)'
+    const crosshairColor = isLight ? 'rgba(0,0,0,0.25)' : 'rgba(255,255,255,0.2)'
+    const bgColor = cssVar('--bg-surface', '#1b212c')
+    const textColor = cssVar('--text-2', '#adb6c2')
+    const borderColor = cssVar('--border', '#2d3440')
+
     const chart = createChart(chartContainerRef.current, {
       layout: {
-        background: { type: ColorType.Solid, color: '#1b212c' },
-        textColor: '#adb6c2',
+        background: { type: ColorType.Solid, color: bgColor },
+        textColor,
       },
       grid: {
-        vertLines: { color: 'rgba(255,255,255,0.04)' },
-        horzLines: { color: 'rgba(255,255,255,0.04)' },
+        vertLines: { color: gridColor },
+        horzLines: { color: gridColor },
       },
       rightPriceScale: {
-        borderColor: '#2d3440',
+        borderColor,
         scaleMargins: { top: 0.1, bottom: 0.25 },
       },
       timeScale: {
-        borderColor: '#2d3440',
+        borderColor,
         timeVisible: false,
       },
       crosshair: {
-        vertLine: { color: 'rgba(255,255,255,0.2)', labelBackgroundColor: '#1f6feb' },
-        horzLine: { color: 'rgba(255,255,255,0.2)', labelBackgroundColor: '#1f6feb' },
+        vertLine: { color: crosshairColor, labelBackgroundColor: '#1f6feb' },
+        horzLine: { color: crosshairColor, labelBackgroundColor: '#1f6feb' },
       },
       width: chartContainerRef.current.clientWidth,
       height,
@@ -125,28 +135,28 @@ export default function PriceChart({ securityId, height = 480 }: Props) {
 
   if (loading) return (
     <div style={{ height, display: 'flex', alignItems: 'center', justifyContent: 'center',
-      background: '#1b212c', borderRadius: 10, border: '1px solid #2d3440', color: '#6e7681', fontSize: 14 }}>
+      background: 'var(--bg-surface)', borderRadius: 10, border: '1px solid var(--border)', color: 'var(--text-3)', fontSize: 14 }}>
       차트 로딩 중...
     </div>
   )
 
   if (!allData.length) return (
     <div style={{ height, display: 'flex', alignItems: 'center', justifyContent: 'center',
-      background: '#1b212c', borderRadius: 10, border: '1px solid #2d3440', color: '#6e7681', fontSize: 14 }}>
+      background: 'var(--bg-surface)', borderRadius: 10, border: '1px solid var(--border)', color: 'var(--text-3)', fontSize: 14 }}>
       가격 데이터 없음
     </div>
   )
 
   return (
-    <div style={{ background: '#1b212c', borderRadius: 10, border: '1px solid #2d3440', overflow: 'hidden' }}>
+    <div style={{ background: 'var(--bg-surface)', borderRadius: 10, border: '1px solid var(--border)', overflow: 'hidden' }}>
       {/* Range selector */}
-      <div style={{ display: 'flex', gap: 4, padding: '8px 12px', borderBottom: '1px solid #2d3440' }}>
+      <div style={{ display: 'flex', gap: 4, padding: '8px 12px', borderBottom: '1px solid var(--border)' }}>
         {RANGES.map(([key, label]) => (
           <button key={key} onClick={() => setRange(key)} style={{
             padding: '2px 10px', fontSize: 12, fontWeight: 600, borderRadius: 4,
             background: range === key ? '#1f6feb' : 'transparent',
-            color: range === key ? '#fff' : '#adb6c2',
-            border: `1px solid ${range === key ? '#1f6feb' : '#3a414e'}`,
+            color: range === key ? '#fff' : 'var(--text-2)',
+            border: `1px solid ${range === key ? '#1f6feb' : 'var(--border-sub)'}`,
             cursor: 'pointer',
           }}>{label}</button>
         ))}

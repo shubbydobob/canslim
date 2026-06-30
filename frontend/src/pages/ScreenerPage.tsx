@@ -211,9 +211,12 @@ export default function ScreenerPage() {
   })
   const [mainTab, setMainTab] = useState<'screener' | 'market'>('screener')
   const [visitCount, setVisitCount] = useState<number | null>(null)
-  const [theme, setTheme] = useState<'dark' | 'light'>(() =>
-    (localStorage.getItem('canslim_theme') as 'dark' | 'light') ?? 'dark'
-  )
+  const [theme, setTheme] = useState<'dark' | 'light'>(() => {
+    const saved = localStorage.getItem('canslim_theme') as 'dark' | 'light' | null
+    if (saved) return saved
+    // 저장된 선호가 없으면 OS 설정을 따름 (라이트가 기본 다수)
+    return window.matchMedia?.('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
+  })
   const [histTab, setHistTab] = useState<'KOSPI' | 'KOSDAQ'>('KOSPI')
   const [marketStates, setMarketStates] = useState<Array<{
     market: string; marketPhase?: string; trendDirection?: string; stateDate?: string

@@ -11,13 +11,13 @@ interface BuyRow {
 const S = {
   page: {
     minHeight: '100vh',
-    background: '#171c26',
-    color: '#f0f4f9',
+    background: 'var(--bg-base)',
+    color: 'var(--text-1)',
     fontFamily: 'inherit',
   } as React.CSSProperties,
   nav: {
-    background: '#1b212c',
-    borderBottom: '1px solid #2d3440',
+    background: 'var(--bg-nav)',
+    borderBottom: '1px solid var(--border)',
     padding: '0 20px',
     display: 'flex',
     alignItems: 'center',
@@ -32,7 +32,7 @@ const S = {
   navLink: (active: boolean): React.CSSProperties => ({
     padding: '0 12px',
     fontSize: 13,
-    color: active ? '#f0f4f9' : '#7c8694',
+    color: active ? 'var(--text-1)' : 'var(--text-3)',
     fontWeight: active ? 600 : 400,
     cursor: 'pointer',
     lineHeight: '40px',
@@ -46,24 +46,24 @@ const S = {
     maxWidth: 900,
   } as React.CSSProperties,
   card: {
-    background: '#1e242f',
-    border: '1px solid #2d3440',
+    background: 'var(--bg-surface)',
+    border: '1px solid var(--border)',
     borderRadius: 8,
     padding: 20,
   } as React.CSSProperties,
   label: {
     fontSize: 11,
     fontWeight: 700,
-    color: '#7c8694',
+    color: 'var(--text-3)',
     letterSpacing: '0.06em',
     marginBottom: 4,
     display: 'block',
   } as React.CSSProperties,
   input: {
-    background: '#1b212c',
-    border: '1px solid #2d3440',
+    background: 'var(--bg-nav)',
+    border: '1px solid var(--border)',
     borderRadius: 4,
-    color: '#f0f4f9',
+    color: 'var(--text-1)',
     padding: '5px 10px',
     fontSize: 13,
     outline: 'none',
@@ -73,7 +73,7 @@ const S = {
   sectionTitle: {
     fontSize: 12,
     fontWeight: 700,
-    color: '#7c8694',
+    color: 'var(--text-3)',
     letterSpacing: '0.08em',
     marginBottom: 12,
   } as React.CSSProperties,
@@ -222,7 +222,7 @@ export default function TradingCalcPage() {
                 {showDrop && (
                   <div style={{
                     position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 50,
-                    background: '#1e242f', border: '1px solid #2d3440', borderRadius: 4,
+                    background: 'var(--bg-surface)', border: '1px solid var(--border)', borderRadius: 4,
                     boxShadow: '0 4px 16px rgba(0,0,0,0.5)', marginTop: 2,
                   }}>
                     {suggestions.map(s => (
@@ -231,14 +231,14 @@ export default function TradingCalcPage() {
                         style={{
                           padding: '7px 12px', cursor: 'pointer', display: 'flex',
                           alignItems: 'center', justifyContent: 'space-between',
-                          borderBottom: '1px solid #1b212c',
+                          borderBottom: '1px solid var(--bg-nav)',
                         }}
                         onMouseEnter={e => (e.currentTarget.style.background = '#1f2937')}
                         onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
                       >
                         <div>
-                          <span style={{ fontSize: 13, color: '#f0f4f9', fontWeight: 600 }}>{s.name}</span>
-                          <span style={{ fontSize: 11, color: '#7c8694', marginLeft: 6 }}>{s.sector ?? ''}</span>
+                          <span style={{ fontSize: 13, color: 'var(--text-1)', fontWeight: 600 }}>{s.name}</span>
+                          <span style={{ fontSize: 11, color: 'var(--text-3)', marginLeft: 6 }}>{s.sector ?? ''}</span>
                         </div>
                         <div style={{ textAlign: 'right' }}>
                           <span style={{ fontSize: 12, color: '#3b82f6', fontFamily: 'monospace', fontWeight: 700 }}>{s.ticker}</span>
@@ -253,7 +253,7 @@ export default function TradingCalcPage() {
                   </div>
                 )}
                 {selectedStock && (
-                  <div style={{ fontSize: 11, color: '#7c8694', marginTop: 3 }}>
+                  <div style={{ fontSize: 11, color: 'var(--text-3)', marginTop: 3 }}>
                     SCORE {selectedStock.compositeScore.toFixed(1)} · RS {(selectedStock.marketPercentile * 100).toFixed(0)}%
                   </div>
                 )}
@@ -263,7 +263,7 @@ export default function TradingCalcPage() {
               <div>
                 <span style={S.label}>
                   현재가 (원)
-                  {loadingPrice && <span style={{ color: '#7c8694', fontWeight: 400 }}> 조회중...</span>}
+                  {loadingPrice && <span style={{ color: 'var(--text-3)', fontWeight: 400 }}> 조회중...</span>}
                 </span>
                 <input
                   style={S.input}
@@ -290,7 +290,7 @@ export default function TradingCalcPage() {
               const sub = p != null && q != null ? p * q : null
               return (
                 <div key={i} style={{ display: 'grid', gridTemplateColumns: '60px 1fr 1fr 80px', gap: '6px 10px', alignItems: 'center', marginBottom: 6 }}>
-                  <span style={{ fontSize: 12, color: '#7c8694', fontWeight: 700 }}>
+                  <span style={{ fontSize: 12, color: 'var(--text-3)', fontWeight: 700 }}>
                     {i === 0 ? '1차' : i === 1 ? '2차' : '3차'}
                   </span>
                   <input
@@ -316,7 +316,7 @@ export default function TradingCalcPage() {
           {/* 물타기 섹션 */}
           <div style={S.card}>
             <div style={S.sectionTitle}>물타기 시나리오</div>
-            <div style={{ fontSize: 11, color: '#7c8694', marginBottom: 10 }}>
+            <div style={{ fontSize: 11, color: 'var(--text-3)', marginBottom: 10 }}>
               현재 보유 포지션에 추가 매수 시 새 평단가 계산
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
@@ -340,7 +340,7 @@ export default function TradingCalcPage() {
               </div>
             </div>
             {avgAfterAdd != null && (
-              <div style={{ background: '#1b212c', borderRadius: 6, padding: '10px 14px' }}>
+              <div style={{ background: 'var(--bg-nav)', borderRadius: 6, padding: '10px 14px' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <span style={{ fontSize: 12, color: '#6b7280' }}>추가 후 평단가</span>
                   <span style={{ fontSize: 15, fontWeight: 700, color: '#fabd44', fontFamily: 'monospace' }}>
@@ -348,7 +348,7 @@ export default function TradingCalcPage() {
                   </span>
                 </div>
                 {addP != null && (
-                  <div style={{ fontSize: 11, color: '#7c8694', marginTop: 4 }}>
+                  <div style={{ fontSize: 11, color: 'var(--text-3)', marginTop: 4 }}>
                     기존 평단 {avgPrice != null ? fmt(avgPrice) : '-'}원 →
                     {avgAfterAdd < (avgPrice ?? Infinity) ? ' ▼ 평단 낮아짐' : ' ▲ 평단 높아짐'}
                   </div>
@@ -371,14 +371,14 @@ export default function TradingCalcPage() {
             <ResultRow label="총 매수금액" value={totalAmt > 0 ? fmtM(totalAmt) : '-'} />
             <ResultRow label="총 수량" value={totalQty > 0 ? `${totalQty.toLocaleString()}주` : '-'} />
 
-            <div style={{ height: 1, background: '#2d3440', margin: '10px 0' }} />
+            <div style={{ height: 1, background: 'var(--border)', margin: '10px 0' }} />
 
             <div style={{ marginBottom: 8 }}>
               <span style={{ ...S.label, marginBottom: 2 }}>평균 매수가</span>
               <div style={{
                 fontSize: 22,
                 fontWeight: 800,
-                color: avgPrice != null ? '#f0f4f9' : '#374151',
+                color: avgPrice != null ? 'var(--text-1)' : '#374151',
                 fontFamily: 'monospace',
                 letterSpacing: '-0.5px',
               }}>
@@ -386,7 +386,7 @@ export default function TradingCalcPage() {
               </div>
             </div>
 
-            <div style={{ height: 1, background: '#2d3440', margin: '10px 0' }} />
+            <div style={{ height: 1, background: 'var(--border)', margin: '10px 0' }} />
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
               <PriceTarget label="손절가 (−8%)" value={stopLoss} fmt={fmt} color="#f87171" />
@@ -396,7 +396,7 @@ export default function TradingCalcPage() {
 
             {currentPnl != null && (
               <>
-                <div style={{ height: 1, background: '#2d3440', margin: '10px 0' }} />
+                <div style={{ height: 1, background: 'var(--border)', margin: '10px 0' }} />
                 <div>
                   <span style={S.label}>현재 손익률</span>
                   <div style={{
@@ -408,7 +408,7 @@ export default function TradingCalcPage() {
                     {currentPnl > 0 ? '+' : ''}{currentPnl.toFixed(2)}%
                   </div>
                   {cp != null && avgPrice != null && (
-                    <div style={{ fontSize: 11, color: '#7c8694', marginTop: 2 }}>
+                    <div style={{ fontSize: 11, color: 'var(--text-3)', marginTop: 2 }}>
                       현재가 {fmt(cp)}원 / 평단 {fmt(avgPrice)}원
                     </div>
                   )}
@@ -418,7 +418,7 @@ export default function TradingCalcPage() {
           </div>
 
           <div style={{ ...S.card, fontSize: 11, color: '#374151', lineHeight: 1.6 }}>
-            <div style={{ fontWeight: 700, color: '#7c8694', marginBottom: 6 }}>성장주 매수 원칙</div>
+            <div style={{ fontWeight: 700, color: 'var(--text-3)', marginBottom: 6 }}>성장주 매수 원칙</div>
             <div>• 1차: 계획 물량의 50%</div>
             <div>• 2차: 상승 확인 후 30%</div>
             <div>• 3차: 추세 강화 시 20%</div>
@@ -443,8 +443,8 @@ function ResultRow({ label, value }: { label: string; value: string }) {
 function PriceTarget({ label, value, fmt, color }: { label: string; value: number | null; fmt: (v: number) => string; color: string }) {
   return (
     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-      <span style={{ fontSize: 11, color: '#7c8694' }}>{label}</span>
-      <span style={{ fontSize: 14, fontWeight: 700, color: value != null ? color : '#2d3440', fontFamily: 'monospace' }}>
+      <span style={{ fontSize: 11, color: 'var(--text-3)' }}>{label}</span>
+      <span style={{ fontSize: 14, fontWeight: 700, color: value != null ? color : 'var(--border)', fontFamily: 'monospace' }}>
         {value != null ? fmt(value) + '원' : '-'}
       </span>
     </div>

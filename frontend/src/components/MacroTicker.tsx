@@ -13,13 +13,13 @@ function QuoteItem({ q }: { q: MacroQuote }) {
   return (
     <div style={{
       display: 'flex', alignItems: 'center', gap: 10,
-      padding: '0 20px', borderRight: '1px solid #2d3440',
+      padding: '0 20px', borderRight: '1px solid var(--border)',
       whiteSpace: 'nowrap', flexShrink: 0,
     }}>
-      <span style={{ fontSize: 11, color: '#adb6c2', fontWeight: 600, letterSpacing: '0.05em' }}>
+      <span style={{ fontSize: 11, color: 'var(--text-2)', fontWeight: 600, letterSpacing: '0.05em' }}>
         {q.name}
       </span>
-      <span style={{ fontSize: 13, fontWeight: 700, color: '#f0f4f9' }}>
+      <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-1)' }}>
         {fmt(q.price, q.symbol === '^TNX' ? 3 : 2)}
       </span>
       <span style={{ fontSize: 12, color, fontWeight: 600 }}>
@@ -49,7 +49,7 @@ export default function MacroTicker() {
   return (
     <div style={{
       background: '#161b24',
-      borderBottom: '1px solid #2d3440',
+      borderBottom: '1px solid var(--border)',
       height: 36,
       overflow: 'hidden',
       position: 'relative',

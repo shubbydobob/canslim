@@ -5,6 +5,21 @@
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>성장주스크리너</title>
+    <script>
+      // 첫 페인트 전 테마 결정 (다크 깜빡임 방지).
+      // 저장된 선호가 없으면 OS 설정(prefers-color-scheme)을 따름.
+      (function () {
+        try {
+          var saved = localStorage.getItem('canslim_theme');
+          var theme = saved ||
+            (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches
+              ? 'dark' : 'light');
+          document.documentElement.setAttribute('data-theme', theme);
+        } catch (e) {
+          document.documentElement.setAttribute('data-theme', 'light');
+        }
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

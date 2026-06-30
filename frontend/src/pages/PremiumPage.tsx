@@ -32,28 +32,28 @@ export default function PremiumPage() {
 
   if (loading) return (
     <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center',
-      height: '100vh', color: '#7c8694', background: '#1b212c' }}>
+      height: '100vh', color: 'var(--text-3)', background: 'var(--bg-nav)' }}>
       로딩 중...
     </div>
   )
 
   return (
-    <div style={{ minHeight: '100vh', background: '#1b212c', color: '#f0f4f9' }}>
+    <div style={{ minHeight: '100vh', background: 'var(--bg-nav)', color: 'var(--text-1)' }}>
       {/* Header */}
       <div style={{
-        borderBottom: '1px solid #2d3440', padding: '12px 28px',
+        borderBottom: '1px solid var(--border)', padding: '12px 28px',
         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-        background: '#1b212c',
+        background: 'var(--bg-nav)',
       }}>
         <button onClick={() => navigate('/')}
-          style={{ color: '#adb6c2', fontSize: 14, cursor: 'pointer', background: 'none', border: 'none' }}>
+          style={{ color: 'var(--text-2)', fontSize: 14, cursor: 'pointer', background: 'none', border: 'none' }}>
           ← 성장주스크리너
         </button>
         {user && (
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
             <span style={{ fontSize: 13, color: '#6b7280' }}>{user.email}</span>
             <button onClick={handleLogout}
-              style={{ fontSize: 12, color: '#7c8694', background: 'none', border: '1px solid #2d3440',
+              style={{ fontSize: 12, color: 'var(--text-3)', background: 'none', border: '1px solid var(--border)',
                 borderRadius: 4, padding: '3px 10px', cursor: 'pointer' }}>
               로그아웃
             </button>
@@ -64,14 +64,14 @@ export default function PremiumPage() {
       <div style={{ maxWidth: 700, margin: '0 auto', padding: '40px 28px 80px' }}>
         {/* 현재 플랜 */}
         <div style={{
-          background: '#1e242f', border: '1px solid #2d3440', borderRadius: 12,
+          background: 'var(--bg-surface)', border: '1px solid var(--border)', borderRadius: 12,
           padding: '28px 28px', marginBottom: 32,
         }}>
           {user ? (
             <>
-              <div style={{ fontSize: 12, color: '#7c8694', fontWeight: 600, marginBottom: 6 }}>현재 플랜</div>
+              <div style={{ fontSize: 12, color: 'var(--text-3)', fontWeight: 600, marginBottom: 6 }}>현재 플랜</div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                <div style={{ fontSize: 26, fontWeight: 800, color: user.plan === 'premium' ? '#fabd44' : '#f0f4f9' }}>
+                <div style={{ fontSize: 26, fontWeight: 800, color: user.plan === 'premium' ? '#fabd44' : 'var(--text-1)' }}>
                   {user.plan === 'premium' ? '✦ 프리미엄' : '무료 플랜'}
                 </div>
                 {user.plan === 'premium' && user.expiresAt && (
@@ -84,7 +84,7 @@ export default function PremiumPage() {
             </>
           ) : (
             <>
-              <div style={{ fontSize: 16, fontWeight: 700, color: '#f0f4f9', marginBottom: 8 }}>
+              <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--text-1)', marginBottom: 8 }}>
                 로그인이 필요합니다
               </div>
               <button onClick={() => navigate('/auth')}
@@ -99,21 +99,21 @@ export default function PremiumPage() {
         </div>
 
         {/* 혜택 비교 */}
-        <div style={{ fontSize: 12, fontWeight: 600, color: '#7c8694', letterSpacing: '0.08em', marginBottom: 14 }}>
+        <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-3)', letterSpacing: '0.08em', marginBottom: 14 }}>
           플랜 비교
         </div>
         <div style={{
-          background: '#1e242f', border: '1px solid #2d3440', borderRadius: 10,
+          background: 'var(--bg-surface)', border: '1px solid var(--border)', borderRadius: 10,
           overflow: 'hidden', marginBottom: 32,
         }}>
           {/* 컬럼 헤더 */}
           <div style={{
             display: 'grid', gridTemplateColumns: '1fr 1fr 1fr',
-            padding: '12px 16px', borderBottom: '1px solid #2d3440',
-            background: '#1b212c',
+            padding: '12px 16px', borderBottom: '1px solid var(--border)',
+            background: 'var(--bg-nav)',
           }}>
-            <div style={{ fontSize: 12, color: '#6e7681', fontWeight: 600 }}>기능</div>
-            <div style={{ fontSize: 12, color: '#6e7681', fontWeight: 600, textAlign: 'center' }}>무료</div>
+            <div style={{ fontSize: 12, color: 'var(--text-3)', fontWeight: 600 }}>기능</div>
+            <div style={{ fontSize: 12, color: 'var(--text-3)', fontWeight: 600, textAlign: 'center' }}>무료</div>
             <div style={{ fontSize: 12, color: '#fabd44', fontWeight: 700, textAlign: 'center' }}>✦ 프리미엄</div>
           </div>
 
@@ -121,7 +121,7 @@ export default function PremiumPage() {
             <div key={b.title} style={{
               display: 'grid', gridTemplateColumns: '1fr 1fr 1fr',
               padding: '12px 16px',
-              borderBottom: i < BENEFITS.length - 1 ? '1px solid #2d3440' : 'none',
+              borderBottom: i < BENEFITS.length - 1 ? '1px solid var(--border)' : 'none',
             }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                 <span style={{ fontSize: 15 }}>{b.icon}</span>
@@ -145,7 +145,7 @@ export default function PremiumPage() {
             border: '1px solid rgba(31,111,235,0.3)', borderRadius: 10,
             padding: '28px 28px', textAlign: 'center',
           }}>
-            <div style={{ fontSize: 18, fontWeight: 800, color: '#f0f4f9', marginBottom: 8 }}>
+            <div style={{ fontSize: 18, fontWeight: 800, color: 'var(--text-1)', marginBottom: 8 }}>
               프리미엄 업그레이드
             </div>
             <div style={{ fontSize: 14, color: '#6b7280', marginBottom: 20, lineHeight: 1.7 }}>

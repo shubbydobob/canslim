@@ -26,7 +26,7 @@ const FACTORS: { key: ScoreKey; label: string; desc: string; color: string }[] =
 ]
 
 function scoreGrade(v: number | null): { grade: string; color: string } {
-  if (v === null) return { grade: 'N/A', color: '#6e7681' }
+  if (v === null) return { grade: 'N/A', color: 'var(--text-3)' }
   if (v >= 85) return { grade: 'A+', color: '#68d391' }
   if (v >= 70) return { grade: 'A',  color: '#9ae6b4' }
   if (v >= 55) return { grade: 'B+', color: '#f6ad55' }
@@ -53,8 +53,8 @@ function FactorCard({ label, desc, value, color }: {
   const { grade, color: gc } = scoreGrade(value)
   return (
     <div style={{
-      background: '#1e242f', borderRadius: 10, padding: '16px 18px',
-      border: '1px solid #2d3440', flex: 1, minWidth: 0,
+      background: 'var(--bg-surface)', borderRadius: 10, padding: '16px 18px',
+      border: '1px solid var(--border)', flex: 1, minWidth: 0,
     }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 10 }}>
         <div>
@@ -63,16 +63,16 @@ function FactorCard({ label, desc, value, color }: {
             background: color + '22', border: `1px solid ${color}44`,
             textAlign: 'center', lineHeight: '26px', fontSize: 13, fontWeight: 800, color,
           }}>{label}</span>
-          <div style={{ fontSize: 11, color: '#adb6c2', marginTop: 4 }}>{desc}</div>
+          <div style={{ fontSize: 11, color: 'var(--text-2)', marginTop: 4 }}>{desc}</div>
         </div>
         <div style={{ textAlign: 'right' }}>
-          <div style={{ fontSize: 22, fontWeight: 800, color: value !== null ? color : '#6e7681', lineHeight: 1 }}>
+          <div style={{ fontSize: 22, fontWeight: 800, color: value !== null ? color : 'var(--text-3)', lineHeight: 1 }}>
             {value !== null ? value.toFixed(1) : '—'}
           </div>
           <div style={{ fontSize: 12, color: gc, fontWeight: 600, marginTop: 2 }}>{grade}</div>
         </div>
       </div>
-      <div style={{ height: 3, background: '#2d3440', borderRadius: 2 }}>
+      <div style={{ height: 3, background: 'var(--border)', borderRadius: 2 }}>
         <div style={{ height: 3, borderRadius: 2, width: `${pct}%`, background: value !== null ? color : 'transparent', transition: 'width 0.5s' }} />
       </div>
     </div>
@@ -82,8 +82,8 @@ function FactorCard({ label, desc, value, color }: {
 const ScoreTooltip = ({ active, payload, label }: any) => {
   if (!active || !payload?.length) return null
   return (
-    <div style={{ background: '#1e242f', border: '1px solid #3a414e', borderRadius: 8, padding: '10px 14px', fontSize: 13 }}>
-      <div style={{ color: '#adb6c2', marginBottom: 6 }}>{label}</div>
+    <div style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-sub)', borderRadius: 8, padding: '10px 14px', fontSize: 13 }}>
+      <div style={{ color: 'var(--text-2)', marginBottom: 6 }}>{label}</div>
       {payload.map((p: any) => (
         <div key={String(p.dataKey)} style={{ display: 'flex', justifyContent: 'space-between', gap: 16, color: p.stroke || p.fill }}>
           <span>{p.name}</span>
@@ -97,8 +97,8 @@ const ScoreTooltip = ({ active, payload, label }: any) => {
 const FinTooltip = ({ active, payload, label }: any) => {
   if (!active || !payload?.length) return null
   return (
-    <div style={{ background: '#1e242f', border: '1px solid #3a414e', borderRadius: 8, padding: '10px 14px', fontSize: 13 }}>
-      <div style={{ color: '#adb6c2', marginBottom: 6 }}>{label}</div>
+    <div style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-sub)', borderRadius: 8, padding: '10px 14px', fontSize: 13 }}>
+      <div style={{ color: 'var(--text-2)', marginBottom: 6 }}>{label}</div>
       {payload.map((p: any) => (
         <div key={String(p.dataKey)} style={{ display: 'flex', justifyContent: 'space-between', gap: 16, color: p.fill }}>
           <span>{p.name}</span>
@@ -111,7 +111,7 @@ const FinTooltip = ({ active, payload, label }: any) => {
 
 function SectionTitle({ children }: { children: React.ReactNode }) {
   return (
-    <div style={{ fontSize: 12, fontWeight: 600, color: '#adb6c2', letterSpacing: '0.08em', marginBottom: 16 }}>
+    <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-2)', letterSpacing: '0.08em', marginBottom: 16 }}>
       {children}
     </div>
   )
@@ -119,7 +119,7 @@ function SectionTitle({ children }: { children: React.ReactNode }) {
 
 function Card({ children, style }: { children: React.ReactNode; style?: React.CSSProperties }) {
   return (
-    <div style={{ background: '#1e242f', borderRadius: 10, padding: '20px 22px', border: '1px solid #2d3440', ...style }}>
+    <div style={{ background: 'var(--bg-surface)', borderRadius: 10, padding: '20px 22px', border: '1px solid var(--border)', ...style }}>
       {children}
     </div>
   )
@@ -129,6 +129,9 @@ export default function StockDetailPage() {
   const { securityId } = useParams<{ securityId: string }>()
   const navigate = useNavigate()
   const id = Number(securityId)
+
+  // 차트 그리드선: 라이트/다크에 맞춰 (Recharts stroke 속성은 var() 미지원)
+  const gridStroke = document.documentElement.getAttribute('data-theme') === 'light' ? '#e3e8ee' : 'var(--border)'
 
   // C-3: NaN guard — invalid securityId는 즉시 홈으로
   if (isNaN(id) || id <= 0) {
@@ -227,18 +230,18 @@ export default function StockDetailPage() {
   const hasFinancials = annualFin.length > 0 || quarterFin.length > 0
 
   return (
-    <div style={{ minHeight: '100vh', background: '#1b212c' }}>
+    <div style={{ minHeight: '100vh', background: 'var(--bg-nav)' }}>
       {/* Top bar */}
       <div className="detail-topbar" style={{
-        borderBottom: '1px solid #2d3440', padding: '12px 28px',
+        borderBottom: '1px solid var(--border)', padding: '12px 28px',
         display: 'flex', alignItems: 'center', gap: 14,
-        position: 'sticky', top: 0, zIndex: 10, background: '#1b212c',
+        position: 'sticky', top: 0, zIndex: 10, background: 'var(--bg-nav)',
       }}>
         <button onClick={() => navigate('/')}
-          style={{ color: '#adb6c2', fontSize: 14, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}>
+          style={{ color: 'var(--text-2)', fontSize: 14, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}>
           ← 스크리너
         </button>
-        <span style={{ color: '#3a414e' }}>|</span>
+        <span style={{ color: 'var(--border-sub)' }}>|</span>
         <span style={{ fontFamily: 'monospace', fontWeight: 700, color: '#58a6ff', fontSize: 14 }}>{stock.ticker}</span>
         <span style={{ color: '#c9d1d9', fontSize: 14 }}>{stock.name}</span>
         <div style={{ marginLeft: 'auto', display: 'flex', gap: 8, alignItems: 'center' }}>
@@ -253,9 +256,9 @@ export default function StockDetailPage() {
             }}
             style={{
               background: userIsPremium ? 'rgba(31,111,235,0.1)' : 'none',
-              border: `1px solid ${userIsPremium ? 'rgba(31,111,235,0.3)' : '#2d3440'}`,
+              border: `1px solid ${userIsPremium ? 'rgba(31,111,235,0.3)' : 'var(--border)'}`,
               borderRadius: 6, padding: '4px 12px', cursor: 'pointer',
-              color: userIsPremium ? '#58a6ff' : '#7c8694', fontSize: 13, fontWeight: 600,
+              color: userIsPremium ? '#58a6ff' : 'var(--text-3)', fontSize: 13, fontWeight: 600,
             }}
           >
             {userIsPremium ? '📄 PDF 다운로드' : '🔒 PDF 리포트'}
@@ -273,9 +276,9 @@ export default function StockDetailPage() {
               } catch {}
             }}
             style={{
-              background: 'none', border: `1px solid ${watched ? '#f6ad55' : '#3a414e'}`,
+              background: 'none', border: `1px solid ${watched ? '#f6ad55' : 'var(--border-sub)'}`,
               borderRadius: 6, padding: '4px 12px', cursor: 'pointer',
-              color: watched ? '#f6ad55' : '#7c8694', fontSize: 14, fontWeight: 600,
+              color: watched ? '#f6ad55' : 'var(--text-3)', fontSize: 14, fontWeight: 600,
               transition: 'all 0.15s',
             }}
           >
@@ -291,12 +294,12 @@ export default function StockDetailPage() {
             display: 'flex', alignItems: 'center', justifyContent: 'center',
           }} onClick={() => setShowPremiumModal(false)}>
             <div style={{
-              background: '#1e242f', border: '1px solid #3a414e', borderRadius: 10,
+              background: 'var(--bg-surface)', border: '1px solid var(--border-sub)', borderRadius: 10,
               padding: '28px 32px', maxWidth: 380, width: '90%',
               boxShadow: '0 20px 60px rgba(0,0,0,0.8)',
             }} onClick={e => e.stopPropagation()}>
               <div style={{ fontSize: 20, marginBottom: 8 }}>📄</div>
-              <div style={{ fontSize: 15, fontWeight: 700, color: '#f0f4f9', marginBottom: 8 }}>
+              <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-1)', marginBottom: 8 }}>
                 PDF 리포트 다운로드
               </div>
               <div style={{ fontSize: 13, color: '#6b7280', lineHeight: 1.7, marginBottom: 20 }}>
@@ -306,7 +309,7 @@ export default function StockDetailPage() {
               <div style={{ display: 'flex', gap: 8 }}>
                 <button onClick={() => setShowPremiumModal(false)}
                   style={{ flex: 1, padding: '8px 0', fontSize: 13, background: 'none',
-                    border: '1px solid #2d3440', borderRadius: 6, color: '#6b7280', cursor: 'pointer' }}>
+                    border: '1px solid var(--border)', borderRadius: 6, color: '#6b7280', cursor: 'pointer' }}>
                   닫기
                 </button>
                 <button onClick={() => { setShowPremiumModal(false); navigate('/premium') }}
@@ -325,14 +328,14 @@ export default function StockDetailPage() {
         {/* ── Hero ── */}
         <div className="detail-hero" style={{
           display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end',
-          marginBottom: 20, paddingBottom: 20, borderBottom: '1px solid #2d3440',
+          marginBottom: 20, paddingBottom: 20, borderBottom: '1px solid var(--border)',
         }}>
           <div>
-            <div style={{ fontSize: 12, color: '#adb6c2', marginBottom: 5, fontWeight: 600, letterSpacing: '0.08em' }}>
+            <div style={{ fontSize: 12, color: 'var(--text-2)', marginBottom: 5, fontWeight: 600, letterSpacing: '0.08em' }}>
               {stock.market} · {stock.scoreDate}
-              {stock.sector && <span style={{ color: '#7c8694', marginLeft: 8 }}>{stock.sector}</span>}
+              {stock.sector && <span style={{ color: 'var(--text-3)', marginLeft: 8 }}>{stock.sector}</span>}
             </div>
-            <div style={{ fontSize: 32, fontWeight: 800, letterSpacing: '-1px', color: '#f0f4f9' }}>{stock.name}</div>
+            <div style={{ fontSize: 32, fontWeight: 800, letterSpacing: '-1px', color: 'var(--text-1)' }}>{stock.name}</div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 6 }}>
               <span style={{ fontSize: 14, fontFamily: 'monospace', color: '#58a6ff' }}>{stock.ticker}</span>
               {stock.breakoutToday && (
@@ -357,13 +360,13 @@ export default function StockDetailPage() {
             </div>
           </div>
           <div style={{ textAlign: 'right' }}>
-            <div style={{ fontSize: 11, color: '#adb6c2', marginBottom: 2, fontWeight: 600 }}>COMPOSITE SCORE</div>
+            <div style={{ fontSize: 11, color: 'var(--text-2)', marginBottom: 2, fontWeight: 600 }}>COMPOSITE SCORE</div>
             <div className="detail-score" style={{ fontSize: 50, fontWeight: 900, color: cColor, lineHeight: 1, letterSpacing: '-2px' }}>
               {composite.toFixed(2)}
             </div>
-            <div style={{ fontSize: 13, color: '#adb6c2', marginTop: 4 }}>
-              Rank <span style={{ color: '#f0f4f9', fontWeight: 600 }}>{stock.marketRank}</span>
-              {' · '}Top <span style={{ color: '#f0f4f9', fontWeight: 600 }}>{(100 - stock.marketPercentile * 100).toFixed(1)}%</span>
+            <div style={{ fontSize: 13, color: 'var(--text-2)', marginTop: 4 }}>
+              Rank <span style={{ color: 'var(--text-1)', fontWeight: 600 }}>{stock.marketRank}</span>
+              {' · '}Top <span style={{ color: 'var(--text-1)', fontWeight: 600 }}>{(100 - stock.marketPercentile * 100).toFixed(1)}%</span>
             </div>
           </div>
         </div>
@@ -371,12 +374,12 @@ export default function StockDetailPage() {
         {/* ── 가격 정보 바 ── */}
         <div className="detail-price-bar" style={{
           display: 'flex', gap: 0, marginBottom: 20,
-          background: '#1e242f', borderRadius: 10, border: '1px solid #2d3440',
+          background: 'var(--bg-surface)', borderRadius: 10, border: '1px solid var(--border)',
           overflow: 'hidden',
         }}>
           {[
             { label: '현재가', value: fmtPrice(stock.closePrice), mono: true },
-            { label: '등락률', value: fmtRate(stock.changeRate), color: stock.changeRate !== null ? (stock.changeRate > 0 ? '#68d391' : stock.changeRate < 0 ? '#fc8181' : '#adb6c2') : '#adb6c2' },
+            { label: '등락률', value: fmtRate(stock.changeRate), color: stock.changeRate !== null ? (stock.changeRate > 0 ? '#68d391' : stock.changeRate < 0 ? '#fc8181' : 'var(--text-2)') : 'var(--text-2)' },
             { label: '52주 신고가', value: fmtPrice(stock.weekHigh52) },
             { label: '시가총액', value: fmtMarketCap(stock.marketCap) },
             { label: '거래대금', value: fmtAmt(stock.turnover) },
@@ -384,9 +387,9 @@ export default function StockDetailPage() {
           ].map(({ label, value, color, mono }, i) => (
             <div key={label} style={{
               flex: 1, padding: '14px 18px',
-              borderRight: i < 4 ? '1px solid #2d3440' : 'none',
+              borderRight: i < 4 ? '1px solid var(--border)' : 'none',
             }}>
-              <div style={{ fontSize: 11, color: '#6e7681', fontWeight: 600, marginBottom: 4 }}>{label}</div>
+              <div style={{ fontSize: 11, color: 'var(--text-3)', fontWeight: 600, marginBottom: 4 }}>{label}</div>
               <div style={{
                 fontSize: 15, fontWeight: 700,
                 color: color ?? '#c9d1d9',
@@ -420,21 +423,21 @@ export default function StockDetailPage() {
           if ((stock.lScore ?? 0) >= 70) signals.push({ text: `업종 내 선도주 위치 (L=${stock.lScore?.toFixed(0)}) — 상대강도 상위권`, color: '#fc8181' })
           if ((stock.mScore ?? 0) < 4) signals.push({ text: `시장 약세 국면 (M=${stock.mScore?.toFixed(0)}) — 전반적 하락 추세, 신규 진입 주의`, color: '#f87171' })
           if ((stock.nScore ?? 0) < 40 && !stock.breakoutToday) signals.push({ text: `신고가 거리 멀음 (N=${stock.nScore?.toFixed(0)}) — 52주 고점 대비 낮은 위치`, color: '#f6ad55' })
-          if (stock.cScore === null) signals.push({ text: '분기 실적 데이터 미확보 — C 점수 산출 불가', color: '#6e7681' })
-          if (stock.aScore === null) signals.push({ text: '연간 성장 데이터 미확보 — A 점수 산출 불가', color: '#6e7681' })
+          if (stock.cScore === null) signals.push({ text: '분기 실적 데이터 미확보 — C 점수 산출 불가', color: 'var(--text-3)' })
+          if (stock.aScore === null) signals.push({ text: '연간 성장 데이터 미확보 — A 점수 산출 불가', color: 'var(--text-3)' })
           return (
             <div className="detail-signal" style={{ marginBottom: 20, background: verdict.bg, border: `1px solid ${verdict.border}`, borderRadius: 10, padding: '16px 20px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: signals.length > 0 ? 12 : 0 }}>
-                <div style={{ fontSize: 12, fontWeight: 700, letterSpacing: '0.06em', color: '#adb6c2' }}>매매 시그널</div>
+                <div style={{ fontSize: 12, fontWeight: 700, letterSpacing: '0.06em', color: 'var(--text-2)' }}>매매 시그널</div>
                 <div style={{ fontSize: 14, fontWeight: 800, color: verdict.color }}>{verdict.label}</div>
-                <div style={{ marginLeft: 'auto', fontSize: 12, color: '#6e7681' }}>종합 {composite.toFixed(1)}점</div>
+                <div style={{ marginLeft: 'auto', fontSize: 12, color: 'var(--text-3)' }}>종합 {composite.toFixed(1)}점</div>
               </div>
               {signals.length > 0 && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
                   {signals.map((s, i) => (
                     <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 7, fontSize: 12 }}>
                       <span style={{ color: s.color, marginTop: 1, flexShrink: 0 }}>›</span>
-                      <span style={{ color: '#adb6c2', lineHeight: 1.5 }}>{s.text}</span>
+                      <span style={{ color: 'var(--text-2)', lineHeight: 1.5 }}>{s.text}</span>
                     </div>
                   ))}
                 </div>
@@ -457,8 +460,8 @@ export default function StockDetailPage() {
             <SectionTitle>지표 레이더</SectionTitle>
             <ResponsiveContainer width="100%" height={220}>
               <RadarChart data={FACTORS.map(f => ({ factor: f.desc, score: stock[f.key] ?? 0 }))}>
-                <PolarGrid stroke="#2d3440" />
-                <PolarAngleAxis dataKey="factor" tick={{ fontSize: 11, fill: '#adb6c2' }} />
+                <PolarGrid stroke={gridStroke} />
+                <PolarAngleAxis dataKey="factor" tick={{ fontSize: 11, fill: 'var(--text-2)' }} />
                 <Radar name="점수" dataKey="score" stroke="#58a6ff" fill="#58a6ff" fillOpacity={0.15} strokeWidth={2} />
               </RadarChart>
             </ResponsiveContainer>
@@ -477,11 +480,11 @@ export default function StockDetailPage() {
                 const isNeg = value !== null && value < 0
                 return (
                   <div key={label}>
-                    <div style={{ fontSize: 11, color: '#7c8694', fontWeight: 600, marginBottom: 6 }}>{label}</div>
+                    <div style={{ fontSize: 11, color: 'var(--text-3)', fontWeight: 600, marginBottom: 6 }}>{label}</div>
                     <div style={{ fontSize: 22, fontWeight: 800, color: isPos ? '#4ade80' : isNeg ? '#f87171' : color }}>
                       {amt}
                     </div>
-                    <div style={{ marginTop: 6, height: 3, background: '#2d3440', borderRadius: 2 }}>
+                    <div style={{ marginTop: 6, height: 3, background: 'var(--border)', borderRadius: 2 }}>
                       {value !== null && (
                         <div style={{
                           height: 3, borderRadius: 2,
@@ -493,12 +496,12 @@ export default function StockDetailPage() {
                   </div>
                 )
               })}
-              <div style={{ borderTop: '1px solid #2d3440', paddingTop: 12, marginTop: 4 }}>
-                <div style={{ fontSize: 11, color: '#7c8694', fontWeight: 600, marginBottom: 4 }}>RS 백분위</div>
+              <div style={{ borderTop: '1px solid var(--border)', paddingTop: 12, marginTop: 4 }}>
+                <div style={{ fontSize: 11, color: 'var(--text-3)', fontWeight: 600, marginBottom: 4 }}>RS 백분위</div>
                 <div style={{ fontSize: 20, fontWeight: 800, color: '#c9d1d9' }}>
                   {(stock.marketPercentile * 100).toFixed(1)}%
                 </div>
-                <div style={{ fontSize: 11, color: '#7c8694', marginTop: 2 }}>
+                <div style={{ fontSize: 11, color: 'var(--text-3)', marginTop: 2 }}>
                   상위 {(100 - stock.marketPercentile * 100).toFixed(1)}%
                 </div>
               </div>
@@ -510,7 +513,7 @@ export default function StockDetailPage() {
         <div style={{ marginBottom: 24 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
             <SectionTitle>주가 차트</SectionTitle>
-            <div style={{ display: 'flex', border: '1px solid #3a414e', borderRadius: 6, overflow: 'hidden' }}>
+            <div style={{ display: 'flex', border: '1px solid var(--border-sub)', borderRadius: 6, overflow: 'hidden' }}>
               <span style={{ padding: '4px 12px', fontSize: 12, fontWeight: 600,
                 background: '#1f6feb', color: '#fff' }}>캔들 차트</span>
             </div>
@@ -522,13 +525,13 @@ export default function StockDetailPage() {
         {hasFinancials && (
           <Card style={{ marginBottom: 24 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
-              <div style={{ fontSize: 12, fontWeight: 600, color: '#adb6c2', letterSpacing: '0.08em' }}>실적</div>
-              <div style={{ display: 'flex', border: '1px solid #3a414e', borderRadius: 6, overflow: 'hidden' }}>
+              <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-2)', letterSpacing: '0.08em' }}>실적</div>
+              <div style={{ display: 'flex', border: '1px solid var(--border-sub)', borderRadius: 6, overflow: 'hidden' }}>
                 {([['annual', '연간'] , ['quarter', '분기']] as const).map(([key, label]) => (
                   <button key={key} onClick={() => setFinTab(key)} style={{
                     padding: '3px 12px', fontSize: 12, fontWeight: 600, border: 'none', cursor: 'pointer',
-                    background: finTab === key ? '#1f6feb' : '#1e242f',
-                    color: finTab === key ? '#fff' : '#adb6c2',
+                    background: finTab === key ? '#1f6feb' : 'var(--bg-surface)',
+                    color: finTab === key ? '#fff' : 'var(--text-2)',
                   }}>{label}</button>
                 ))}
               </div>
@@ -537,15 +540,15 @@ export default function StockDetailPage() {
             {finTab === 'annual' && annualFin.length > 0 && (
               <ResponsiveContainer width="100%" height={240}>
                 <ComposedChart data={annualFin} margin={{ top: 4, right: 48, left: 8, bottom: 0 }} barGap={2}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#2d3440" />
-                  <XAxis dataKey="label" tick={{ fontSize: 12, fill: '#adb6c2' }} tickLine={false} />
-                  <YAxis yAxisId="amt" tick={{ fontSize: 11, fill: '#adb6c2' }} tickLine={false} axisLine={false}
+                  <CartesianGrid strokeDasharray="3 3" stroke={gridStroke} />
+                  <XAxis dataKey="label" tick={{ fontSize: 12, fill: 'var(--text-2)' }} tickLine={false} />
+                  <YAxis yAxisId="amt" tick={{ fontSize: 11, fill: 'var(--text-2)' }} tickLine={false} axisLine={false}
                     tickFormatter={v => v >= 1000 ? (v / 1000).toFixed(0) + 'k' : String(v)} />
                   <YAxis yAxisId="roe" orientation="right" tick={{ fontSize: 11, fill: '#c084fc' }} tickLine={false} axisLine={false}
                     tickFormatter={v => v + '%'} width={40} />
                   <Tooltip content={<FinTooltip />} />
                   <Legend wrapperStyle={{ fontSize: 12, paddingTop: 10 }}
-                    formatter={v => <span style={{ color: '#adb6c2' }}>{v}</span>} />
+                    formatter={v => <span style={{ color: 'var(--text-2)' }}>{v}</span>} />
                   <Bar yAxisId="amt" dataKey="매출액" fill="#58a6ff" radius={[3, 3, 0, 0]} maxBarSize={32} />
                   <Bar yAxisId="amt" dataKey="영업이익" fill="#68d391" radius={[3, 3, 0, 0]} maxBarSize={32} />
                   <Bar yAxisId="amt" dataKey="순이익" fill="#f6ad55" radius={[3, 3, 0, 0]} maxBarSize={32} />
@@ -558,18 +561,18 @@ export default function StockDetailPage() {
             {finTab === 'quarter' && quarterFin.length > 0 && (
               <ResponsiveContainer width="100%" height={240}>
                 <ComposedChart data={quarterFin} margin={{ top: 4, right: 48, left: 8, bottom: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#2d3440" />
-                  <XAxis dataKey="label" tick={{ fontSize: 11, fill: '#adb6c2' }} tickLine={false} />
-                  <YAxis yAxisId="eps" tick={{ fontSize: 11, fill: '#adb6c2' }} tickLine={false} axisLine={false}
+                  <CartesianGrid strokeDasharray="3 3" stroke={gridStroke} />
+                  <XAxis dataKey="label" tick={{ fontSize: 11, fill: 'var(--text-2)' }} tickLine={false} />
+                  <YAxis yAxisId="eps" tick={{ fontSize: 11, fill: 'var(--text-2)' }} tickLine={false} axisLine={false}
                     tickFormatter={v => v >= 1000 ? (v / 1000).toFixed(1) + 'k' : String(v)} />
                   <YAxis yAxisId="growth" orientation="right" tick={{ fontSize: 11, fill: '#76e4f7' }} tickLine={false} axisLine={false}
                     tickFormatter={v => v + '%'} width={44} />
                   <Tooltip formatter={(v: any, name: any) =>
                     name === '전년동기성장' ? [`${v}%`, name] : [Number(v).toLocaleString('ko-KR') + '원', name]
-                  } contentStyle={{ background: '#1e242f', border: '1px solid #3a414e', borderRadius: 8, fontSize: 12 }}
-                    labelStyle={{ color: '#adb6c2' }} />
+                  } contentStyle={{ background: 'var(--bg-surface)', border: '1px solid var(--border-sub)', borderRadius: 8, fontSize: 12 }}
+                    labelStyle={{ color: 'var(--text-2)' }} />
                   <Legend wrapperStyle={{ fontSize: 12, paddingTop: 10 }}
-                    formatter={v => <span style={{ color: '#adb6c2' }}>{v}</span>} />
+                    formatter={v => <span style={{ color: 'var(--text-2)' }}>{v}</span>} />
                   <Bar yAxisId="eps" dataKey="EPS" fill="#f6ad55" radius={[3, 3, 0, 0]} maxBarSize={32} name="EPS(원)" />
                   <Line yAxisId="growth" type="monotone" dataKey="전년동기성장" stroke="#76e4f7" strokeWidth={2}
                     dot={{ r: 3, fill: '#76e4f7' }} activeDot={{ r: 4 }} name="전년동기성장" />
@@ -579,7 +582,7 @@ export default function StockDetailPage() {
 
             {finTab === 'quarter' && quarterFin.length === 0 && (
               <div style={{ height: 100, display: 'flex', alignItems: 'center', justifyContent: 'center',
-                color: '#6e7681', fontSize: 14 }}>분기 데이터 없음</div>
+                color: 'var(--text-3)', fontSize: 14 }}>분기 데이터 없음</div>
             )}
           </Card>
         )}
@@ -591,9 +594,9 @@ export default function StockDetailPage() {
             <div style={{ overflowX: 'auto' }}>
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
                 <thead>
-                  <tr style={{ borderBottom: '1px solid #2d3440' }}>
+                  <tr style={{ borderBottom: '1px solid var(--border)' }}>
                     {['종목명', 'SCORE', 'C', 'A', 'N', 'S', 'I', '현재가'].map(h => (
-                      <th key={h} style={{ padding: '6px 10px', color: '#6e7681', fontWeight: 600,
+                      <th key={h} style={{ padding: '6px 10px', color: 'var(--text-3)', fontWeight: 600,
                         textAlign: h === '종목명' ? 'left' : 'right', whiteSpace: 'nowrap' }}>{h}</th>
                     ))}
                   </tr>
@@ -604,11 +607,11 @@ export default function StockDetailPage() {
                     const f = (v: number | null) => v != null ? Math.round(v) : '-'
                     return (
                       <tr key={p.ticker} onClick={() => !isSelf && navigate(`/stock/${p.securityId}`)}
-                        style={{ borderBottom: '1px solid #1e242f', cursor: isSelf ? 'default' : 'pointer',
+                        style={{ borderBottom: '1px solid var(--bg-surface)', cursor: isSelf ? 'default' : 'pointer',
                           background: isSelf ? 'rgba(31,111,235,0.08)' : 'transparent' }}
-                        onMouseEnter={e => { if (!isSelf) (e.currentTarget as HTMLElement).style.background = '#1e242f' }}
+                        onMouseEnter={e => { if (!isSelf) (e.currentTarget as HTMLElement).style.background = 'var(--bg-surface)' }}
                         onMouseLeave={e => { if (!isSelf) (e.currentTarget as HTMLElement).style.background = 'transparent' }}>
-                        <td style={{ padding: '7px 10px', color: isSelf ? '#58a6ff' : '#f0f4f9', fontWeight: isSelf ? 700 : 400 }}>
+                        <td style={{ padding: '7px 10px', color: isSelf ? '#58a6ff' : 'var(--text-1)', fontWeight: isSelf ? 700 : 400 }}>
                           {p.name}{isSelf && ' ◀'}
                         </td>
                         <td style={{ padding: '7px 10px', textAlign: 'right', color: '#c9d1d9', fontWeight: 600 }}>
@@ -616,11 +619,11 @@ export default function StockDetailPage() {
                         </td>
                         {[p.cScore, p.aScore, p.nScore, p.sScore, p.iScore].map((v, i) => (
                           <td key={i} style={{ padding: '7px 10px', textAlign: 'right',
-                            color: v != null && v >= 80 ? '#3fb950' : v != null && v >= 60 ? '#f6ad55' : '#adb6c2' }}>
+                            color: v != null && v >= 80 ? '#3fb950' : v != null && v >= 60 ? '#f6ad55' : 'var(--text-2)' }}>
                             {f(v)}
                           </td>
                         ))}
-                        <td style={{ padding: '7px 10px', textAlign: 'right', color: '#adb6c2' }}>
+                        <td style={{ padding: '7px 10px', textAlign: 'right', color: 'var(--text-2)' }}>
                           {p.closePrice != null ? Number(p.closePrice).toLocaleString('ko-KR') : '-'}
                         </td>
                       </tr>
@@ -639,10 +642,10 @@ export default function StockDetailPage() {
             <div style={{ overflowX: 'auto' }}>
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
                 <thead>
-                  <tr style={{ borderBottom: '1px solid #2d3440' }}>
+                  <tr style={{ borderBottom: '1px solid var(--border)' }}>
                     {['종목명', '티커', 'SCORE', '섹터'].map(h => (
                       <th key={h} style={{
-                        padding: '6px 10px', color: '#6e7681', fontWeight: 600,
+                        padding: '6px 10px', color: 'var(--text-3)', fontWeight: 600,
                         textAlign: h === '종목명' || h === '섹터' ? 'left' : 'right',
                         whiteSpace: 'nowrap',
                       }}>{h}</th>
@@ -655,10 +658,10 @@ export default function StockDetailPage() {
                     return (
                       <tr key={c.ticker}
                         onClick={() => navigate(`/stock/${c.ticker}`)}
-                        style={{ borderBottom: '1px solid #1e242f', cursor: 'pointer' }}
-                        onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = '#1e242f' }}
+                        style={{ borderBottom: '1px solid var(--bg-surface)', cursor: 'pointer' }}
+                        onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'var(--bg-surface)' }}
                         onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'transparent' }}>
-                        <td style={{ padding: '7px 10px', color: '#f0f4f9' }}>{c.name}</td>
+                        <td style={{ padding: '7px 10px', color: 'var(--text-1)' }}>{c.name}</td>
                         <td style={{ padding: '7px 10px', color: '#58a6ff', fontFamily: 'monospace' }}>{c.ticker}</td>
                         <td style={{ padding: '7px 10px', textAlign: 'right', color: scoreClr, fontWeight: 600 }}>
                           {c.compositeScore.toFixed(1)}
@@ -690,7 +693,7 @@ export default function StockDetailPage() {
           }
 
           if (stock.baseDays != null) {
-            const bdClr = stock.baseDays >= 15 ? '#4ade80' : stock.baseDays >= 7 ? '#fabd44' : '#adb6c2'
+            const bdClr = stock.baseDays >= 15 ? '#4ade80' : stock.baseDays >= 7 ? '#fabd44' : 'var(--text-2)'
             const bdDesc = stock.baseDays >= 25 ? '장기 베이스 형성 — 강한 에너지 축적' :
                            stock.baseDays >= 15 ? '베이스 구축 중 — 돌파 대기' :
                            stock.baseDays >= 7  ? '단기 베이스 — 아직 관찰 필요' : '베이스 초기 단계'
@@ -700,7 +703,7 @@ export default function StockDetailPage() {
           if (stock.volume != null && stock.turnover != null) {
             const volStr = fmtVol(stock.volume)
             const trnStr = fmtAmt(stock.turnover)
-            bullets.push({ text: `거래량: ${volStr} / 거래대금: ${trnStr}`, color: '#adb6c2' })
+            bullets.push({ text: `거래량: ${volStr} / 거래대금: ${trnStr}`, color: 'var(--text-2)' })
           }
 
           if (stock.breakoutToday) {
@@ -708,7 +711,7 @@ export default function StockDetailPage() {
           } else if (pctFrom52w !== null && pctFrom52w >= -3) {
             bullets.push({ text: '52주 고점 근접 — 돌파 임박 구간', color: '#fabd44' })
           } else {
-            bullets.push({ text: '브레이크아웃 미발생 — 기존 박스권 내 위치', color: '#6e7681' })
+            bullets.push({ text: '브레이크아웃 미발생 — 기존 박스권 내 위치', color: 'var(--text-3)' })
           }
 
           if (bullets.length === 0) return null
@@ -745,25 +748,25 @@ export default function StockDetailPage() {
                     alignItems: 'flex-start',
                     gap: 12,
                     padding: '10px 0',
-                    borderBottom: i < news.length - 1 ? '1px solid #2d3440' : 'none',
+                    borderBottom: i < news.length - 1 ? '1px solid var(--border)' : 'none',
                     textDecoration: 'none',
                     color: 'inherit',
                   }}
                 >
                   <span style={{
                     fontSize: 14,
-                    color: '#f0f4f9',
+                    color: 'var(--text-1)',
                     lineHeight: 1.5,
                     flex: 1,
                     transition: 'color 0.15s',
                   }}
                     onMouseEnter={e => (e.currentTarget.style.color = '#58a6ff')}
-                    onMouseLeave={e => (e.currentTarget.style.color = '#f0f4f9')}
+                    onMouseLeave={e => (e.currentTarget.style.color = 'var(--text-1)')}
                   >
                     {item.title}
                   </span>
-                  <span style={{ fontSize: 12, color: '#6e7681', whiteSpace: 'nowrap', marginTop: 2 }}>
-                    {item.source && <span style={{ color: '#6e7681', marginRight: 6 }}>{item.source}</span>}
+                  <span style={{ fontSize: 12, color: 'var(--text-3)', whiteSpace: 'nowrap', marginTop: 2 }}>
+                    {item.source && <span style={{ color: 'var(--text-3)', marginRight: 6 }}>{item.source}</span>}
                     {item.date}
                   </span>
                 </a>
@@ -785,12 +788,12 @@ export default function StockDetailPage() {
                     </linearGradient>
                   ))}
                 </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke="#2d3440" />
-                <XAxis dataKey="scoreDate" tick={{ fontSize: 11, fill: '#adb6c2' }} tickLine={false} />
-                <YAxis domain={[0, 100]} tick={{ fontSize: 11, fill: '#adb6c2' }} tickLine={false} axisLine={false} />
+                <CartesianGrid strokeDasharray="3 3" stroke={gridStroke} />
+                <XAxis dataKey="scoreDate" tick={{ fontSize: 11, fill: 'var(--text-2)' }} tickLine={false} />
+                <YAxis domain={[0, 100]} tick={{ fontSize: 11, fill: 'var(--text-2)' }} tickLine={false} axisLine={false} />
                 <Tooltip content={<ScoreTooltip />} />
                 <Legend wrapperStyle={{ fontSize: 12, paddingTop: 12 }}
-                  formatter={v => <span style={{ color: '#adb6c2' }}>{v}</span>} />
+                  formatter={v => <span style={{ color: 'var(--text-2)' }}>{v}</span>} />
                 {FACTORS.map(f => (
                   <Area key={f.key} type="monotone" dataKey={f.key} name={f.desc}
                     stroke={f.color} fill={`url(#grad-${f.key})`}
