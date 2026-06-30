@@ -44,19 +44,19 @@ export default function PriceChart({ securityId, height = 480 }: Props) {
 
     const chart = createChart(chartContainerRef.current, {
       layout: {
-        background: { type: ColorType.Solid, color: '#0d1117' },
-        textColor: '#8b949e',
+        background: { type: ColorType.Solid, color: '#1b212c' },
+        textColor: '#adb6c2',
       },
       grid: {
         vertLines: { color: 'rgba(255,255,255,0.04)' },
         horzLines: { color: 'rgba(255,255,255,0.04)' },
       },
       rightPriceScale: {
-        borderColor: '#21262d',
+        borderColor: '#2d3440',
         scaleMargins: { top: 0.1, bottom: 0.25 },
       },
       timeScale: {
-        borderColor: '#21262d',
+        borderColor: '#2d3440',
         timeVisible: false,
       },
       crosshair: {
@@ -125,28 +125,28 @@ export default function PriceChart({ securityId, height = 480 }: Props) {
 
   if (loading) return (
     <div style={{ height, display: 'flex', alignItems: 'center', justifyContent: 'center',
-      background: '#0d1117', borderRadius: 10, border: '1px solid #21262d', color: '#484f58', fontSize: 13 }}>
+      background: '#1b212c', borderRadius: 10, border: '1px solid #2d3440', color: '#6e7681', fontSize: 14 }}>
       차트 로딩 중...
     </div>
   )
 
   if (!allData.length) return (
     <div style={{ height, display: 'flex', alignItems: 'center', justifyContent: 'center',
-      background: '#0d1117', borderRadius: 10, border: '1px solid #21262d', color: '#484f58', fontSize: 13 }}>
+      background: '#1b212c', borderRadius: 10, border: '1px solid #2d3440', color: '#6e7681', fontSize: 14 }}>
       가격 데이터 없음
     </div>
   )
 
   return (
-    <div style={{ background: '#0d1117', borderRadius: 10, border: '1px solid #21262d', overflow: 'hidden' }}>
+    <div style={{ background: '#1b212c', borderRadius: 10, border: '1px solid #2d3440', overflow: 'hidden' }}>
       {/* Range selector */}
-      <div style={{ display: 'flex', gap: 4, padding: '8px 12px', borderBottom: '1px solid #21262d' }}>
+      <div style={{ display: 'flex', gap: 4, padding: '8px 12px', borderBottom: '1px solid #2d3440' }}>
         {RANGES.map(([key, label]) => (
           <button key={key} onClick={() => setRange(key)} style={{
-            padding: '2px 10px', fontSize: 11, fontWeight: 600, borderRadius: 4,
+            padding: '2px 10px', fontSize: 12, fontWeight: 600, borderRadius: 4,
             background: range === key ? '#1f6feb' : 'transparent',
-            color: range === key ? '#fff' : '#8b949e',
-            border: `1px solid ${range === key ? '#1f6feb' : '#30363d'}`,
+            color: range === key ? '#fff' : '#adb6c2',
+            border: `1px solid ${range === key ? '#1f6feb' : '#3a414e'}`,
             cursor: 'pointer',
           }}>{label}</button>
         ))}

@@ -60,7 +60,7 @@ function ScoreCell({ value }: { value: number | null }) {
     <td style={{
       padding: '0 5px', textAlign: 'center',
       background: scoreColor(value), color: scoreText(value),
-      fontWeight: value !== null ? 600 : 400, fontSize: 11,
+      fontWeight: value !== null ? 600 : 400, fontSize: 12,
       borderRight: '1px solid var(--score-sep)',
     }}>
       {value !== null ? value.toFixed(1) : <span style={{ color: 'var(--text-4)' }}>·</span>}
@@ -77,7 +77,7 @@ function SortTh({ label, sortKey: sk, current, dir, onSort, align = 'right', sty
     <th
       onClick={sk ? () => onSort(sk) : undefined}
       style={{
-        padding: '7px 6px', textAlign: align, fontSize: 10, fontWeight: 600,
+        padding: '7px 6px', textAlign: align, fontSize: 11, fontWeight: 600,
         color: active ? 'var(--text-1)' : 'var(--text-3)', letterSpacing: '0.05em',
         cursor: sk ? 'pointer' : 'default', userSelect: 'none',
         whiteSpace: 'nowrap', borderBottom: '1px solid var(--border)',
@@ -85,7 +85,7 @@ function SortTh({ label, sortKey: sk, current, dir, onSort, align = 'right', sty
       }}
     >
       {label}
-      {sk && <span style={{ marginLeft: 2, opacity: active ? 1 : 0.3, fontSize: 9 }}>
+      {sk && <span style={{ marginLeft: 2, opacity: active ? 1 : 0.3, fontSize: 11 }}>
         {active ? (dir === 'desc' ? '▼' : '▲') : '⇅'}
       </span>}
     </th>
@@ -124,7 +124,7 @@ function GuidePopup({ onClose }: { onClose: (hide24h: boolean) => void }) {
             <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--text-1)', marginBottom: 4 }}>
               성장주 7대 핵심지표 안내
             </div>
-            <div style={{ fontSize: 11, color: 'var(--text-3)' }}>
+            <div style={{ fontSize: 12, color: 'var(--text-3)' }}>
               각 지표는 0~100점으로 환산되며 가중 합산하여 종합점수를 산출합니다
             </div>
           </div>
@@ -146,13 +146,13 @@ function GuidePopup({ onClose }: { onClose: (hide24h: boolean) => void }) {
                 width: 28, height: 28, borderRadius: 6, flexShrink: 0,
                 background: '#1f6feb22', border: '1px solid #1f6feb55',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
-                fontSize: 13, fontWeight: 800, color: '#58a6ff',
+                fontSize: 14, fontWeight: 800, color: '#58a6ff',
               }}>{f.num}</div>
               <div>
-                <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-1)', marginBottom: 3 }}>
+                <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-1)', marginBottom: 3 }}>
                   {f.name}
                 </div>
-                <div style={{ fontSize: 11, color: 'var(--text-3)', lineHeight: 1.6 }}>
+                <div style={{ fontSize: 12, color: 'var(--text-3)', lineHeight: 1.6 }}>
                   {f.desc}
                 </div>
               </div>
@@ -162,14 +162,14 @@ function GuidePopup({ onClose }: { onClose: (hide24h: boolean) => void }) {
 
         {/* 하단 */}
         <div style={{ marginTop: 18, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <label style={{ display: 'flex', alignItems: 'center', gap: 7, cursor: 'pointer', fontSize: 11, color: 'var(--text-3)' }}>
+          <label style={{ display: 'flex', alignItems: 'center', gap: 7, cursor: 'pointer', fontSize: 12, color: 'var(--text-3)' }}>
             <input type="checkbox" checked={hide24h} onChange={e => setHide24h(e.target.checked)}
               style={{ width: 13, height: 13, accentColor: '#1f6feb', cursor: 'pointer' }} />
             24시간 보지 않기
           </label>
           <button onClick={() => onClose(hide24h)} style={{
             background: '#1f6feb', border: 'none', borderRadius: 6,
-            color: '#fff', fontSize: 12, fontWeight: 600,
+            color: '#fff', fontSize: 13, fontWeight: 600,
             padding: '7px 20px', cursor: 'pointer',
           }}>확인</button>
         </div>
@@ -349,29 +349,29 @@ export default function ScreenerPage() {
   const S = {
     filterSelect: {
       background: 'var(--bg-surface)', border: '1px solid var(--border)', borderRadius: 4,
-      color: '#9ca3af', padding: '4px 8px', fontSize: 11, outline: 'none',
+      color: '#9ca3af', padding: '4px 8px', fontSize: 12, outline: 'none',
       cursor: 'pointer',
     } as React.CSSProperties,
     filterInput: {
       background: 'var(--bg-surface)', border: '1px solid var(--border)', borderRadius: 4,
-      color: 'var(--text-1)', padding: '4px 10px', fontSize: 12, outline: 'none', width: 200,
+      color: 'var(--text-1)', padding: '4px 10px', fontSize: 13, outline: 'none', width: 200,
     } as React.CSSProperties,
     capBtn: (active: boolean) => ({
-      padding: '4px 9px', fontSize: 10, fontWeight: 600,
+      padding: '4px 9px', fontSize: 11, fontWeight: 600,
       background: active ? '#1f3a5f' : 'transparent',
       color: active ? '#58a6ff' : 'var(--text-3)',
       border: 'none', cursor: 'pointer',
       borderRight: '1px solid var(--border)',
     } as React.CSSProperties),
     tab: (active: boolean) => ({
-      padding: '8px 16px', fontSize: 12, fontWeight: active ? 600 : 400,
+      padding: '8px 16px', fontSize: 13, fontWeight: active ? 600 : 400,
       color: active ? 'var(--text-1)' : 'var(--text-3)',
       background: 'none', border: 'none', cursor: 'pointer',
       borderBottom: active ? '2px solid #1f6feb' : '2px solid transparent',
       marginBottom: -1,
     } as React.CSSProperties),
     td: {
-      padding: '5px 6px', fontSize: 11, color: '#9ca3af',
+      padding: '5px 6px', fontSize: 12, color: '#9ca3af',
       borderBottom: '1px solid var(--bg-nav)',
     } as React.CSSProperties,
   }
@@ -386,8 +386,8 @@ export default function ScreenerPage() {
 
     if (viewTab === 'overview') return (
       <tr>
-        <th style={{ ...S.td, width: 28, textAlign: 'center', color: 'var(--text-3)', fontSize: 10, borderBottom: '1px solid var(--border)', background: 'var(--bg-nav)' }}>★</th>
-        <th style={{ ...S.td, width: 36, textAlign: 'center', color: 'var(--text-3)', fontSize: 10, borderBottom: '1px solid var(--border)', background: 'var(--bg-nav)' }}>#</th>
+        <th style={{ ...S.td, width: 28, textAlign: 'center', color: 'var(--text-3)', fontSize: 11, borderBottom: '1px solid var(--border)', background: 'var(--bg-nav)' }}>★</th>
+        <th style={{ ...S.td, width: 36, textAlign: 'center', color: 'var(--text-3)', fontSize: 11, borderBottom: '1px solid var(--border)', background: 'var(--bg-nav)' }}>#</th>
         <Th label="티커" align="center" style={{ width: 72 }} />
         <Th label="종목명" align="left" style={{ width: 140 }} />
         <Th label="섹터" align="left" style={{ width: 80 }} />
@@ -409,7 +409,7 @@ export default function ScreenerPage() {
 
     if (viewTab === 'technical') return (
       <tr>
-        <th style={{ ...S.td, width: 36, textAlign: 'center', color: 'var(--text-3)', fontSize: 10, borderBottom: '1px solid var(--border)', background: 'var(--bg-nav)' }}>#</th>
+        <th style={{ ...S.td, width: 36, textAlign: 'center', color: 'var(--text-3)', fontSize: 11, borderBottom: '1px solid var(--border)', background: 'var(--bg-nav)' }}>#</th>
         <Th label="티커" align="center" style={{ width: 72 }} />
         <Th label="종목명" align="left" style={{ width: 160 }} />
         <Th label="종가" sortKey="closePrice" style={{ width: 88 }} />
@@ -426,7 +426,7 @@ export default function ScreenerPage() {
     // flow
     return (
       <tr>
-        <th style={{ ...S.td, width: 36, textAlign: 'center', color: 'var(--text-3)', fontSize: 10, borderBottom: '1px solid var(--border)', background: 'var(--bg-nav)' }}>#</th>
+        <th style={{ ...S.td, width: 36, textAlign: 'center', color: 'var(--text-3)', fontSize: 11, borderBottom: '1px solid var(--border)', background: 'var(--bg-nav)' }}>#</th>
         <Th label="티커" align="center" style={{ width: 72 }} />
         <Th label="종목명" align="left" style={{ width: 160 }} />
         <Th label={flowColLabel('외국인')} sortKey="foreignNetBuy10d" style={{ width: 96, color: '#22d3ee' }} />
@@ -449,7 +449,7 @@ export default function ScreenerPage() {
     const watchBtn = (
       <td style={{ ...S.td, textAlign: 'center', padding: '0 2px' }}
         onClick={e => toggleWatch(item.securityId, e)}>
-        <span style={{ fontSize: 13, cursor: 'pointer', color: isWatched ? '#facc15' : 'var(--text-4)',
+        <span style={{ fontSize: 14, cursor: 'pointer', color: isWatched ? '#facc15' : 'var(--text-4)',
           lineHeight: 1, userSelect: 'none' }}>
           {isWatched ? '★' : '☆'}
         </span>
@@ -458,17 +458,17 @@ export default function ScreenerPage() {
 
     const base = (
       <>
-        <td style={{ ...S.td, textAlign: 'center', color: 'var(--text-4)', fontSize: 10 }}>
+        <td style={{ ...S.td, textAlign: 'center', color: 'var(--text-4)', fontSize: 11 }}>
           {item.marketRank}
         </td>
         <td style={{ ...S.td, textAlign: 'center', fontWeight: 700, fontFamily: 'monospace',
-          fontSize: 12, color: hovered ? '#93c5fd' : '#3b82f6' }}>
+          fontSize: 13, color: hovered ? '#93c5fd' : '#3b82f6' }}>
           {item.ticker}
           {item.breakoutToday === true && (
-            <span style={{ fontSize: 8, background: '#16a34a', color: '#fff', borderRadius: 3, padding: '1px 3px', marginLeft: 3 }}>NEW</span>
+            <span style={{ fontSize: 10, background: '#16a34a', color: '#fff', borderRadius: 3, padding: '1px 3px', marginLeft: 3 }}>NEW</span>
           )}
         </td>
-        <td style={{ ...S.td, fontSize: 12, color: hovered ? 'var(--text-1)' : 'var(--text-1)',
+        <td style={{ ...S.td, fontSize: 13, color: hovered ? 'var(--text-1)' : 'var(--text-1)',
           overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 160 }}>
           {item.name}
         </td>
@@ -476,9 +476,9 @@ export default function ScreenerPage() {
     )
 
     const scoreChip = (
-      <td style={{ ...S.td, textAlign: 'right', fontWeight: 700, fontSize: 13, color: grade.color }}>
+      <td style={{ ...S.td, textAlign: 'right', fontWeight: 700, fontSize: 14, color: grade.color }}>
         {item.compositeScore.toFixed(1)}
-        <span style={{ fontSize: 9, marginLeft: 3, opacity: 0.7 }}>{grade.label}</span>
+        <span style={{ fontSize: 11, marginLeft: 3, opacity: 0.7 }}>{grade.label}</span>
       </td>
     )
 
@@ -492,7 +492,7 @@ export default function ScreenerPage() {
       const color = d > 0 ? '#4ade80' : d < 0 ? '#f87171' : 'var(--text-3)'
       const text = d > 0 ? `+${d.toFixed(1)}` : d.toFixed(1)
       return (
-        <td style={{ ...S.td, textAlign: 'center', color, fontWeight: bold ? 700 : 400, fontSize: 11 }}>
+        <td style={{ ...S.td, textAlign: 'center', color, fontWeight: bold ? 700 : 400, fontSize: 12 }}>
           {text}
         </td>
       )
@@ -502,7 +502,7 @@ export default function ScreenerPage() {
       <>
         {watchBtn}
         {base}
-        <td style={{ ...S.td, fontSize: 10, color: '#1d4ed8', opacity: 0.9,
+        <td style={{ ...S.td, fontSize: 11, color: '#1d4ed8', opacity: 0.9,
           overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
           {item.sector ?? '·'}
         </td>
@@ -524,7 +524,7 @@ export default function ScreenerPage() {
         <td style={{ ...S.td, textAlign: 'right', color: 'var(--text-3)' }}>
           {fmtMarketCap(item.marketCap)}
         </td>
-        <td style={{ ...S.td, textAlign: 'center', fontSize: 10, color: 'var(--text-3)' }}>
+        <td style={{ ...S.td, textAlign: 'center', fontSize: 11, color: 'var(--text-3)' }}>
           {item.baseDays ? `${item.baseDays}일` : '-'}
         </td>
       </>
@@ -537,7 +537,7 @@ export default function ScreenerPage() {
       return (
         <>
           {base}
-          <td style={{ ...S.td, textAlign: 'right', fontFamily: 'monospace', color: 'var(--text-1)', fontSize: 12, fontWeight: 600 }}>
+          <td style={{ ...S.td, textAlign: 'right', fontFamily: 'monospace', color: 'var(--text-1)', fontSize: 13, fontWeight: 600 }}>
             {fmtPrice(item.closePrice)}
           </td>
           <td style={{ ...S.td, textAlign: 'right', fontWeight: 600, color: changeColor(item.changeRate) }}>
@@ -623,19 +623,19 @@ export default function ScreenerPage() {
                 ? '관심종목은 프리미엄에서 무제한으로'
                 : 'PDF 리포트는 프리미엄 전용'}
             </div>
-            <div style={{ fontSize: 12, color: 'var(--text-3)', lineHeight: 1.7, marginBottom: 20 }}>
+            <div style={{ fontSize: 13, color: 'var(--text-3)', lineHeight: 1.7, marginBottom: 20 }}>
               {showPremiumModal === 'watchlist'
                 ? `무료 플랜은 관심종목을 최대 ${FREE_WATCHLIST_LIMIT}개까지 등록할 수 있습니다.\n프리미엄으로 업그레이드하면 무제한으로 이용하실 수 있습니다.`
                 : '종목 상세 PDF 리포트는 프리미엄 전용 기능입니다.'}
             </div>
             <div style={{ display: 'flex', gap: 8 }}>
               <button onClick={() => setShowPremiumModal(null)}
-                style={{ flex: 1, padding: '8px 0', fontSize: 12, background: 'none',
+                style={{ flex: 1, padding: '8px 0', fontSize: 13, background: 'none',
                   border: '1px solid var(--border)', borderRadius: 6, color: 'var(--text-3)', cursor: 'pointer' }}>
                 닫기
               </button>
               <button onClick={() => { setShowPremiumModal(null); navigate('/premium') }}
-                style={{ flex: 1, padding: '8px 0', fontSize: 12, fontWeight: 700,
+                style={{ flex: 1, padding: '8px 0', fontSize: 13, fontWeight: 700,
                   background: '#1f6feb', border: 'none', borderRadius: 6, color: '#fff', cursor: 'pointer' }}>
                 프리미엄 알아보기
               </button>
@@ -665,7 +665,7 @@ export default function ScreenerPage() {
               { label: '플래너',   action: () => navigate('/calc'),      active: false },
             ]).map(({ label, action, active }) => (
               <span key={label} onClick={action} style={{
-                padding: '0 12px', fontSize: 12,
+                padding: '0 12px', fontSize: 13,
                 color: active ? 'var(--text-1)' : 'var(--text-3)',
                 fontWeight: active ? 600 : 400,
                 cursor: 'pointer', lineHeight: '40px',
@@ -707,8 +707,8 @@ export default function ScreenerPage() {
             }} />
           </button>
           {visitCount !== null && (
-            <span style={{ fontSize: 11, color: 'var(--text-3)', display: 'flex', alignItems: 'center', gap: 3, whiteSpace: 'nowrap' }}>
-              <span style={{ fontSize: 10 }}>👥</span>
+            <span style={{ fontSize: 12, color: 'var(--text-3)', display: 'flex', alignItems: 'center', gap: 3, whiteSpace: 'nowrap' }}>
+              <span style={{ fontSize: 11 }}>👥</span>
               {visitCount.toLocaleString()}
             </span>
           )}
@@ -737,8 +737,8 @@ export default function ScreenerPage() {
             }} />
           </button>
           {visitCount !== null && (
-            <span style={{ fontSize: 11, color: 'var(--text-3)', display: 'flex', alignItems: 'center', gap: 3, whiteSpace: 'nowrap' }}>
-              <span style={{ fontSize: 10 }}>👥</span>
+            <span style={{ fontSize: 12, color: 'var(--text-3)', display: 'flex', alignItems: 'center', gap: 3, whiteSpace: 'nowrap' }}>
+              <span style={{ fontSize: 11 }}>👥</span>
               {visitCount.toLocaleString()}
             </span>
           )}
@@ -785,7 +785,7 @@ export default function ScreenerPage() {
             }}>
               <div style={{ fontSize: 22 }}>💡</div>
               <div>
-                <div style={{ fontSize: 11, color: 'var(--text-3)', marginBottom: 4, fontWeight: 600, letterSpacing: '0.05em' }}>오늘의 투자 의견</div>
+                <div style={{ fontSize: 12, color: 'var(--text-3)', marginBottom: 4, fontWeight: 600, letterSpacing: '0.05em' }}>오늘의 투자 의견</div>
                 <div style={{ fontSize: 14, fontWeight: 700, color: advice.color }}>{advice.text}</div>
               </div>
             </div>
@@ -803,12 +803,12 @@ export default function ScreenerPage() {
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
                       <span style={{ fontSize: 18 }}>{pi.icon}</span>
                       <div>
-                        <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-1)' }}>{ms.market} · {pi.label}</div>
-                        <div style={{ fontSize: 11, color: pi.text, fontWeight: 600 }}>{pi.verdict}</div>
+                        <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-1)' }}>{ms.market} · {pi.label}</div>
+                        <div style={{ fontSize: 12, color: pi.text, fontWeight: 600 }}>{pi.verdict}</div>
                       </div>
                     </div>
-                    <div style={{ fontSize: 12, color: 'var(--text-3)', lineHeight: 1.6 }}>{pi.desc}</div>
-                    <div style={{ fontSize: 10, color: 'var(--text-4)', marginTop: 8 }}>기준일 {ms.stateDate}</div>
+                    <div style={{ fontSize: 13, color: 'var(--text-3)', lineHeight: 1.6 }}>{pi.desc}</div>
+                    <div style={{ fontSize: 11, color: 'var(--text-4)', marginTop: 8 }}>기준일 {ms.stateDate}</div>
                   </div>
                 )
               })}
@@ -819,7 +819,7 @@ export default function ScreenerPage() {
               background: 'var(--bg-nav)', border: '1px solid var(--border)',
               borderRadius: 10, padding: '16px 20px', marginBottom: 16,
             }}>
-              <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-3)', letterSpacing: '0.06em', marginBottom: 10 }}>시장 건강도</div>
+              <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-3)', letterSpacing: '0.06em', marginBottom: 10 }}>시장 건강도</div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
                 <div style={{ fontSize: 32, fontWeight: 800, color: mColor, minWidth: 70 }}>{mScore.toFixed(1)}<span style={{ fontSize: 14, color: 'var(--text-3)' }}>점</span></div>
                 <div style={{ flex: 1 }}>
@@ -827,7 +827,7 @@ export default function ScreenerPage() {
                   <div style={{ height: 6, background: 'var(--border)', borderRadius: 3, marginBottom: 8, overflow: 'hidden' }}>
                     <div style={{ height: '100%', width: `${mScore}%`, background: mColor, borderRadius: 3, transition: 'width 0.5s' }} />
                   </div>
-                  <div style={{ fontSize: 12, color: '#9ca3af', lineHeight: 1.5 }}>{mVerdict}</div>
+                  <div style={{ fontSize: 13, color: '#9ca3af', lineHeight: 1.5 }}>{mVerdict}</div>
                 </div>
               </div>
             </div>
@@ -836,11 +836,11 @@ export default function ScreenerPage() {
             <div style={{ background: 'var(--bg-nav)', border: '1px solid var(--border)', borderRadius: 10, overflow: 'hidden' }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                 padding: '10px 16px', borderBottom: '1px solid var(--border)', background: 'var(--bg-surface)' }}>
-                <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-3)', letterSpacing: '0.06em' }}>최근 60일 국면 변화</span>
+                <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-3)', letterSpacing: '0.06em' }}>최근 60일 국면 변화</span>
                 <div style={{ display: 'flex', gap: 6 }}>
                   {(['KOSPI', 'KOSDAQ'] as const).map(m => (
                     <button key={m} onClick={() => setHistTab(m)} style={{
-                      fontSize: 11, padding: '2px 10px', borderRadius: 4, cursor: 'pointer',
+                      fontSize: 12, padding: '2px 10px', borderRadius: 4, cursor: 'pointer',
                       background: histTab === m ? 'rgba(31,111,235,0.2)' : 'none',
                       border: histTab === m ? '1px solid #1f6feb' : '1px solid var(--border)',
                       color: histTab === m ? '#58a6ff' : 'var(--text-3)',
@@ -862,11 +862,11 @@ export default function ScreenerPage() {
                 {/* 범례 + 최근 변화 */}
                 <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginTop: 10 }}>
                   {[['#4ade80', '강세장'], ['#fabd44', '조정'], ['#f87171', '약세장']].map(([c, l]) => (
-                    <div key={l} style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 10, color: 'var(--text-3)' }}>
+                    <div key={l} style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, color: 'var(--text-3)' }}>
                       <div style={{ width: 10, height: 10, borderRadius: 2, background: c }} />{l}
                     </div>
                   ))}
-                  <span style={{ marginLeft: 'auto', fontSize: 10, color: 'var(--text-4)' }}>← 과거 · 최근 →</span>
+                  <span style={{ marginLeft: 'auto', fontSize: 11, color: 'var(--text-4)' }}>← 과거 · 최근 →</span>
                 </div>
               </div>
             </div>
@@ -891,10 +891,10 @@ export default function ScreenerPage() {
             display: 'flex', alignItems: 'center', justifyContent: 'space-between',
             flexWrap: 'wrap', gap: 4,
           }}>
-            <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-1)' }}>
+            <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-1)' }}>
               {dot} 시장 M 지수: {avgM.toFixed(1)} · {label}
             </span>
-            <span style={{ fontSize: 10, color: 'var(--text-3)' }}>{desc}</span>
+            <span style={{ fontSize: 11, color: 'var(--text-3)' }}>{desc}</span>
           </div>
         )
       })()}
@@ -911,18 +911,18 @@ export default function ScreenerPage() {
             display: 'flex', alignItems: 'center', justifyContent: 'space-between',
             padding: '6px 12px', background: 'var(--bg-surface)', borderBottom: '1px solid var(--border)',
           }}>
-            <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-3)', letterSpacing: '0.08em' }}>
+            <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-3)', letterSpacing: '0.08em' }}>
               스크리너 필터
               {activeFilterCount > 0 && (
                 <span style={{
                   marginLeft: 8, background: '#1f3a5f', color: '#58a6ff',
-                  borderRadius: 10, padding: '1px 7px', fontSize: 9,
+                  borderRadius: 10, padding: '1px 7px', fontSize: 11,
                 }}>{activeFilterCount}개 적용중</span>
               )}
             </span>
             {hasActiveFilter && (
               <button onClick={() => { setSector(''); setCapRange('all'); setQuery(''); setMinScore(0); setShowWatchOnly(false); setShowBreakoutOnly(false); setPage(0) }}
-                style={{ fontSize: 10, color: 'var(--text-3)', background: 'none', border: 'none', cursor: 'pointer' }}>
+                style={{ fontSize: 11, color: 'var(--text-3)', background: 'none', border: 'none', cursor: 'pointer' }}>
                 초기화
               </button>
             )}
@@ -947,7 +947,7 @@ export default function ScreenerPage() {
               <div style={{ display: 'flex', gap: 3 }}>
                 {(['all', 'large', 'mid', 'small'] as const).map(k => (
                   <button key={k} onClick={() => { setCapRange(k); setPage(0) }} style={{
-                    padding: '3px 9px', fontSize: 10, fontWeight: 600, borderRadius: 3,
+                    padding: '3px 9px', fontSize: 11, fontWeight: 600, borderRadius: 3,
                     background: capRange === k ? '#1f3a5f' : 'var(--bg-surface)',
                     color: capRange === k ? '#58a6ff' : 'var(--text-3)',
                     border: `1px solid ${capRange === k ? '#1d4ed8' : 'var(--border)'}`,
@@ -971,7 +971,7 @@ export default function ScreenerPage() {
               <div style={{ display: 'flex', gap: 3 }}>
                 {(['억원', '백만원'] as FlowUnit[]).map(u => (
                   <button key={u} onClick={() => setFlowUnit(u)} style={{
-                    padding: '3px 10px', fontSize: 10, fontWeight: 600, borderRadius: 3,
+                    padding: '3px 10px', fontSize: 11, fontWeight: 600, borderRadius: 3,
                     background: flowUnit === u ? '#1a2a40' : 'var(--bg-surface)',
                     color: flowUnit === u ? '#38bdf8' : 'var(--text-3)',
                     border: `1px solid ${flowUnit === u ? '#0e7490' : 'var(--border)'}`,
@@ -986,7 +986,7 @@ export default function ScreenerPage() {
               <div style={{ display: 'flex', gap: 3 }}>
                 {([0, 60, 70, 80] as const).map(v => (
                   <button key={v} onClick={() => { setMinScore(v); setPage(0) }} style={{
-                    padding: '3px 9px', fontSize: 10, fontWeight: 600, borderRadius: 3,
+                    padding: '3px 9px', fontSize: 11, fontWeight: 600, borderRadius: 3,
                     background: minScore === v ? '#1f3a5f' : 'var(--bg-surface)',
                     color: minScore === v ? '#58a6ff' : 'var(--text-3)',
                     border: `1px solid ${minScore === v ? '#1d4ed8' : 'var(--border)'}`,
@@ -1001,7 +1001,7 @@ export default function ScreenerPage() {
             {/* 관심종목 */}
             <FilterCell label="관심종목">
               <button onClick={() => setShowWatchOnly(v => !v)} style={{
-                padding: '3px 12px', fontSize: 10, fontWeight: 600, borderRadius: 3,
+                padding: '3px 12px', fontSize: 11, fontWeight: 600, borderRadius: 3,
                 background: showWatchOnly ? '#2d1a4a' : 'var(--bg-surface)',
                 color: showWatchOnly ? '#c084fc' : 'var(--text-3)',
                 border: `1px solid ${showWatchOnly ? '#7c3aed' : 'var(--border)'}`,
@@ -1010,12 +1010,12 @@ export default function ScreenerPage() {
                 {showWatchOnly ? '★ 관심종목만' : '☆ 전체보기'}
               </button>
               {showWatchOnly && (
-                <span style={{ fontSize: 9, color: 'var(--text-3)', marginTop: 2 }}>
+                <span style={{ fontSize: 11, color: 'var(--text-3)', marginTop: 2 }}>
                   현재 페이지 내 필터
                 </span>
               )}
               <button onClick={() => { setShowBreakoutOnly(v => !v); setPage(0) }} style={{
-                padding: '3px 12px', fontSize: 10, fontWeight: 600, borderRadius: 3,
+                padding: '3px 12px', fontSize: 11, fontWeight: 600, borderRadius: 3,
                 background: showBreakoutOnly ? '#052e16' : 'var(--bg-surface)',
                 color: showBreakoutOnly ? '#4ade80' : 'var(--text-3)',
                 border: `1px solid ${showBreakoutOnly ? '#16a34a' : 'var(--border)'}`,
@@ -1042,7 +1042,7 @@ export default function ScreenerPage() {
               borderRadius: 6, padding: '8px 12px',
               display: 'flex', alignItems: 'center', gap: 10,
             }}>
-              <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-3)', letterSpacing: '0.06em', flexShrink: 0 }}>
+              <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-3)', letterSpacing: '0.06em', flexShrink: 0 }}>
                 이번주 상승
               </span>
               <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
@@ -1054,8 +1054,8 @@ export default function ScreenerPage() {
                       background: 'rgba(74,222,128,0.08)', border: '1px solid rgba(74,222,128,0.25)',
                       borderRadius: 4, padding: '2px 8px', cursor: 'pointer',
                     }}>
-                    <span style={{ fontSize: 11, color: 'var(--text-1)', fontWeight: 600 }}>{item.name}</span>
-                    <span style={{ fontSize: 11, color: '#4ade80', fontWeight: 700 }}>
+                    <span style={{ fontSize: 12, color: 'var(--text-1)', fontWeight: 600 }}>{item.name}</span>
+                    <span style={{ fontSize: 12, color: '#4ade80', fontWeight: 700 }}>
                       +{(item.scoreDelta ?? 0).toFixed(1)}
                     </span>
                   </div>
@@ -1089,14 +1089,14 @@ export default function ScreenerPage() {
         {/* 결과 카운트 + 행수 */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           {!loading && (
-            <span style={{ fontSize: 11, color: 'var(--text-3)' }}>
+            <span style={{ fontSize: 12, color: 'var(--text-3)' }}>
               <span style={{ color: 'var(--text-3)', fontWeight: 600 }}>{total.toLocaleString()}</span>
               {' '}종목
               {hasActiveFilter && <span style={{ color: '#1d4ed8' }}> (필터 적용)</span>}
             </span>
           )}
           <select value={size} onChange={e => handleSize(Number(e.target.value))}
-            style={{ ...S.filterSelect, fontSize: 10 }}>
+            style={{ ...S.filterSelect, fontSize: 11 }}>
             {[30, 50, 100].map(n => <option key={n} value={n}>{n}행</option>)}
           </select>
         </div>
@@ -1107,7 +1107,7 @@ export default function ScreenerPage() {
         <div ref={scrollRef} onScroll={onTableScroll} className="hide-scrollbar"
           style={{ overflowX: 'auto' }}>
           {loading ? (
-            <div style={{ textAlign: 'center', padding: '80px 0', color: 'var(--text-4)', fontSize: 13 }}>
+            <div style={{ textAlign: 'center', padding: '80px 0', color: 'var(--text-4)', fontSize: 14 }}>
               <span style={{ display: 'inline-block', animation: 'spin 1s linear infinite' }}>⟳</span>
               {' '}데이터 로딩 중...
             </div>
@@ -1137,7 +1137,7 @@ export default function ScreenerPage() {
           )}
 
           {!loading && items.length === 0 && (
-            <div style={{ textAlign: 'center', padding: '60px 0', color: 'var(--text-4)', fontSize: 13 }}>
+            <div style={{ textAlign: 'center', padding: '60px 0', color: 'var(--text-4)', fontSize: 14 }}>
               검색 결과 없음
             </div>
           )}
@@ -1160,7 +1160,7 @@ export default function ScreenerPage() {
           display: 'flex', justifyContent: 'space-between', alignItems: 'center',
           padding: '12px 20px 32px', borderTop: '1px solid var(--bg-surface)',
         }}>
-          <span style={{ fontSize: 11, color: 'var(--text-4)' }}>
+          <span style={{ fontSize: 12, color: 'var(--text-4)' }}>
             {total.toLocaleString()}종목 · {page + 1}/{totalPages}페이지
           </span>
           <div style={{ display: 'flex', gap: 3, flexWrap: 'wrap', justifyContent: 'center' }}>
@@ -1184,8 +1184,8 @@ export default function ScreenerPage() {
 function Stat({ label, value, color }: { label: string; value: string; color?: string }) {
   return (
     <div style={{ display: 'flex', alignItems: 'baseline', gap: 4 }}>
-      <span style={{ fontSize: 9, color: 'var(--text-4)', fontWeight: 600, letterSpacing: '0.05em' }}>{label}</span>
-      <span style={{ fontSize: 12, color: color ?? 'var(--text-3)', fontWeight: 600 }}>{value}</span>
+      <span style={{ fontSize: 11, color: 'var(--text-4)', fontWeight: 600, letterSpacing: '0.05em' }}>{label}</span>
+      <span style={{ fontSize: 13, color: color ?? 'var(--text-3)', fontWeight: 600 }}>{value}</span>
     </div>
   )
 }
@@ -1199,7 +1199,7 @@ function FilterCell({ label, children }: { label: string; children: React.ReactN
         borderRight: '1px solid var(--border)',
       }}>
         <span style={{
-          fontSize: 10, fontWeight: 700, color: 'var(--text-4)',
+          fontSize: 11, fontWeight: 700, color: 'var(--text-4)',
           letterSpacing: '0.06em', whiteSpace: 'nowrap',
         }}>{label}</span>
       </div>
@@ -1223,7 +1223,7 @@ function PgBtn({ label, onClick, disabled, active }: {
       background: active ? '#1f3a5f' : 'transparent',
       border: `1px solid ${active ? '#1f6feb' : 'var(--border)'}`,
       borderRadius: 4, color: disabled ? 'var(--border)' : active ? '#58a6ff' : 'var(--text-3)',
-      fontSize: 11, cursor: disabled ? 'default' : 'pointer', fontWeight: active ? 700 : 400,
+      fontSize: 12, cursor: disabled ? 'default' : 'pointer', fontWeight: active ? 700 : 400,
     }}>
       {label}
     </button>

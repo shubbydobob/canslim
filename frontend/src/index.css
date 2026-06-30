@@ -1,17 +1,17 @@
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 :root, [data-theme='dark'] {
-  --bg-base:     #0b0f17;
-  --bg-nav:      #0d1117;
-  --bg-surface:  #161b22;
-  --bg-elevated: #21262d;
-  --border:      #21262d;
-  --border-sub:  #30363d;
-  --text-1:      #e6edf3;
-  --text-2:      #8b949e;
-  --text-3:      #4b5563;
-  --text-4:      #3d4451;
-  --score-sep:   #1c2230;
+  --bg-base:     #171c26;
+  --bg-nav:      #1b212c;
+  --bg-surface:  #1e242f;
+  --bg-elevated: #2a313d;
+  --border:      #2d3440;
+  --border-sub:  #3a414e;
+  --text-1:      #f0f4f9;
+  --text-2:      #adb6c2;
+  --text-3:      #7c8694;
+  --text-4:      #5b6573;
+  --score-sep:   #262d3a;
 }
 
 [data-theme='light'] {
@@ -32,8 +32,8 @@ body {
   font-family: -apple-system, 'Segoe UI', Roboto, sans-serif;
   background: var(--bg-base);
   color: var(--text-1);
-  font-size: 14px;
-  line-height: 1.5;
+  font-size: 15px;
+  line-height: 1.55;
   transition: background 0.2s, color 0.2s;
 }
 
@@ -147,7 +147,7 @@ button {
   .m-banner {
     margin: 8px 10px 4px !important;
     padding: 5px 10px !important;
-    font-size: 11px !important;
+    font-size: 12px !important;
   }
 
   /* TradingCalc nav */
@@ -186,7 +186,7 @@ button {
     flex: none !important;
     width: 33.33% !important;
     border-right: none !important;
-    border-bottom: 1px solid #21262d !important;
+    border-bottom: 1px solid #2d3440 !important;
     padding: 10px 12px !important;
   }
 

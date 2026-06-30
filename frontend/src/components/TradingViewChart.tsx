@@ -15,15 +15,15 @@ export default function TradingViewChart({ ticker, height = 460 }: Props) {
     hide_top_toolbar: '0',
     hide_legend:    '0',
     studies:        'RSI@tv-basicstudies,Volume@tv-basicstudies',
-    backgroundColor: '#0d1117',
+    backgroundColor: '#1b212c',
     gridColor:      'rgba(255,255,255,0.04)',
   })
 
   return (
     <div style={{
-      background: '#0d1117',
+      background: '#1b212c',
       borderRadius: 10,
-      border: '1px solid #21262d',
+      border: '1px solid #2d3440',
       overflow: 'hidden',
       height,
     }}>
