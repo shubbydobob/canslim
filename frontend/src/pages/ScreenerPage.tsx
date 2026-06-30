@@ -50,10 +50,10 @@ const changeColor = (v: number | null) => {
 // ── format helpers ─────────────────────────────────────────────
 const fmtFlow = (v: number | null, unit: FlowUnit, close?: number | null) => {
   if (v === null) return '—'
-  if (unit === '가격') return (v > 0 ? '+' : '') + (v / 1e8).toFixed(1)   // 억원 고정
+  if (unit === '가격') return (v > 0 ? '+' : '') + Math.round(v / 1e8)   // 억원 고정
   // 수량: 순매수 금액 ÷ 종가 ≈ 순매수 주식수(만주). 종가 없으면 표시 불가
   if (!close || close <= 0) return '—'
-  return (v > 0 ? '+' : '') + (v / close / 1e4).toFixed(1)
+  return (v > 0 ? '+' : '') + Math.round(v / close / 1e4)
 }
 
 // ── sub-components ─────────────────────────────────────────────
@@ -65,7 +65,7 @@ function ScoreCell({ value }: { value: number | null }) {
       fontWeight: value !== null ? 600 : 400, fontSize: 12,
       borderRight: '1px solid var(--score-sep)',
     }}>
-      {value !== null ? value.toFixed(1) : <span style={{ color: 'var(--text-4)' }}>·</span>}
+      {value !== null ? Math.round(value) : <span style={{ color: 'var(--text-4)' }}>·</span>}
     </td>
   )
 }
@@ -292,7 +292,7 @@ export default function ScreenerPage() {
             const prevScore = prev[item.securityId]
             const delta = prevScore != null ? item.compositeScore - prevScore : null
             if (delta != null && Math.abs(delta) >= 3) {
-              alerts.push(`${item.name} ${delta > 0 ? '▲' : '▼'}${Math.abs(delta).toFixed(1)}pt (${item.compositeScore.toFixed(1)})`)
+              alerts.push(`${item.name} ${delta > 0 ? '▲' : '▼'}${Math.round(Math.abs(delta))}pt (${Math.round(item.compositeScore)})`)
             }
             prev[item.securityId] = item.compositeScore
           })
@@ -491,7 +491,7 @@ export default function ScreenerPage() {
 
     const scoreChip = (
       <td style={{ ...S.td, textAlign: 'right', fontWeight: 700, fontSize: 14, color: grade.color }}>
-        {item.compositeScore.toFixed(1)}
+        {Math.round(item.compositeScore)}
         <span style={{ fontSize: 11, marginLeft: 3, opacity: 0.7 }}>{grade.label}</span>
       </td>
     )
@@ -504,7 +504,7 @@ export default function ScreenerPage() {
       const abs = Math.abs(d)
       const bold = abs >= 2
       const color = d > 0 ? 'var(--up)' : d < 0 ? 'var(--down)' : 'var(--text-3)'
-      const text = d > 0 ? `+${d.toFixed(1)}` : d.toFixed(1)
+      const text = d > 0 ? `+${Math.round(d)}` : `${Math.round(d)}`
       return (
         <td style={{ ...S.td, textAlign: 'center', color, fontWeight: bold ? 700 : 400, fontSize: 12 }}>
           {text}
@@ -698,8 +698,8 @@ export default function ScreenerPage() {
           {items[0] && (
             <div style={{ display: 'flex', gap: 20 }}>
               <Stat label="기준일" value={items[0].scoreDate} />
-              <Stat label="Top" value={String(items[0].compositeScore)} color="#4ade80" />
-              <Stat label="Avg" value={(items.reduce((s, i) => s + i.compositeScore, 0) / items.length).toFixed(1)} />
+              <Stat label="Top" value={String(Math.round(items[0].compositeScore))} color="#4ade80" />
+              <Stat label="Avg" value={String(Math.round(items.reduce((s, i) => s + i.compositeScore, 0) / items.length))} />
             </div>
           )}
           {/* 다크/라이트 토글 */}
@@ -840,7 +840,7 @@ export default function ScreenerPage() {
             }}>
               <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-3)', letterSpacing: '0.06em', marginBottom: 10 }}>시장 건강도</div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-                <div style={{ fontSize: 32, fontWeight: 800, color: mColor, minWidth: 70 }}>{mScore.toFixed(1)}<span style={{ fontSize: 14, color: 'var(--text-3)' }}>점</span></div>
+                <div style={{ fontSize: 32, fontWeight: 800, color: mColor, minWidth: 70 }}>{Math.round(mScore)}<span style={{ fontSize: 14, color: 'var(--text-3)' }}>점</span></div>
                 <div style={{ flex: 1 }}>
                   {/* 게이지 바 */}
                   <div style={{ height: 6, background: 'var(--border)', borderRadius: 3, marginBottom: 8, overflow: 'hidden' }}>
@@ -911,7 +911,7 @@ export default function ScreenerPage() {
             flexWrap: 'wrap', gap: 4,
           }}>
             <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-1)' }}>
-              {dot} 시장 M 지수: {avgM.toFixed(1)} · {label}
+              {dot} 시장 M 지수: {Math.round(avgM)} · {label}
             </span>
             <span style={{ fontSize: 11, color: 'var(--text-3)' }}>{desc}</span>
           </div>
@@ -1075,7 +1075,7 @@ export default function ScreenerPage() {
                     }}>
                     <span style={{ fontSize: 12, color: 'var(--text-1)', fontWeight: 600 }}>{item.name}</span>
                     <span style={{ fontSize: 12, color: 'var(--up)', fontWeight: 700 }}>
-                      +{(item.scoreDelta ?? 0).toFixed(1)}
+                      +{Math.round(item.scoreDelta ?? 0)}
                     </span>
                   </div>
                 ))}

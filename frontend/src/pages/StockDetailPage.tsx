@@ -37,13 +37,13 @@ function scoreGrade(v: number | null): { grade: string; color: string } {
 
 function fmtVol(v: number | null) {
   if (v === null) return '—'
-  if (v >= 10_000_000) return (v / 10_000_000).toFixed(1) + '천만주'
-  return (v / 10_000).toFixed(0) + '만주'
+  if (v >= 10_000_000) return Math.round(v / 10_000_000) + '천만주'
+  return Math.round(v / 10_000) + '만주'
 }
 function fmtFlow(v: number | null) {
   if (v === null) return '—'
   const b = v / 1e8
-  return (b > 0 ? '+' : '') + b.toFixed(1) + '억'
+  return (b > 0 ? '+' : '') + Math.round(b) + '억'
 }
 
 function FactorCard({ label, desc, value, color }: {
@@ -67,7 +67,7 @@ function FactorCard({ label, desc, value, color }: {
         </div>
         <div style={{ textAlign: 'right' }}>
           <div style={{ fontSize: 22, fontWeight: 800, color: value !== null ? color : 'var(--text-3)', lineHeight: 1 }}>
-            {value !== null ? value.toFixed(1) : '—'}
+            {value !== null ? Math.round(value) : '—'}
           </div>
           <div style={{ fontSize: 12, color: gc, fontWeight: 600, marginTop: 2 }}>{grade}</div>
         </div>
@@ -87,7 +87,7 @@ const ScoreTooltip = ({ active, payload, label }: any) => {
       {payload.map((p: any) => (
         <div key={String(p.dataKey)} style={{ display: 'flex', justifyContent: 'space-between', gap: 16, color: p.stroke || p.fill }}>
           <span>{p.name}</span>
-          <span style={{ fontWeight: 600 }}>{typeof p.value === 'number' ? p.value.toFixed(1) : p.value ?? '—'}</span>
+          <span style={{ fontWeight: 600 }}>{typeof p.value === 'number' ? Math.round(p.value) : p.value ?? '—'}</span>
         </div>
       ))}
     </div>
@@ -354,7 +354,7 @@ export default function StockDetailPage() {
                   border: `1px solid ${stock.scoreDelta > 0 ? 'rgba(232,51,63,0.3)' : 'rgba(47,115,224,0.3)'}`,
                   color: stock.scoreDelta > 0 ? 'var(--up)' : 'var(--down)',
                 }}>
-                  {stock.scoreDelta > 0 ? '+' : ''}{stock.scoreDelta.toFixed(1)}
+                  {stock.scoreDelta > 0 ? '+' : ''}{Math.round(stock.scoreDelta)}
                 </span>
               )}
             </div>
@@ -362,11 +362,11 @@ export default function StockDetailPage() {
           <div style={{ textAlign: 'right' }}>
             <div style={{ fontSize: 11, color: 'var(--text-2)', marginBottom: 2, fontWeight: 600 }}>COMPOSITE SCORE</div>
             <div className="detail-score" style={{ fontSize: 50, fontWeight: 900, color: cColor, lineHeight: 1, letterSpacing: '-2px' }}>
-              {composite.toFixed(2)}
+              {Math.round(composite)}
             </div>
             <div style={{ fontSize: 13, color: 'var(--text-2)', marginTop: 4 }}>
               Rank <span style={{ color: 'var(--text-1)', fontWeight: 600 }}>{stock.marketRank}</span>
-              {' · '}Top <span style={{ color: 'var(--text-1)', fontWeight: 600 }}>{(100 - stock.marketPercentile * 100).toFixed(1)}%</span>
+              {' · '}Top <span style={{ color: 'var(--text-1)', fontWeight: 600 }}>{Math.round(100 - stock.marketPercentile * 100)}%</span>
             </div>
           </div>
         </div>
@@ -430,7 +430,7 @@ export default function StockDetailPage() {
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: signals.length > 0 ? 12 : 0 }}>
                 <div style={{ fontSize: 12, fontWeight: 700, letterSpacing: '0.06em', color: 'var(--text-2)' }}>매매 시그널</div>
                 <div style={{ fontSize: 14, fontWeight: 800, color: verdict.color }}>{verdict.label}</div>
-                <div style={{ marginLeft: 'auto', fontSize: 12, color: 'var(--text-3)' }}>종합 {composite.toFixed(1)}점</div>
+                <div style={{ marginLeft: 'auto', fontSize: 12, color: 'var(--text-3)' }}>종합 {Math.round(composite)}점</div>
               </div>
               {signals.length > 0 && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
@@ -499,10 +499,10 @@ export default function StockDetailPage() {
               <div style={{ borderTop: '1px solid var(--border)', paddingTop: 12, marginTop: 4 }}>
                 <div style={{ fontSize: 11, color: 'var(--text-3)', fontWeight: 600, marginBottom: 4 }}>RS 백분위</div>
                 <div style={{ fontSize: 20, fontWeight: 800, color: '#c9d1d9' }}>
-                  {(stock.marketPercentile * 100).toFixed(1)}%
+                  {Math.round(stock.marketPercentile * 100)}%
                 </div>
                 <div style={{ fontSize: 11, color: 'var(--text-3)', marginTop: 2 }}>
-                  상위 {(100 - stock.marketPercentile * 100).toFixed(1)}%
+                  상위 {Math.round(100 - stock.marketPercentile * 100)}%
                 </div>
               </div>
             </div>
@@ -615,7 +615,7 @@ export default function StockDetailPage() {
                           {p.name}{isSelf && ' ◀'}
                         </td>
                         <td style={{ padding: '7px 10px', textAlign: 'right', color: '#c9d1d9', fontWeight: 600 }}>
-                          {p.compositeScore.toFixed(1)}
+                          {Math.round(p.compositeScore)}
                         </td>
                         {[p.cScore, p.aScore, p.nScore, p.sScore, p.iScore].map((v, i) => (
                           <td key={i} style={{ padding: '7px 10px', textAlign: 'right',
@@ -664,7 +664,7 @@ export default function StockDetailPage() {
                         <td style={{ padding: '7px 10px', color: 'var(--text-1)' }}>{c.name}</td>
                         <td style={{ padding: '7px 10px', color: '#58a6ff', fontFamily: 'monospace' }}>{c.ticker}</td>
                         <td style={{ padding: '7px 10px', textAlign: 'right', color: scoreClr, fontWeight: 600 }}>
-                          {c.compositeScore.toFixed(1)}
+                          {Math.round(c.compositeScore)}
                         </td>
                         <td style={{ padding: '7px 10px', color: '#6b7280', fontSize: 12 }}>{c.sector ?? '—'}</td>
                       </tr>
@@ -684,7 +684,7 @@ export default function StockDetailPage() {
           const bullets: { text: string; color: string }[] = []
 
           if (pctFrom52w !== null) {
-            const pctStr = (pctFrom52w >= 0 ? '+' : '') + pctFrom52w.toFixed(1) + '%'
+            const pctStr = (pctFrom52w >= 0 ? '+' : '') + Math.round(pctFrom52w) + '%'
             const clr = pctFrom52w >= -5 ? '#4ade80' : pctFrom52w >= -15 ? '#fabd44' : '#f87171'
             bullets.push({
               text: `52주 고점 대비 위치: ${pctStr} (고점 ${fmtPrice(stock.weekHigh52)}원 / 현재 ${fmtPrice(stock.closePrice)}원)`,
