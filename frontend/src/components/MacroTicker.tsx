@@ -48,7 +48,7 @@ export default function MacroTicker() {
 
   return (
     <div style={{
-      background: '#161b24',
+      background: 'var(--bg-nav)',
       borderBottom: '1px solid var(--border)',
       height: 36,
       overflow: 'hidden',
