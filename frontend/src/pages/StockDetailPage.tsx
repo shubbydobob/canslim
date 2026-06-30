@@ -350,9 +350,9 @@ export default function StockDetailPage() {
               )}
               {stock.scoreDelta != null && Math.abs(stock.scoreDelta) >= 1 && (
                 <span style={{ fontSize: 11, fontWeight: 700, padding: '2px 7px', borderRadius: 4,
-                  background: stock.scoreDelta > 0 ? 'rgba(74,222,128,0.1)' : 'rgba(248,113,113,0.1)',
-                  border: `1px solid ${stock.scoreDelta > 0 ? 'rgba(74,222,128,0.3)' : 'rgba(248,113,113,0.3)'}`,
-                  color: stock.scoreDelta > 0 ? '#4ade80' : '#f87171',
+                  background: stock.scoreDelta > 0 ? 'rgba(232,51,63,0.1)' : 'rgba(47,115,224,0.1)',
+                  border: `1px solid ${stock.scoreDelta > 0 ? 'rgba(232,51,63,0.3)' : 'rgba(47,115,224,0.3)'}`,
+                  color: stock.scoreDelta > 0 ? 'var(--up)' : 'var(--down)',
                 }}>
                   {stock.scoreDelta > 0 ? '+' : ''}{stock.scoreDelta.toFixed(1)}
                 </span>
@@ -379,7 +379,7 @@ export default function StockDetailPage() {
         }}>
           {[
             { label: '현재가', value: fmtPrice(stock.closePrice), mono: true },
-            { label: '등락률', value: fmtRate(stock.changeRate), color: stock.changeRate !== null ? (stock.changeRate > 0 ? '#68d391' : stock.changeRate < 0 ? '#fc8181' : 'var(--text-2)') : 'var(--text-2)' },
+            { label: '등락률', value: fmtRate(stock.changeRate), color: stock.changeRate !== null ? (stock.changeRate > 0 ? 'var(--up)' : stock.changeRate < 0 ? 'var(--down)' : 'var(--text-2)') : 'var(--text-2)' },
             { label: '52주 신고가', value: fmtPrice(stock.weekHigh52) },
             { label: '시가총액', value: fmtMarketCap(stock.marketCap) },
             { label: '거래대금', value: fmtAmt(stock.turnover) },

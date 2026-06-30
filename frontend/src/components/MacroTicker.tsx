@@ -4,7 +4,7 @@ import type { MacroQuote } from '../types'
 
 function QuoteItem({ q }: { q: MacroQuote }) {
   const up = (q.changePct ?? 0) >= 0
-  const color = up ? '#68d391' : '#fc8181'
+  const color = up ? 'var(--up)' : 'var(--down)'   // 상승=빨강, 하락=파랑 (한국식)
   const arrow = up ? '▲' : '▼'
 
   const fmt = (v: number | null, digits = 2) =>

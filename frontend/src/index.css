@@ -17,6 +17,9 @@
   --accent-strong:  #2563eb;
   --accent-soft:    rgba(59,130,246,0.16);
   --accent-contrast:#ffffff;
+  /* 한국식 등락 색 — 상승=빨강, 하락=파랑 (다크는 약간 밝게) */
+  --up:   #ff5d6c;
+  --down: #5b9dff;
   /* 거래소 터미널 느낌 — 숫자/티커용 모노스페이스 */
   --font-mono: ui-monospace, 'SF Mono', 'JetBrains Mono', 'Roboto Mono', 'D2Coding', Menlo, Consolas, monospace;
 }
@@ -38,6 +41,9 @@
   --accent-strong:  #1d4ed8;
   --accent-soft:    rgba(37,99,235,0.10);
   --accent-contrast:#ffffff;
+  /* 한국식 등락 색 — 상승=빨강, 하락=파랑 */
+  --up:   #e8333f;
+  --down: #2f73e0;
 }
 
 body {

@@ -42,8 +42,8 @@ const compositeGrade = (v: number) => {
 }
 const changeColor = (v: number | null) => {
   if (v === null) return 'var(--text-3)'
-  if (v > 0) return '#4ade80'
-  if (v < 0) return '#f87171'
+  if (v > 0) return 'var(--up)'    // 상승 = 빨강 (한국식)
+  if (v < 0) return 'var(--down)'  // 하락 = 파랑
   return 'var(--text-3)'
 }
 
@@ -503,7 +503,7 @@ export default function ScreenerPage() {
       )
       const abs = Math.abs(d)
       const bold = abs >= 2
-      const color = d > 0 ? '#4ade80' : d < 0 ? '#f87171' : 'var(--text-3)'
+      const color = d > 0 ? 'var(--up)' : d < 0 ? 'var(--down)' : 'var(--text-3)'
       const text = d > 0 ? `+${d.toFixed(1)}` : d.toFixed(1)
       return (
         <td style={{ ...S.td, textAlign: 'center', color, fontWeight: bold ? 700 : 400, fontSize: 12 }}>
@@ -1070,11 +1070,11 @@ export default function ScreenerPage() {
                     onClick={() => navigate(`/stock/${item.securityId}`)}
                     style={{
                       display: 'flex', alignItems: 'center', gap: 5,
-                      background: 'rgba(74,222,128,0.08)', border: '1px solid rgba(74,222,128,0.25)',
+                      background: 'rgba(232,51,63,0.08)', border: '1px solid rgba(232,51,63,0.25)',
                       borderRadius: 4, padding: '2px 8px', cursor: 'pointer',
                     }}>
                     <span style={{ fontSize: 12, color: 'var(--text-1)', fontWeight: 600 }}>{item.name}</span>
-                    <span style={{ fontSize: 12, color: '#4ade80', fontWeight: 700 }}>
+                    <span style={{ fontSize: 12, color: 'var(--up)', fontWeight: 700 }}>
                       +{(item.scoreDelta ?? 0).toFixed(1)}
                     </span>
                   </div>
