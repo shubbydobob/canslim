@@ -8,7 +8,7 @@ import { fmtPrice, fmtRate, fmtMarketCap, fmtAmt, fmtVolume, fmtHigh52pct } from
 
 // ── types ──────────────────────────────────────────────────────
 type ViewTab = 'overview' | 'technical' | 'flow'
-type FlowUnit = '억원' | '백만원'
+type FlowUnit = '가격' | '수량'
 type SortDir = 'desc' | 'asc'
 type SortKey = keyof Pick<ScreenerItem,
   'compositeScore' | 'cScore' | 'aScore' | 'nScore' | 'sScore' | 'lScore' | 'iScore' | 'mScore' |
@@ -48,10 +48,12 @@ const changeColor = (v: number | null) => {
 }
 
 // ── format helpers ─────────────────────────────────────────────
-const fmtFlow = (v: number | null, unit: FlowUnit) => {
+const fmtFlow = (v: number | null, unit: FlowUnit, close?: number | null) => {
   if (v === null) return '—'
-  if (unit === '억원') return (v > 0 ? '+' : '') + (v / 1e8).toFixed(1)
-  return (v > 0 ? '+' : '') + (v / 1e6).toFixed(0)
+  if (unit === '가격') return (v > 0 ? '+' : '') + (v / 1e8).toFixed(1)   // 억원 고정
+  // 수량: 순매수 금액 ÷ 종가 ≈ 순매수 주식수(만주). 종가 없으면 표시 불가
+  if (!close || close <= 0) return '—'
+  return (v > 0 ? '+' : '') + (v / close / 1e4).toFixed(1)
 }
 
 // ── sub-components ─────────────────────────────────────────────
@@ -187,14 +189,17 @@ export default function ScreenerPage() {
   const [query, setQuery] = useState('')
   const [page, setPage] = useState(0)
   const [size, setSize] = useState(30)
-  const [flowUnit, setFlowUnit] = useState<FlowUnit>('억원')
+  const [flowUnit, setFlowUnit] = useState<FlowUnit>('가격')
   const [hoveredId, setHoveredId] = useState<number | null>(null)
   const [sortKey, setSortKey] = useState<SortKey>('compositeScore')
   const [sortDir, setSortDir] = useState<SortDir>('desc')
   const [sector, setSector] = useState('')
   const [capRange, setCapRange] = useState<'all' | 'large' | 'mid' | 'small'>('all')
   const [sectors, setSectors] = useState<string[]>([])
-  const [viewTab, setViewTab] = useState<ViewTab>('overview')
+  // 뒤로가기 시 이전 탭 복원 — sessionStorage 유지
+  const [viewTab, setViewTab] = useState<ViewTab>(
+    () => (sessionStorage.getItem('screener_viewTab') as ViewTab) || 'overview'
+  )
   const [minScore, setMinScore] = useState(0)
   const [watchlist, setWatchlist] = useState<Set<number>>(() => {
     try {
@@ -209,7 +214,9 @@ export default function ScreenerPage() {
     const until = localStorage.getItem(GUIDE_KEY)
     return !until || Date.now() > parseInt(until)
   })
-  const [mainTab, setMainTab] = useState<'screener' | 'market'>('screener')
+  const [mainTab, setMainTab] = useState<'screener' | 'market'>(
+    () => (sessionStorage.getItem('screener_mainTab') as 'screener' | 'market') || 'screener'
+  )
   const [visitCount, setVisitCount] = useState<number | null>(null)
   const [theme, setTheme] = useState<'dark' | 'light'>(() => {
     const saved = localStorage.getItem('canslim_theme') as 'dark' | 'light' | null
@@ -244,6 +251,9 @@ export default function ScreenerPage() {
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme)
   }, [theme])
+  // 탭 상태 유지 (종목 상세 → 뒤로가기 시 복원)
+  useEffect(() => { sessionStorage.setItem('screener_viewTab', viewTab) }, [viewTab])
+  useEffect(() => { sessionStorage.setItem('screener_mainTab', mainTab) }, [mainTab])
   useEffect(() => {
     fetch('/api/stats/visit', { method: 'POST' })
       .then(r => r.json())
@@ -380,7 +390,7 @@ export default function ScreenerPage() {
   }
 
   const flowColLabel = (label: string) =>
-    `${label}(${flowUnit === '억원' ? '억' : '백만'})`
+    `${label}(${flowUnit === '가격' ? '억' : '만주'})`
 
   // ── table header & row per tab ──────────────────────────────
   const renderHead = () => {
@@ -431,7 +441,8 @@ export default function ScreenerPage() {
       <tr>
         <th style={{ ...S.td, width: 36, textAlign: 'center', color: 'var(--text-3)', fontSize: 11, borderBottom: '1px solid var(--border)', background: 'var(--bg-nav)' }}>#</th>
         <Th label="티커" align="center" style={{ width: 72 }} />
-        <Th label="종목명" align="left" style={{ width: 160 }} />
+        <Th label="종목명" align="left" style={{ width: 140 }} />
+        <Th label="등락률" sortKey="changeRate" style={{ width: 64 }} />
         <Th label={flowColLabel('외국인')} sortKey="foreignNetBuy10d" style={{ width: 96, color: '#22d3ee' }} />
         <Th label={flowColLabel('기관')} sortKey="instNetBuy10d" style={{ width: 88, color: '#a78bfa' }} />
         <Th label="거래대금" sortKey="turnover" style={{ width: 88 }} />
@@ -566,13 +577,16 @@ export default function ScreenerPage() {
     return (
       <>
         {base}
-        <td style={{ ...S.td, textAlign: 'right', fontWeight: 600,
-          color: item.foreignNetBuy10d === null ? '#374151' : item.foreignNetBuy10d > 0 ? '#22d3ee' : '#f87171' }}>
-          {fmtFlow(item.foreignNetBuy10d, flowUnit)}
+        <td style={{ ...S.td, textAlign: 'right', fontWeight: 600, color: changeColor(item.changeRate) }}>
+          {fmtRate(item.changeRate)}
         </td>
-        <td style={{ ...S.td, textAlign: 'right', fontWeight: 600,
+        <td style={{ ...S.td, textAlign: 'right', fontWeight: 600, fontFamily: 'monospace',
+          color: item.foreignNetBuy10d === null ? '#374151' : item.foreignNetBuy10d > 0 ? '#22d3ee' : '#f87171' }}>
+          {fmtFlow(item.foreignNetBuy10d, flowUnit, item.closePrice)}
+        </td>
+        <td style={{ ...S.td, textAlign: 'right', fontWeight: 600, fontFamily: 'monospace',
           color: item.instNetBuy10d === null ? '#374151' : item.instNetBuy10d > 0 ? '#a78bfa' : '#f87171' }}>
-          {fmtFlow(item.instNetBuy10d, flowUnit)}
+          {fmtFlow(item.instNetBuy10d, flowUnit, item.closePrice)}
         </td>
         <td style={{ ...S.td, textAlign: 'right' }}>{fmtAmt(item.turnover)}</td>
         <td style={{ ...S.td, textAlign: 'right' }}>{fmtVolume(item.volume)}</td>
@@ -974,7 +988,7 @@ export default function ScreenerPage() {
             {/* 수급단위 */}
             <FilterCell label="수급단위">
               <div style={{ display: 'flex', gap: 3 }}>
-                {(['억원', '백만원'] as FlowUnit[]).map(u => (
+                {(['가격', '수량'] as FlowUnit[]).map(u => (
                   <button key={u} onClick={() => setFlowUnit(u)} style={{
                     padding: '3px 10px', fontSize: 11, fontWeight: 600, borderRadius: 3,
                     background: flowUnit === u ? '#1a2a40' : 'var(--bg-surface)',
