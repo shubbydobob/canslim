@@ -149,11 +149,11 @@ export default function PremiumPage() {
               프리미엄 업그레이드
             </div>
             <div style={{ fontSize: 14, color: '#6b7280', marginBottom: 20, lineHeight: 1.7 }}>
-              CAN SLIM 방법론을 최대한 활용하세요.<br />
+              NEXTPICK의 분석 도구를 최대한 활용하세요.<br />
               고급 분석 도구와 무제한 알림으로 투자 엣지를 확보하세요.
             </div>
             <a
-              href="mailto:contact@canslim.kr?subject=프리미엄 구독 문의"
+              href="mailto:contact@nextpick.kr?subject=프리미엄 구독 문의"
               style={{
                 display: 'inline-block',
                 padding: '12px 32px', background: 'var(--accent)', border: 'none',

@@ -52,7 +52,7 @@ export default function AuthPage() {
             <span style={{ width: 10, height: 10, background: 'var(--accent)', borderRadius: 2, display: 'inline-block' }} />
             NEXT<span style={{ color: 'var(--accent)' }}>PICK</span>
           </div>
-          <div style={{ fontSize: 12, color: 'var(--text-3)', marginTop: 6, letterSpacing: '0.04em' }}>CAN SLIM 기반 주도주 스코어</div>
+          <div style={{ fontSize: 12, color: 'var(--text-3)', marginTop: 6, letterSpacing: '0.04em' }}>주도주 스코어 스크리너</div>
         </div>
 
         {/* 탭 */}
