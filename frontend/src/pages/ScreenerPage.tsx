@@ -405,6 +405,10 @@ export default function ScreenerPage() {
         <Th label="시장" sortKey="mScore" align="center" style={{ width: 48 }} />
         <Th label="종가" sortKey="closePrice" style={{ width: 78 }} />
         <Th label="등락률" sortKey="changeRate" style={{ width: 64 }} />
+        <Th label="52주고점비" sortKey="weekHigh52" style={{ width: 72 }} />
+        <Th label="거래량" sortKey="volume" style={{ width: 68 }} />
+        <Th label="외인10일" sortKey="foreignNetBuy10d" style={{ width: 76 }} />
+        <Th label="기관10일" sortKey="instNetBuy10d" style={{ width: 76 }} />
         <Th label="시가총액" sortKey="marketCap" style={{ width: 78 }} />
         <Th label="베이스" align="center" style={{ width: 52 }} />
       </tr>
@@ -490,6 +494,20 @@ export default function ScreenerPage() {
         </td>
         <td style={{ ...S.td, textAlign: 'right', fontWeight: 600, color: changeColor(item.changeRate) }}>
           {fmtRate(item.changeRate)}
+        </td>
+        <td style={{ ...S.td, textAlign: 'right', color: item.weekHigh52 !== null && item.closePrice !== null && item.weekHigh52 > 0 && (item.closePrice / item.weekHigh52) >= 0.97 ? '#4ade80' : 'var(--text-3)' }}>
+          {fmtHigh52pct(item.closePrice, item.weekHigh52)}
+        </td>
+        <td style={{ ...S.td, textAlign: 'right', color: 'var(--text-3)' }}>
+          {fmtVolume(item.volume)}
+        </td>
+        <td style={{ ...S.td, textAlign: 'right', fontFamily: 'monospace', fontWeight: 600,
+          color: item.foreignNetBuy10d === null ? 'var(--text-4)' : item.foreignNetBuy10d > 0 ? '#22d3ee' : '#f87171' }}>
+          {item.foreignNetBuy10d === null ? '—' : (item.foreignNetBuy10d > 0 ? '+' : '') + Math.round(item.foreignNetBuy10d / 1e8)}
+        </td>
+        <td style={{ ...S.td, textAlign: 'right', fontFamily: 'monospace', fontWeight: 600,
+          color: item.instNetBuy10d === null ? 'var(--text-4)' : item.instNetBuy10d > 0 ? '#a78bfa' : '#f87171' }}>
+          {item.instNetBuy10d === null ? '—' : (item.instNetBuy10d > 0 ? '+' : '') + Math.round(item.instNetBuy10d / 1e8)}
         </td>
         <td style={{ ...S.td, textAlign: 'right', color: 'var(--text-3)' }}>
           {fmtMarketCap(item.marketCap)}
@@ -1107,7 +1125,7 @@ export default function ScreenerPage() {
           ) : (
             <table style={{
               width: '100%', borderCollapse: 'collapse', tableLayout: 'fixed',
-              minWidth: 900,
+              minWidth: 1200,
             }}>
               <thead>{renderHead()}</thead>
               <tbody>
@@ -1142,7 +1160,7 @@ export default function ScreenerPage() {
           zIndex: 5, background: 'var(--bg-base)', borderTop: '1px solid var(--bg-surface)',
         }}>
           <div style={{
-            minWidth: 900, height: 1,
+            minWidth: 1200, height: 1,
           }} />
         </div>
       </div>

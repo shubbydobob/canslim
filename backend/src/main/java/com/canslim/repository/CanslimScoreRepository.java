@@ -67,8 +67,12 @@ public interface CanslimScoreRepository extends JpaRepository<CanslimScore, Long
      *  scoreDate에 derived_metrics 데이터가 없으면 가장 최근 영업일 데이터로 폴백 */
     @Query(value = """
         SELECT COALESCE(
-            ROUND(COUNT(*) FILTER (WHERE dm.pct_from_52w_high > -15) * 100.0
-                  / NULLIF(COUNT(*), 0), 2),
+            LEAST(100, GREATEST(0,
+                ROUND((
+                    COUNT(*) FILTER (WHERE dm.pct_from_52w_high > -15) * 100.0
+                    / NULLIF(COUNT(*), 0) - 5
+                ) * 100.0 / 45, 2)
+            )),
             50.0)
         FROM derived_metrics dm
         JOIN instruments i ON dm.security_id = i.id
