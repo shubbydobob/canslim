@@ -91,7 +91,7 @@ export default function PriceChart({ securityId, height = 480 }: Props) {
     const candleData = filtered
       .filter(d => d.open != null && d.high != null && d.low != null && d.close != null)
       .map(d => ({
-        time: d.date as any,
+        time: d.date,
         open: Number(d.open),
         high: Number(d.high),
         low: Number(d.low),
@@ -112,7 +112,7 @@ export default function PriceChart({ securityId, height = 480 }: Props) {
     const volData = filtered
       .filter(d => d.volume != null && d.close != null && d.open != null)
       .map(d => ({
-        time: d.date as any,
+        time: d.date,
         value: Number(d.volume),
         color: Number(d.close) >= Number(d.open)
           ? 'rgba(63,185,80,0.3)'

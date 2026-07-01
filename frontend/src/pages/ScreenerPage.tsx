@@ -3,11 +3,14 @@ import { useNavigate } from 'react-router-dom'
 import { fetchScreener, fetchSectors } from '../api/client'
 import { isPremium } from '../api/auth'
 import MacroTicker from '../components/MacroTicker'
+import StockDetailPanel from '../components/StockDetailPanel'
+import GachaModal from '../components/GachaModal'
+import SectorMap from '../components/SectorMap'
 import type { ScreenerItem } from '../types'
 import { fmtPrice, fmtRate, fmtMarketCap, fmtAmt, fmtVolume, fmtHigh52pct } from '../utils/format'
 
 // ── types ──────────────────────────────────────────────────────
-type ViewTab = 'overview' | 'technical' | 'flow'
+type ViewTab = 'overview' | 'technical' | 'flow' | 'detail'
 type FlowUnit = '가격' | '수량'
 type SortDir = 'desc' | 'asc'
 type SortKey = keyof Pick<ScreenerItem,
@@ -214,14 +217,15 @@ export default function ScreenerPage() {
     const until = localStorage.getItem(GUIDE_KEY)
     return !until || Date.now() > parseInt(until)
   })
-  const [mainTab, setMainTab] = useState<'screener' | 'market'>(
-    () => (sessionStorage.getItem('screener_mainTab') as 'screener' | 'market') || 'screener'
+  const [mainTab, setMainTab] = useState<'screener' | 'market' | 'sector'>(
+    () => (sessionStorage.getItem('screener_mainTab') as 'screener' | 'market' | 'sector') || 'screener'
   )
+  const [selectedStockId, setSelectedStockId] = useState<number | null>(null)
+  const [showGacha, setShowGacha] = useState(false)
   const [visitCount, setVisitCount] = useState<number | null>(null)
   const [theme, setTheme] = useState<'dark' | 'light'>(() => {
     const saved = localStorage.getItem('canslim_theme') as 'dark' | 'light' | null
     if (saved) return saved
-    // 저장된 선호가 없으면 OS 설정을 따름 (라이트가 기본 다수)
     return window.matchMedia?.('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
   })
   const [histTab, setHistTab] = useState<'KOSPI' | 'KOSDAQ'>('KOSPI')
@@ -679,7 +683,8 @@ export default function ScreenerPage() {
           </div>
           <nav style={{ display: 'flex', gap: 0 }}>
             {([
-              { label: '스크리너', action: () => setMainTab('screener'), active: mainTab === 'screener' },
+              { label: '스크리너', action: () => { setMainTab('screener'); if (viewTab === 'detail') setViewTab('overview') }, active: mainTab === 'screener' },
+              { label: '섹터맵',   action: () => setMainTab('sector'),   active: mainTab === 'sector' },
               { label: '시장',     action: () => setMainTab('market'),   active: mainTab === 'market' },
               { label: '플래너',   action: () => navigate('/calc'),      active: false },
             ]).map(({ label, action, active }) => (
@@ -695,6 +700,20 @@ export default function ScreenerPage() {
           </nav>
         </div>
         <div className="nav-right" style={{ display: 'flex', alignItems: 'center', gap: 20 }}>
+          {/* 가챠 뽑기 버튼 */}
+          <button onClick={() => setShowGacha(true)} style={{
+            background: 'linear-gradient(135deg, #1f6feb, #7c3aed)', border: 'none',
+            borderRadius: 6, padding: '4px 14px', cursor: 'pointer',
+            color: '#fff', fontSize: 11, fontWeight: 700, letterSpacing: '0.03em',
+            display: 'flex', alignItems: 'center', gap: 5,
+            boxShadow: '0 2px 8px rgba(31,111,235,0.3)',
+            transition: 'transform 0.15s, box-shadow 0.15s',
+          }}
+          onMouseEnter={e => { e.currentTarget.style.transform = 'scale(1.05)'; e.currentTarget.style.boxShadow = '0 4px 16px rgba(31,111,235,0.5)' }}
+          onMouseLeave={e => { e.currentTarget.style.transform = 'scale(1)'; e.currentTarget.style.boxShadow = '0 2px 8px rgba(31,111,235,0.3)' }}
+          >
+            <span style={{ fontSize: 14 }}>PICK</span>
+          </button>
           {items[0] && (
             <div style={{ display: 'flex', gap: 20 }}>
               <Stat label="기준일" value={items[0].scoreDate} />
@@ -1067,7 +1086,7 @@ export default function ScreenerPage() {
               <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                 {risers.map(item => (
                   <div key={item.securityId}
-                    onClick={() => navigate(`/stock/${item.securityId}`)}
+                    onClick={() => { setSelectedStockId(item.securityId); setViewTab('detail') }}
                     style={{
                       display: 'flex', alignItems: 'center', gap: 5,
                       background: 'rgba(232,51,63,0.08)', border: '1px solid rgba(232,51,63,0.25)',
@@ -1098,8 +1117,12 @@ export default function ScreenerPage() {
             ['overview', '개요'],
             ['technical', '기술적'],
             ['flow', '수급'],
+            ...(selectedStockId ? [['detail', '종목 상세'] as [ViewTab, string]] : []),
           ] as [ViewTab, string][]).map(([key, label]) => (
-            <button key={key} onClick={() => setViewTab(key)} style={S.tab(viewTab === key)}>
+            <button key={key} onClick={() => setViewTab(key)} style={{
+              ...S.tab(viewTab === key),
+              ...(key === 'detail' ? { color: viewTab === 'detail' ? '#58a6ff' : '#58a6ff88', borderBottomColor: viewTab === 'detail' ? '#58a6ff' : 'transparent' } : {}),
+            }}>
               {label}
             </button>
           ))}
@@ -1162,8 +1185,17 @@ export default function ScreenerPage() {
         )
       })()}
 
+      {/* ── Detail panel (inline) ───────────────────────────── */}
+      {viewTab === 'detail' && selectedStockId && (
+        <StockDetailPanel
+          securityId={selectedStockId}
+          onSelectStock={(id) => setSelectedStockId(id)}
+          onBack={() => setViewTab('overview')}
+        />
+      )}
+
       {/* ── Table area ───────────────────────────────────────── */}
-      <div className="table-wrap" style={{ padding: '0 20px' }}>
+      {viewTab !== 'detail' && <><div className="table-wrap" style={{ padding: '0 20px' }}>
         <div ref={scrollRef} onScroll={onTableScroll} className="hide-scrollbar"
           style={{ overflowX: 'auto' }}>
           {loading ? (
@@ -1180,7 +1212,7 @@ export default function ScreenerPage() {
               <tbody>
                 {displayItems.map((item, idx) => (
                   <tr key={item.securityId}
-                    onClick={() => navigate(`/stock/${item.securityId}`)}
+                    onClick={() => { setSelectedStockId(item.securityId); setViewTab('detail') }}
                     onMouseEnter={() => setHoveredId(item.securityId)}
                     onMouseLeave={() => setHoveredId(null)}
                     style={{
@@ -1236,6 +1268,21 @@ export default function ScreenerPage() {
         </div>
       )}
       </>}
+      </>}
+
+      {/* ══ 섹터맵 탭 ══════════════════════════════════════════════ */}
+      {mainTab === 'sector' && (
+        <SectorMap onSectorClick={(s) => { setSector(s); setMainTab('screener'); setViewTab('overview'); setPage(0) }} />
+      )}
+
+      {/* ══ 가챠 모달 ══════════════════════════════════════════════ */}
+      {showGacha && (
+        <GachaModal
+          items={items}
+          onSelect={(id) => { setShowGacha(false); setSelectedStockId(id); setMainTab('screener'); setViewTab('detail') }}
+          onClose={() => setShowGacha(false)}
+        />
+      )}
     </div>
   )
 }
