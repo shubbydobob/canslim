@@ -7,7 +7,7 @@ import StockDetailPanel from '../components/StockDetailPanel'
 import GachaModal from '../components/GachaModal'
 import SectorMap from '../components/SectorMap'
 import type { ScreenerItem } from '../types'
-import { fmtPrice, fmtRate, fmtMarketCap, fmtAmt, fmtVolume, fmtHigh52pct } from '../utils/format'
+import { fmtPrice, fmtRate, fmtMarketCap, fmtVolume, fmtHigh52pct } from '../utils/format'
 
 // ── types ──────────────────────────────────────────────────────
 type ViewTab = 'table' | 'detail'
