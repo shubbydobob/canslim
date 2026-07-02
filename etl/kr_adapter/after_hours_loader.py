@@ -50,12 +50,15 @@ def _fetch_after_hours_price(ticker: str, cfg: dict, token: str) -> dict | None:
         if d.get("rt_cd") != "0":
             return None
 
-        out = d.get("output", {})
+        out = d.get("output", [])
         if not out:
             return None
 
-        price_str = out.get("ovtm_untp_prpr", "0")        # 시간외 단일가
-        change_str = out.get("ovtm_untp_prdy_ctrt", "0")  # 등락률
+        # output은 체결시간 내림차순 배열 — 첫 번째가 가장 최근 체결
+        latest = out[0] if isinstance(out, list) else out
+
+        price_str = latest.get("stck_prpr", "0")       # 체결가
+        change_str = latest.get("prdy_ctrt", "0")       # 전일대비 등락률(%)
 
         price = int(price_str) if price_str else 0
         change_pct = float(change_str) if change_str else 0.0
