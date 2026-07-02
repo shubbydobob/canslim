@@ -195,8 +195,9 @@ public class ScreenerController {
             case "weekHigh52"       -> ScreenerItemResponse::weekHigh52;
             case "volume"           -> ScreenerItemResponse::volume;
             case "turnover"         -> ScreenerItemResponse::turnover;
-            case "foreignNetBuy10d" -> ScreenerItemResponse::foreignNetBuy10d;
+            case "foreignNetBuy10d"  -> ScreenerItemResponse::foreignNetBuy10d;
             case "instNetBuy10d"    -> ScreenerItemResponse::instNetBuy10d;
+            case "programNetBuy10d" -> ScreenerItemResponse::programNetBuy10d;
             case "marketCap"        -> ScreenerItemResponse::marketCap;
             default                 -> ScreenerItemResponse::compositeScore;
         };
@@ -476,7 +477,7 @@ public class ScreenerController {
         if (ids.isEmpty()) return Map.of();
 
         Map<Long, BigDecimal[]> result = new HashMap<>();
-        for (Long id : ids) result.put(id, new BigDecimal[8]);
+        for (Long id : ids) result.put(id, new BigDecimal[11]);
 
         Long[] idArr = ids.toArray(new Long[0]);
 
@@ -531,7 +532,8 @@ public class ScreenerController {
 
         // 수급: derived_metrics (수급 데이터가 있는 가장 최근 날짜 사용)
         String flowSql = """
-            SELECT security_id, inst_net_buy_10d, foreign_net_buy_10d
+            SELECT security_id, inst_net_buy_10d, foreign_net_buy_10d, program_net_buy_10d,
+                   after_hours_close, after_hours_change_pct
             FROM derived_metrics
             WHERE security_id = ANY(?)
               AND as_of_date = (
@@ -552,6 +554,9 @@ public class ScreenerController {
                 BigDecimal[] row = result.get(sid);
                 row[1] = rs.getBigDecimal("inst_net_buy_10d");
                 row[2] = rs.getBigDecimal("foreign_net_buy_10d");
+                row[8] = rs.getBigDecimal("program_net_buy_10d");
+                row[9] = rs.getBigDecimal("after_hours_close");
+                row[10] = rs.getBigDecimal("after_hours_change_pct");
             });
         } catch (Exception e) {
             log.warn("derived_metrics 조회 실패: {}", e.getMessage());

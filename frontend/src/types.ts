@@ -21,6 +21,9 @@ export interface ScreenerItem {
   turnover: number | null
   instNetBuy10d: number | null
   foreignNetBuy10d: number | null
+  programNetBuy10d: number | null
+  afterHoursPrice: number | null
+  afterHoursChangeRate: number | null
   marketCap: number | null
   sector: string | null
   scoreDelta: number | null

@@ -191,16 +191,17 @@ def upsert_investor_flow(rows: list[dict]) -> int:
     sql = text("""
         INSERT INTO derived_metrics (
             security_id, as_of_date,
-            inst_net_buy_10d, foreign_net_buy_10d, inst_trend_flag,
+            inst_net_buy_10d, foreign_net_buy_10d, program_net_buy_10d, inst_trend_flag,
             created_at
         ) VALUES (
             :security_id, :as_of_date,
-            :inst_net_buy_10d, :foreign_net_buy_10d, :inst_trend_flag,
+            :inst_net_buy_10d, :foreign_net_buy_10d, :program_net_buy_10d, :inst_trend_flag,
             NOW()
         )
         ON CONFLICT (security_id, as_of_date) DO UPDATE SET
             inst_net_buy_10d    = EXCLUDED.inst_net_buy_10d,
             foreign_net_buy_10d = EXCLUDED.foreign_net_buy_10d,
+            program_net_buy_10d = EXCLUDED.program_net_buy_10d,
             inst_trend_flag     = EXCLUDED.inst_trend_flag
     """)
 

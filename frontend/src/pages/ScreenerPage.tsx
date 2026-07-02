@@ -8,7 +8,7 @@ import StockDetailPanel from '../components/StockDetailPanel'
 import GachaModal from '../components/GachaModal'
 import SectorMap from '../components/SectorMap'
 import type { ScreenerItem } from '../types'
-import { fmtPrice, fmtRate, fmtMarketCap, fmtVolume, fmtHigh52pct } from '../utils/format'
+import { fmtPrice, fmtRate, fmtMarketCap, fmtVolume, fmtHigh52pct, fmtAmt } from '../utils/format'
 
 // ── types ──────────────────────────────────────────────────────
 type ViewTab = 'table' | 'detail'
@@ -16,7 +16,7 @@ type SortDir = 'desc' | 'asc'
 type SortKey = keyof Pick<ScreenerItem,
   'compositeScore' | 'cScore' | 'aScore' | 'nScore' | 'sScore' | 'lScore' | 'iScore' | 'mScore' |
   'closePrice' | 'changeRate' | 'weekHigh52' | 'turnover' | 'volume' |
-  'foreignNetBuy10d' | 'instNetBuy10d' | 'marketPercentile' | 'marketCap'
+  'foreignNetBuy10d' | 'instNetBuy10d' | 'programNetBuy10d' | 'marketPercentile' | 'marketCap'
 >
 
 // ── color helpers ──────────────────────────────────────────────
@@ -426,10 +426,13 @@ export default function ScreenerPage() {
         <Th label="시장" sortKey="mScore" align="center" style={{ width: 46 }} tip="시장: 시장 전반 건전도 (전 종목 동일)" />
         <Th label="종가" sortKey="closePrice" style={{ width: 78 }} />
         <Th label="등락률" sortKey="changeRate" style={{ width: 64 }} tip="전일 종가 대비 당일 등락률" />
+        <Th label="시간외" align="center" style={{ width: 80 }} tip="시간외 단일가 체결가 / 종가 대비 등락률" />
         <Th label="고점비" sortKey="weekHigh52" style={{ width: 62 }} tip="52주 최고가 대비 현재가 괴리율" />
         <Th label="거래량" sortKey="volume" style={{ width: 68 }} />
+        <Th label="거래대금" sortKey="turnover" style={{ width: 72 }} tip="당일 누적 거래대금" />
         <Th label="외인" sortKey="foreignNetBuy10d" style={{ width: 62 }} tip="외국인 최근 10거래일 순매수 (억원)" />
         <Th label="기관" sortKey="instNetBuy10d" style={{ width: 62 }} tip="기관 최근 10거래일 순매수 (억원)" />
+        <Th label="프로그램" sortKey="programNetBuy10d" style={{ width: 68 }} tip="프로그램 최근 10거래일 순매수 (억원)" />
         <Th label="시총" sortKey="marketCap" style={{ width: 68 }} />
         <Th label="베이스" align="center" style={{ width: 56 }} tip="최근 1년간 52주 고점 근처(-15% 이내)에 머문 거래일 수. 길수록 가격 기반이 탄탄" />
       </tr>
@@ -529,11 +532,24 @@ export default function ScreenerPage() {
         <td style={{ ...S.td, textAlign: 'right', fontWeight: 600, color: changeColor(item.changeRate) }}>
           {fmtRate(item.changeRate)}
         </td>
+        <td style={{ ...S.td, textAlign: 'center', fontSize: 11 }}>
+          {item.afterHoursPrice ? (
+            <span>
+              <span style={{ color: 'var(--text-2)' }}>{fmtPrice(item.afterHoursPrice)}</span>
+              <span style={{ marginLeft: 3, fontWeight: 600, color: changeColor(item.afterHoursChangeRate) }}>
+                {fmtRate(item.afterHoursChangeRate)}
+              </span>
+            </span>
+          ) : <span style={{ color: 'var(--text-4)' }}>—</span>}
+        </td>
         <td style={{ ...S.td, textAlign: 'right', color: item.weekHigh52 !== null && item.closePrice !== null && item.weekHigh52 > 0 && (item.closePrice / item.weekHigh52) >= 0.97 ? '#4ade80' : 'var(--text-3)' }}>
           {fmtHigh52pct(item.closePrice, item.weekHigh52)}
         </td>
         <td style={{ ...S.td, textAlign: 'right', color: 'var(--text-3)' }}>
           {fmtVolume(item.volume)}
+        </td>
+        <td style={{ ...S.td, textAlign: 'right', color: 'var(--text-3)' }}>
+          {fmtAmt(item.turnover)}
         </td>
         <td style={{ ...S.td, textAlign: 'right', fontFamily: 'monospace', fontWeight: 600,
           color: item.foreignNetBuy10d === null ? 'var(--text-4)' : item.foreignNetBuy10d > 0 ? '#22d3ee' : '#f87171' }}>
@@ -542,6 +558,10 @@ export default function ScreenerPage() {
         <td style={{ ...S.td, textAlign: 'right', fontFamily: 'monospace', fontWeight: 600,
           color: item.instNetBuy10d === null ? 'var(--text-4)' : item.instNetBuy10d > 0 ? '#a78bfa' : '#f87171' }}>
           {item.instNetBuy10d === null ? '—' : (item.instNetBuy10d > 0 ? '+' : '') + Math.round(item.instNetBuy10d / 1e8)}
+        </td>
+        <td style={{ ...S.td, textAlign: 'right', fontFamily: 'monospace', fontWeight: 600,
+          color: item.programNetBuy10d === null ? 'var(--text-4)' : item.programNetBuy10d > 0 ? '#34d399' : '#f87171' }}>
+          {item.programNetBuy10d === null ? '—' : (item.programNetBuy10d > 0 ? '+' : '') + Math.round(item.programNetBuy10d / 1e8)}
         </td>
         <td style={{ ...S.td, textAlign: 'right', color: 'var(--text-3)' }}>
           {fmtMarketCap(item.marketCap)}

@@ -134,6 +134,9 @@ CREATE TABLE derived_metrics (
     industry_rs_rank        INTEGER,
     inst_net_buy_10d        NUMERIC(22,4),
     foreign_net_buy_10d     NUMERIC(22,4),
+    program_net_buy_10d     NUMERIC(22,4),
+    after_hours_close       NUMERIC(14,2),
+    after_hours_change_pct  NUMERIC(8,4),
     inst_trend_flag         SMALLINT,
 
     created_at              TIMESTAMPTZ NOT NULL DEFAULT NOW(),
