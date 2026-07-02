@@ -268,6 +268,10 @@ export default function ScreenerPage() {
     )).then(pairs => setMarketHistory(Object.fromEntries(pairs))).catch(() => {})
   }, [mainTab])
 
+  // 관심종목은 알림용으로만 참조 — fetch 의존성에서 제외해 ★ 토글 시 전체 재조회 방지
+  const watchlistRef = useRef(watchlist)
+  watchlistRef.current = watchlist
+
   useEffect(() => {
     setLoading(true)
     setError(null)
@@ -277,6 +281,7 @@ export default function ScreenerPage() {
         setItems(d.items)
         setTotal(d.total)
         // 관심종목 스코어 변동 알림
+        const watchlist = watchlistRef.current
         if (watchlist.size > 0 && 'Notification' in window && Notification.permission === 'granted') {
           const prevKey = 'watchlist_prev_scores'
           let prev: Record<number, number> = {}
@@ -310,7 +315,7 @@ export default function ScreenerPage() {
       })
       .catch(e => setError(e.message))
       .finally(() => setLoading(false))
-  }, [page, size, query, sector, capRange, sortKey, sortDir, minScore, watchlist])
+  }, [page, size, query, sector, capRange, sortKey, sortDir, minScore])
 
   const FREE_WATCHLIST_LIMIT = 5
 
@@ -1133,9 +1138,9 @@ export default function ScreenerPage() {
         <div ref={scrollRef} onScroll={onTableScroll} className="hide-scrollbar"
           style={{ overflowX: 'auto' }}>
           {loading ? (
-            <div style={{ textAlign: 'center', padding: '80px 0', color: 'var(--text-4)', fontSize: 14 }}>
-              <span style={{ display: 'inline-block', animation: 'spin 1s linear infinite' }}>⟳</span>
-              {' '}데이터 로딩 중...
+            <div className="loading-box">
+              <span className="spinner" />
+              종목 데이터 불러오는 중…
             </div>
           ) : (
             <table style={{

@@ -135,9 +135,10 @@ export default function PriceChart({ securityId, height = 480 }: Props) {
   }, [allData, range, height])
 
   if (loading) return (
-    <div style={{ height, display: 'flex', alignItems: 'center', justifyContent: 'center',
-      background: 'var(--bg-surface)', borderRadius: 10, border: '1px solid var(--border)', color: 'var(--text-3)', fontSize: 14 }}>
-      차트 로딩 중...
+    <div style={{ height, display: 'flex', flexDirection: 'column', gap: 10, alignItems: 'center', justifyContent: 'center',
+      background: 'var(--bg-surface)', borderRadius: 10, border: '1px solid var(--border)', color: 'var(--text-3)', fontSize: 13 }}>
+      <span className="spinner" />
+      차트 불러오는 중…
     </div>
   )
 

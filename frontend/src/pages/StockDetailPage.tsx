@@ -182,8 +182,9 @@ export default function StockDetailPage() {
   }, [id])
 
   if (loading) return (
-    <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', color: '#4a5568' }}>
-      로딩 중...
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 12, justifyContent: 'center', alignItems: 'center', height: '100vh', background: 'var(--bg-base)', color: 'var(--text-3)', fontSize: 13 }}>
+      <span className="spinner" />
+      종목 정보 불러오는 중…
     </div>
   )
   if (error || !stock) return (
