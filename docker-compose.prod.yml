@@ -23,6 +23,11 @@ services:
     environment:
       DB_PASSWORD: "${DB_PASSWORD}"
       SPRING_DATASOURCE_URL: "jdbc:postgresql://postgres:5432/canslim"
+      # KIS 실시간 시세용 — 마운트한 kis.yaml 경로 (또는 KIS_APP_KEY/KIS_APP_SECRET 직접 주입)
+      KIS_CONFIG_PATH: "/app/etl/config/kis.yaml"
+    volumes:
+      # 호스트의 kis.yaml을 컨테이너에 노출 (git 추적 파일 → pull 후 존재)
+      - ./etl/config:/app/etl/config:ro
     ports:
       - "8080:8080"
     depends_on:

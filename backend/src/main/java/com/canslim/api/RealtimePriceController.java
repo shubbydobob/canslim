@@ -237,11 +237,25 @@ public class RealtimePriceController {
     @SuppressWarnings("unchecked")
     private synchronized Map<String, Object> loadKisConfig() throws Exception {
         if (kisConfig != null) return kisConfig;
-        Path yamlPath = Paths.get("").toAbsolutePath()
-                .getParent().resolve("etl/config/kis.yaml");
+
+        // 1순위: 환경변수 직접 주입 (KIS_APP_KEY / KIS_APP_SECRET) — 컨테이너에 파일 불필요
+        String envKey = System.getenv("KIS_APP_KEY");
+        String envSecret = System.getenv("KIS_APP_SECRET");
+        if (envKey != null && !envKey.isBlank() && envSecret != null && !envSecret.isBlank()) {
+            kisConfig = Map.of("app_key", envKey, "app_secret", envSecret);
+            log.info("KIS config: 환경변수에서 로드");
+            return kisConfig;
+        }
+
+        // 2순위: KIS_CONFIG_PATH 파일 (Docker 볼륨 마운트) → 3순위: 로컬 개발 상대경로
+        String envPath = System.getenv("KIS_CONFIG_PATH");
+        Path yamlPath = (envPath != null && !envPath.isBlank())
+                ? Paths.get(envPath)
+                : Paths.get("").toAbsolutePath().getParent().resolve("etl/config/kis.yaml");
         try (FileInputStream fis = new FileInputStream(yamlPath.toFile())) {
             kisConfig = new Yaml().load(fis);
         }
+        log.info("KIS config: 파일에서 로드 ({})", yamlPath);
         return kisConfig;
     }
 
