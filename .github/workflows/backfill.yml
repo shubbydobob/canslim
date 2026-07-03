@@ -34,6 +34,10 @@ jobs:
             git checkout master
             git pull origin master
 
+            # 서버 venv 의존성 동기화 (누락 패키지 자동 설치)
+            echo "----- 의존성 설치/업데이트 -----"
+            .venv/bin/pip install -q -r etl/requirements.txt
+
             FLAG=""
             if [ "${{ inputs.mode }}" = "rebuild" ]; then FLAG="--rebuild"; fi
 
