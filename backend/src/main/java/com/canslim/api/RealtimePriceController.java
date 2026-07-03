@@ -22,7 +22,7 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * 장중 실시간 시세 (KIS 주식현재가시세 FHKST01010400).
+ * 장중 실시간 시세 (KIS 주식현재가시세 FHKST01010100).
  *
  *   GET /api/realtime/price?ticker=005930
  *       → 단일 종목 { ticker, name, price, change, changeRate, volume, turnover }
@@ -138,7 +138,7 @@ public class RealtimePriceController {
             headers.set("authorization", "Bearer " + token);
             headers.set("appkey",   (String) cfg.get("app_key"));
             headers.set("appsecret", (String) cfg.get("app_secret"));
-            headers.set("tr_id",    "FHKST01010400");
+            headers.set("tr_id",    "FHKST01010100");
             headers.set("custtype", "P");
             String url = KIS_BASE + PRICE_PATH + "?FID_COND_MRKT_DIV_CODE=J&FID_INPUT_ISCD=" + ticker;
 
@@ -181,7 +181,7 @@ public class RealtimePriceController {
         headers.set("authorization", "Bearer " + token);
         headers.set("appkey",   (String) cfg.get("app_key"));
         headers.set("appsecret", (String) cfg.get("app_secret"));
-        headers.set("tr_id",    "FHKST01010400");
+        headers.set("tr_id",    "FHKST01010100");
         headers.set("custtype", "P");
 
         String url = KIS_BASE + PRICE_PATH
