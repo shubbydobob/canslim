@@ -34,21 +34,19 @@ jobs:
             echo "===== 최신 채점일 점수 건강도 (값이 진짜인지) ====="
             $PSQL -c "SELECT count(*) total, round(avg(composite_score)::numeric,1) avg_comp, min(composite_score) mn, max(composite_score) mx, count(DISTINCT composite_score) distinct_comp, count(*) FILTER (WHERE c_score IS NULL) c_null, count(*) FILTER (WHERE a_score IS NULL) a_null, count(*) FILTER (WHERE l_score IS NULL) l_null, count(*) FILTER (WHERE i_score IS NULL) i_null FROM canslim_scores WHERE score_date=(SELECT max(score_date) FROM canslim_scores);" 2>&1 || echo "(조회 실패)"
 
-            echo "===== derived_metrics 컬럼 목록 ====="
-            $PSQL -c "SELECT string_agg(column_name, ', ') FROM information_schema.columns WHERE table_name='derived_metrics';" 2>&1 || echo "(실패)"
+            echo "===== derived_metrics 최신 as_of_date + 파생 null 분포 ====="
+            $PSQL -c "SELECT max(as_of_date) FROM derived_metrics;" 2>&1 || echo "(실패)"
+            $PSQL -c "SELECT count(*) total, count(*) FILTER (WHERE rs_percentile IS NOT NULL) rs_ok, count(*) FILTER (WHERE eps_qoq_yoy_pct IS NOT NULL) c_ok, count(*) FILTER (WHERE eps_3yr_cagr IS NOT NULL) a_ok, count(*) FILTER (WHERE inst_net_buy_10d IS NOT NULL) i_ok FROM derived_metrics WHERE as_of_date=(SELECT max(as_of_date) FROM derived_metrics);" 2>&1 || echo "(실패)"
 
-            echo "===== derived_metrics 최신일 + 최신일 row 수 ====="
-            $PSQL -c "SELECT max(trade_date) FROM derived_metrics;" 2>&1 || echo "(실패)"
-            $PSQL -c "SELECT count(*) FROM derived_metrics WHERE trade_date=(SELECT max(trade_date) FROM derived_metrics);" 2>&1 || echo "(실패)"
+            echo "===== DART 재수집 진행률 (오늘 target) ====="
+            $PSQL -c "SELECT status, count(*) FROM ingestion_meta WHERE source_name LIKE 'DART_FIN_KR_%' AND target_date=CURRENT_DATE GROUP BY status;" 2>&1 || echo "(실패)"
+            $PSQL -c "SELECT count(*) FROM ingestion_meta WHERE source_name LIKE 'DART_FIN_KR_%' AND status='SUCCESS';" 2>&1 || echo "(실패)"
 
-            echo "===== derived_metrics 최신일 샘플 3행 (전체 컬럼) ====="
-            docker exec canslim-postgres psql -U canslim_user -d canslim -x -c "SELECT * FROM derived_metrics WHERE trade_date=(SELECT max(trade_date) FROM derived_metrics) LIMIT 3;" 2>&1 || echo "(실패)"
+            echo "===== 서버에서 도는 ETL 프로세스 ====="
+            ps -eo pid,etime,cmd | grep -E "run_daily|run_backfill|dart_loader" | grep -v grep || echo "(파이썬 ETL 프로세스 없음)"
 
-            echo "===== ingestion_meta 컬럼 ====="
-            $PSQL -c "SELECT string_agg(column_name, ', ') FROM information_schema.columns WHERE table_name='ingestion_meta';" 2>&1 || echo "(실패)"
+            echo "===== 백필 로그 마지막 8줄 ====="
+            tail -n 8 /home/ubuntu/canslim/backfill_10yr.log 2>&1 || echo "(로그 없음)"
 
-            echo "===== ingestion_meta 최근 25건 ====="
-            docker exec canslim-postgres psql -U canslim_user -d canslim -x -c "SELECT * FROM ingestion_meta ORDER BY id DESC LIMIT 25;" 2>&1 | head -120 || echo "(실패)"
-
-            echo "===== 백필 로그 마지막 15줄 ====="
-            tail -n 15 /home/ubuntu/canslim/backfill_10yr.log 2>&1 || echo "(로그 없음)"
+            echo "===== etl_daily 로그 마지막 15줄 ====="
+            tail -n 15 /home/ubuntu/canslim/etl_daily.log 2>&1 || echo "(로그 없음)"
