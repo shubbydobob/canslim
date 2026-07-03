@@ -61,6 +61,12 @@ body {
 /* 숫자/티커 모노스페이스 유틸 */
 .mono { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
 
+/* 시세 변동 플래시 (상승=빨강 / 하락=파랑, 한국식) */
+@keyframes flash-up   { 0% { background: rgba(232,51,63,0.38); } 100% { background: transparent; } }
+@keyframes flash-down { 0% { background: rgba(47,115,224,0.38); } 100% { background: transparent; } }
+.flash-up   { animation: flash-up 0.9s ease-out; }
+.flash-down { animation: flash-down 0.9s ease-out; }
+
 /* 로딩 스피너 */
 @keyframes spin { to { transform: rotate(360deg); } }
 .spinner {

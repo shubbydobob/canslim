@@ -46,7 +46,7 @@ public class RealtimePriceController {
     private static final String INVESTOR_PATH = "/uapi/domestic-stock/v1/quotations/inquire-investor";
     private static final ZoneId KST = ZoneId.of("Asia/Seoul");
     private static final int MAX_BATCH = 60;         // 배치 상한 (쿼터 보호)
-    private static final long CACHE_TTL_MS = 15_000; // 15초 캐시
+    private static final long CACHE_TTL_MS = 10_000; // 10초 캐시 (15초 폴링이 항상 fresh 받도록)
 
     private final RestTemplate rest = new RestTemplate();
 

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { fmtPrice, fmtRate, fmtMarketCap, fmtAmt, fmtFinAmt } from '../utils/format'
 import { isPremium, isLoggedIn } from '../api/auth'
 import {
@@ -146,6 +146,8 @@ export default function StockDetailPanel({ securityId, onSelectStock, onBack }: 
   const [watched, setWatched] = useState(false)
   const [live, setLive] = useState<LiveQuote | null>(null)
   const [investor, setInvestor] = useState<InvestorFlow | null>(null)
+  const [priceFlash, setPriceFlash] = useState<'up' | 'down' | null>(null)
+  const prevPxRef = useRef<number | null>(null)
   const userIsPremium = isPremium()
   const userIsLoggedIn = isLoggedIn()
 
@@ -182,11 +184,22 @@ export default function StockDetailPanel({ securityId, onSelectStock, onBack }: 
     if (!ticker) return
     let cancelled = false
     const load = () => {
-      fetchLiveQuotes([ticker]).then(m => { if (!cancelled) setLive(m[ticker] ?? null) })
+      fetchLiveQuotes([ticker]).then(m => {
+        if (cancelled) return
+        const q = m[ticker] ?? null
+        const np = q?.price
+        const pp = prevPxRef.current
+        if (np != null && pp != null && np !== pp) {
+          setPriceFlash(np > pp ? 'up' : 'down')
+          setTimeout(() => { if (!cancelled) setPriceFlash(null) }, 900)
+        }
+        if (np != null) prevPxRef.current = np
+        setLive(q)
+      })
       fetchInvestorFlow(ticker).then(inv => { if (!cancelled) setInvestor(inv) })
     }
     load()
-    const pid = setInterval(load, 60_000)
+    const pid = setInterval(load, 15_000)   // 15초 폴링
     return () => { cancelled = true; clearInterval(pid) }
   }, [stock?.ticker])
 
@@ -377,11 +390,15 @@ export default function StockDetailPanel({ securityId, onSelectStock, onBack }: 
           { label: '거래대금', value: fmtAmt(liveTurn) },
           { label: '거래량', value: fmtVol(liveVol) },
           ]
-        })().map(({ label, value, color, mono }, i) => (
-          <div key={label} style={{
-            flex: 1, padding: '12px 14px',
-            borderRight: i < 5 ? '1px solid var(--border)' : 'none',
-          }}>
+        })().map(({ label, value, color, mono }, i) => {
+          const doFlash = priceFlash && (label === '현재가' || label === '등락률')
+          return (
+          <div key={label}
+            className={doFlash ? `flash-${priceFlash}` : undefined}
+            style={{
+              flex: 1, padding: '12px 14px',
+              borderRight: i < 5 ? '1px solid var(--border)' : 'none',
+            }}>
             <div style={{ fontSize: 9, color: 'var(--text-4)', fontWeight: 600, marginBottom: 3 }}>{label}</div>
             <div style={{
               fontSize: 13, fontWeight: 700,
@@ -389,7 +406,8 @@ export default function StockDetailPanel({ securityId, onSelectStock, onBack }: 
               fontFamily: mono ? 'monospace' : 'inherit',
             }}>{value}</div>
           </div>
-        ))}
+          )
+        })}
       </div>
 
       {/* ── 당일 수급 (실시간, KIS) ── */}

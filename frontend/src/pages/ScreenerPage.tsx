@@ -181,6 +181,8 @@ function GuidePopup({ onClose }: { onClose: (hide24h: boolean) => void }) {
 export default function ScreenerPage() {
   const [items, setItems] = useState<ScreenerItem[]>([])
   const [liveMap, setLiveMap] = useState<Record<string, LiveQuote>>({})
+  const [flashMap, setFlashMap] = useState<Record<string, 'up' | 'down'>>({})
+  const prevPriceRef = useRef<Record<string, number>>({})
   const [total, setTotal] = useState(0)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -335,9 +337,24 @@ export default function ScreenerPage() {
     if (!items.length) { setLiveMap({}); return }
     const tickers = items.map(i => i.ticker)
     let cancelled = false
-    const load = () => fetchLiveQuotes(tickers).then(m => { if (!cancelled) setLiveMap(m) })
+    const load = () => fetchLiveQuotes(tickers).then(m => {
+      if (cancelled) return
+      // 가격 변동 감지 → 플래시 (상승=up / 하락=down)
+      const flashes: Record<string, 'up' | 'down'> = {}
+      for (const t in m) {
+        const np = m[t]?.price
+        const pp = prevPriceRef.current[t]
+        if (np != null && pp != null && np !== pp) flashes[t] = np > pp ? 'up' : 'down'
+        if (np != null) prevPriceRef.current[t] = np
+      }
+      setLiveMap(m)
+      if (Object.keys(flashes).length) {
+        setFlashMap(flashes)
+        setTimeout(() => { if (!cancelled) setFlashMap({}) }, 900)
+      }
+    })
     load()
-    const id = setInterval(load, 60_000)
+    const id = setInterval(load, 15_000)   // 15초 폴링
     return () => { cancelled = true; clearInterval(id) }
   }, [items])
 
@@ -536,10 +553,12 @@ export default function ScreenerPage() {
         <ScoreCell value={item.lScore} />
         <ScoreCell value={item.iScore} />
         <ScoreCell value={item.mScore} />
-        <td style={{ ...S.td, textAlign: 'right', fontFamily: 'monospace', color: 'var(--text-1)' }}>
+        <td className={flashMap[item.ticker] ? `flash-${flashMap[item.ticker]}` : undefined}
+          style={{ ...S.td, textAlign: 'right', fontFamily: 'monospace', color: 'var(--text-1)' }}>
           {fmtPrice(item.closePrice)}
         </td>
-        <td style={{ ...S.td, textAlign: 'right', fontWeight: 600, color: changeColor(item.changeRate) }}>
+        <td className={flashMap[item.ticker] ? `flash-${flashMap[item.ticker]}` : undefined}
+          style={{ ...S.td, textAlign: 'right', fontWeight: 600, color: changeColor(item.changeRate) }}>
           {fmtRate(item.changeRate)}
         </td>
         <td style={{ ...S.td, textAlign: 'center', fontSize: 11 }}>
