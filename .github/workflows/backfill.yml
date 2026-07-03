@@ -1,0 +1,50 @@
+name: Backfill (manual)
+
+# 수동 트리거 전용 — 운영 EC2에서 10년치 백필을 1회 실행.
+# 평소 매일 갱신은 서버 크론(run_daily)이 담당하므로 이 워크플로우는 복구/초기적재용.
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: "safe = 덮어쓰기만(기존 데이터 유지), rebuild = TRUNCATE 후 전체 재구축(파괴적)"
+        type: choice
+        options: [safe, rebuild]
+        default: safe
+      score_date:
+        description: "채점 기준일 YYYY-MM-DD (비우면 오늘). 최신 거래일 권장."
+        type: string
+        default: ""
+
+jobs:
+  backfill:
+    name: Run 10yr backfill on EC2
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger backfill via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ubuntu
+          key: ${{ secrets.EC2_SSH_KEY }}
+          command_timeout: 10m
+          script: |
+            set -e
+            cd /home/ubuntu/canslim
+            git fetch origin master
+            git checkout master
+            git pull origin master
+
+            FLAG=""
+            if [ "${{ inputs.mode }}" = "rebuild" ]; then FLAG="--rebuild"; fi
+
+            # 백필은 수 시간짜리 → nohup 백그라운드 실행 후 SSH 세션은 즉시 종료.
+            # 진행 상황은 서버의 backfill_10yr.log 에 기록됨.
+            export BACKFILL_SCORE_DATE="${{ inputs.score_date }}"
+            nohup .venv/bin/python -m etl.kr_adapter.run_backfill_10yr $FLAG \
+              > backfill_10yr.log 2>&1 &
+            disown
+
+            sleep 5
+            echo "===== 백필 시작됨 (mode=${{ inputs.mode }}, score_date='${{ inputs.score_date }}') ====="
+            echo "----- backfill_10yr.log (첫 20줄) -----"
+            head -n 20 backfill_10yr.log || true

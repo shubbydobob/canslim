@@ -23,7 +23,7 @@ import sys
 import logging
 import time
 import requests
-from datetime import date
+from datetime import date, datetime
 
 os.environ.setdefault("PYTHONUTF8", "1")
 
@@ -37,7 +37,10 @@ logging.basicConfig(
 )
 log = logging.getLogger(__name__)
 
-SCORE_DATE    = date(2026, 6, 19)   # price_daily 최신 거래일
+# 채점/가격 백필 최신일. 기본은 오늘(최신 거래일까지 pykrx가 반환).
+# 필요 시 BACKFILL_SCORE_DATE=YYYY-MM-DD 로 명시적 지정.
+_env_score_date = os.environ.get("BACKFILL_SCORE_DATE")
+SCORE_DATE    = datetime.strptime(_env_score_date, "%Y-%m-%d").date() if _env_score_date else date.today()
 PRICE_START   = date(2016, 1, 4)
 ADMIN_API     = "http://localhost:8080/api/admin/scoring/run"
 SHUTDOWN_SEC  = 120                 # 채점 완료 후 종료 대기 (초)
