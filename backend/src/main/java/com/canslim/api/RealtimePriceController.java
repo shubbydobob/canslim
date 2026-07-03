@@ -16,6 +16,7 @@ import java.time.LocalTime;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -95,6 +96,48 @@ public class RealtimePriceController {
             }
         }
         return ResponseEntity.ok(result);
+    }
+
+    /**
+     * GET /api/realtime/debug?ticker=005930
+     * 실시간 시세가 왜 안 나오는지 단계별 진단 (키 값은 노출 안 함).
+     * 설정 로드 → 토큰 발급 → 시세 1콜 순서로 어디서 막히는지 표시.
+     */
+    @GetMapping("/debug")
+    public ResponseEntity<Map<String, Object>> debug(
+            @RequestParam(value = "ticker", defaultValue = "005930") String ticker) {
+        Map<String, Object> r = new LinkedHashMap<>();
+        r.put("kstTime", ZonedDateTime.now(KST).toString());
+        r.put("marketOpen", isKrMarketOpen());
+
+        Map<String, Object> cfg;
+        try {
+            cfg = loadKisConfig();
+            r.put("configLoaded", true);
+            r.put("hasAppKey", cfg.get("app_key") != null && !String.valueOf(cfg.get("app_key")).isBlank());
+            r.put("hasAppSecret", cfg.get("app_secret") != null && !String.valueOf(cfg.get("app_secret")).isBlank());
+        } catch (Exception e) {
+            r.put("configLoaded", false);
+            r.put("configError", String.valueOf(e));
+            return ResponseEntity.ok(r);
+        }
+
+        String token;
+        try {
+            token = getToken(cfg);
+            r.put("tokenOk", token != null && !token.isBlank());
+        } catch (Exception e) {
+            r.put("tokenOk", false);
+            r.put("tokenError", String.valueOf(e));
+            return ResponseEntity.ok(r);
+        }
+
+        try {
+            r.put("quote", fetchQuote(ticker, cfg, token));
+        } catch (Exception e) {
+            r.put("quoteError", String.valueOf(e));
+        }
+        return ResponseEntity.ok(r);
     }
 
     /** 캐시 우선 조회 → 미스 시 KIS 호출. */
