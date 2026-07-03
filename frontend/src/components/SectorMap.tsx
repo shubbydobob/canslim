@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react'
-import { fetchScreener } from '../api/client'
-import type { ScreenerItem } from '../types'
+import { fetchSectorSummary } from '../api/client'
 
 interface SectorStat {
   sector: string
@@ -23,34 +22,19 @@ export default function SectorMap({ onSectorClick }: Props) {
 
   useEffect(() => {
     setLoading(true)
-    // Fetch all stocks to aggregate by sector
-    fetchScreener('KR', 0, 2600, '', '', undefined, undefined, 'compositeScore', 'desc')
-      .then(data => {
-        const map = new Map<string, ScreenerItem[]>()
-        data.items.forEach(item => {
-          const s = item.sector ?? '기타'
-          if (!map.has(s)) map.set(s, [])
-          map.get(s)!.push(item)
-        })
-
-        const stats: SectorStat[] = []
-        map.forEach((items, sector) => {
-          const avgScore = items.reduce((s, i) => s + i.compositeScore, 0) / items.length
-          const withChange = items.filter(i => i.changeRate != null)
-          const avgChange = withChange.length > 0
-            ? withChange.reduce((s, i) => s + (i.changeRate ?? 0), 0) / withChange.length
-            : 0
-          const totalCap = items.reduce((s, i) => s + (i.marketCap ?? 0), 0)
-          const top = items.reduce((best, i) => i.compositeScore > best.compositeScore ? i : best, items[0])
-          stats.push({
-            sector, count: items.length, avgScore, avgChange, totalCap,
-            topStock: top.name, topScore: top.compositeScore,
-          })
-        })
-
-        // Sort by total market cap desc
-        stats.sort((a, b) => b.totalCap - a.totalCap)
-        setSectors(stats)
+    // 백엔드 집계 엔드포인트(GROUP BY + 캐시) — 2600종목 전송 없이 섹터 요약만
+    fetchSectorSummary('KR')
+      .then(rows => {
+        const stats: SectorStat[] = rows.map(r => ({
+          sector: r.sector ?? '기타',
+          count: r.count ?? 0,
+          avgScore: Number(r.avgScore ?? 0),
+          avgChange: Number(r.avgChange ?? 0),
+          totalCap: Number(r.totalCap ?? 0),
+          topStock: r.topName ?? '',
+          topScore: Number(r.topScore ?? 0),
+        }))
+        setSectors(stats)   // 백엔드가 이미 시총 desc 정렬
       })
       .catch(() => {})
       .finally(() => setLoading(false))

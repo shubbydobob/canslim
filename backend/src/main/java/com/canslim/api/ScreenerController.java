@@ -53,6 +53,47 @@ public class ScreenerController {
             "closePrice", "changeRate", "weekHigh52", "volume",
             "turnover", "foreignNetBuy10d", "instNetBuy10d", "marketCap");
 
+    // 섹터 집계 캐시 (일 1회 배치 데이터 → 2분 TTL로 충분). key=market → {data, expiryMs}
+    private final java.util.Map<String, Object[]> sectorCache = new java.util.concurrent.ConcurrentHashMap<>();
+    private static final long SECTOR_CACHE_TTL_MS = 120_000;
+
+    /** 섹터별 집계 — 한 방 GROUP BY. 등락률은 직전 거래일이 7일 이내일 때만(수정주가 왜곡 가드). */
+    private static final String SECTOR_SUMMARY_SQL = """
+        WITH latest AS (
+            SELECT DISTINCT ON (p.security_id) p.security_id, p.close_adj, p.trade_date
+            FROM price_daily p
+            WHERE p.trade_date <= ?
+            ORDER BY p.security_id, p.trade_date DESC
+        ),
+        enriched AS (
+            SELECT i.sector,
+                   cs.composite_score AS score,
+                   i.name,
+                   l.close_adj * i.total_shares AS market_cap,
+                   CASE WHEN prev.close_adj > 0 AND (l.trade_date - prev.trade_date) <= 7
+                        THEN (l.close_adj - prev.close_adj) / prev.close_adj * 100 END AS change_rate
+            FROM canslim_scores cs
+            JOIN instruments i ON i.id = cs.security_id AND i.sector IS NOT NULL
+            JOIN latest l ON l.security_id = cs.security_id
+            LEFT JOIN LATERAL (
+                SELECT close_adj, trade_date FROM price_daily p2
+                WHERE p2.security_id = cs.security_id AND p2.trade_date < l.trade_date
+                ORDER BY p2.trade_date DESC LIMIT 1
+            ) prev ON true
+            WHERE cs.score_date = ? AND cs.market = ?
+        )
+        SELECT sector,
+               COUNT(*) AS cnt,
+               ROUND(AVG(score)::numeric, 1)        AS avg_score,
+               ROUND(AVG(change_rate)::numeric, 2)  AS avg_change,
+               SUM(market_cap)                       AS total_cap,
+               (array_agg(name ORDER BY score DESC NULLS LAST))[1] AS top_name,
+               ROUND(MAX(score)::numeric, 1)         AS top_score
+        FROM enriched
+        GROUP BY sector
+        ORDER BY total_cap DESC NULLS LAST
+        """;
+
     @GetMapping
     public ResponseEntity<ScreenerPageResponse> screen(
             @RequestParam("market") String market,
@@ -212,6 +253,46 @@ public class ScreenerController {
                 "SELECT DISTINCT sector FROM instruments WHERE sector IS NOT NULL ORDER BY sector",
                 String.class);
         return ResponseEntity.ok(sectors);
+    }
+
+    /**
+     * GET /api/screener/sector-summary?market=KR
+     * 섹터별 종목수·평균점수·평균등락률·시총합·대장주 — GROUP BY 한 방 + 2분 캐시.
+     * (기존: 프론트가 2600종목 전부 받아 브라우저에서 집계 → 무거움)
+     */
+    @GetMapping("/sector-summary")
+    @SuppressWarnings("unchecked")
+    public ResponseEntity<List<Map<String, Object>>> sectorSummary(
+            @RequestParam(name = "market", defaultValue = "KR") String market) {
+        long now = System.currentTimeMillis();
+        Object[] cached = sectorCache.get(market);
+        if (cached != null && (long) cached[1] > now)
+            return ResponseEntity.ok((List<Map<String, Object>>) cached[0]);
+
+        LocalDate scoreDate = resolveDate(market, null);
+        if (scoreDate == null) return ResponseEntity.ok(List.of());
+
+        java.sql.Date d = java.sql.Date.valueOf(scoreDate);
+        List<Map<String, Object>> result = jdbc.query(con -> {
+            PreparedStatement ps = con.prepareStatement(SECTOR_SUMMARY_SQL);
+            ps.setDate(1, d);        // latest: trade_date <= scoreDate
+            ps.setDate(2, d);        // cs.score_date
+            ps.setString(3, market); // cs.market
+            return ps;
+        }, (rs, i) -> {
+            Map<String, Object> m = new java.util.LinkedHashMap<>();
+            m.put("sector",    rs.getString("sector"));
+            m.put("count",     rs.getInt("cnt"));
+            m.put("avgScore",  rs.getBigDecimal("avg_score"));
+            m.put("avgChange", rs.getBigDecimal("avg_change"));
+            m.put("totalCap",  rs.getBigDecimal("total_cap"));
+            m.put("topName",   rs.getString("top_name"));
+            m.put("topScore",  rs.getBigDecimal("top_score"));
+            return m;
+        });
+
+        sectorCache.put(market, new Object[]{result, now + SECTOR_CACHE_TTL_MS});
+        return ResponseEntity.ok(result);
     }
 
     @GetMapping("/{securityId}")

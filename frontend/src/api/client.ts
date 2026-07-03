@@ -32,6 +32,25 @@ export async function fetchSectors(): Promise<string[]> {
   return res.json()
 }
 
+export interface SectorSummary {
+  sector: string
+  count: number
+  avgScore: number | null
+  avgChange: number | null
+  totalCap: number | null
+  topName: string | null
+  topScore: number | null
+}
+
+/** 섹터별 집계 (백엔드 GROUP BY + 캐시). SectorMap 용. */
+export async function fetchSectorSummary(market = 'KR'): Promise<SectorSummary[]> {
+  try {
+    const res = await fetch(`${BASE}/screener/sector-summary?market=${market}`)
+    if (!res.ok) return []
+    return res.json()
+  } catch { return [] }
+}
+
 export async function fetchRealtimePrice(ticker: string): Promise<{ price: number; change: number; changeRate: number; volume?: number; turnover?: number } | null> {
   try {
     const res = await fetch(`${BASE}/realtime/price?ticker=${encodeURIComponent(ticker)}`)
