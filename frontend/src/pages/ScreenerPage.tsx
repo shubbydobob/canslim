@@ -185,6 +185,8 @@ export default function ScreenerPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [query, setQuery] = useState('')
+  const [debouncedQuery, setDebouncedQuery] = useState('')
+  const reqSeqRef = useRef(0)   // 검색 응답 레이스 가드
   const [page, setPage] = useState(0)
   const [size, setSize] = useState(30)
   const [hoveredId, setHoveredId] = useState<number | null>(null)
@@ -274,12 +276,20 @@ export default function ScreenerPage() {
   const watchlistRef = useRef(watchlist)
   watchlistRef.current = watchlist
 
+  // 검색어 디바운스 — 매 키스트로크마다 전체조회하지 않도록 300ms 지연
+  useEffect(() => {
+    const t = setTimeout(() => { setDebouncedQuery(query); setPage(0) }, 300)
+    return () => clearTimeout(t)
+  }, [query])
+
   useEffect(() => {
     setLoading(true)
     setError(null)
     const { minCap, maxCap } = CAP_PARAMS[capRange]
-    fetchScreener('KR', page, size, query.trim(), sector, minCap, maxCap, sortKey, sortDir, minScore)
+    const seq = ++reqSeqRef.current   // 최신 요청만 반영 (응답 레이스 방지)
+    fetchScreener('KR', page, size, debouncedQuery.trim(), sector, minCap, maxCap, sortKey, sortDir, minScore)
       .then(d => {
+        if (seq !== reqSeqRef.current) return   // 늦게 도착한 옛 응답 무시
         setItems(d.items)
         setTotal(d.total)
         // 관심종목 스코어 변동 알림
@@ -315,9 +325,9 @@ export default function ScreenerPage() {
           }
         }
       })
-      .catch(e => setError(e.message))
-      .finally(() => setLoading(false))
-  }, [page, size, query, sector, capRange, sortKey, sortDir, minScore])
+      .catch(e => { if (seq === reqSeqRef.current) setError(e.message) })
+      .finally(() => { if (seq === reqSeqRef.current) setLoading(false) })
+  }, [page, size, debouncedQuery, sector, capRange, sortKey, sortDir, minScore])
 
   // 장중 실시간 시세 오버레이 — 화면에 보이는 종목만, 1분 폴링.
   // 장외 시간엔 백엔드가 빈 결과 → 배치(EOD)값 유지.
@@ -359,7 +369,7 @@ export default function ScreenerPage() {
     else { setSortKey(key); setSortDir('desc') }
     setPage(0)
   }
-  const handleQuery = (v: string) => { setQuery(v); setPage(0) }
+  const handleQuery = (v: string) => { setQuery(v) }   // page 리셋·조회는 디바운스 이펙트에서
   const handleSize = (v: number) => { setSize(v); setPage(0) }
   const totalPages = Math.ceil(total / size)
 
