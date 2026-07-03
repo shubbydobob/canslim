@@ -1,16 +1,22 @@
 """
 10년치 국장 전체 백필 마스터 스크립트
-실행: python -m etl.kr_adapter.run_backfill_10yr
+실행:
+  python -m etl.kr_adapter.run_backfill_10yr             # 안전 모드(기본): 덮어쓰기만, 기존 데이터 유지
+  python -m etl.kr_adapter.run_backfill_10yr --rebuild   # 전체 재구축: TRUNCATE 후 처음부터 (파괴적)
+  python -m etl.kr_adapter.run_backfill_10yr --shutdown  # 완료 후 Windows 종료
+
+⚠️ 이 스크립트는 매일 스케줄로 돌리는 물건이 아님. 매일 증분 갱신은 run_daily.py 사용.
+   --rebuild 없이 실행하면 모든 스텝이 upsert(덮어쓰기)라, 중간에 끊겨도 기존 운영 데이터가 살아있음.
 
 순서:
-  1. DB 전체 TRUNCATE
+  1. (--rebuild 일 때만) DB 전체 TRUNCATE
   2. instruments 적재 (COMMON, DART corp_code 있는 종목만)
   3. 섹터 데이터 적재 (pykrx)
   4. price_daily 백필 2016-01-04 ~ 오늘
   5. financials 백필 2016~2025 (DART 10년치)
   6. financial_normalizer 최신일 실행
   7. Spring Boot admin API → 채점
-  8. Windows 종료
+  8. (--shutdown 일 때만) Windows 종료
 """
 import os
 import sys
@@ -223,18 +229,31 @@ def step_shutdown():
 # ─────────────────────────────────────────
 def main():
     t_start = time.time()
-    log.info("★ 10년치 백필 시작 (SCORE_DATE=%s) ★", SCORE_DATE)
+    rebuild  = "--rebuild" in sys.argv
+    shutdown = "--shutdown" in sys.argv
 
-    steps = [
-        ("TRUNCATE",       step_truncate),
+    mode = "전체 재구축(REBUILD)" if rebuild else "안전 모드(덮어쓰기)"
+    log.info("★ 10년치 백필 시작 (SCORE_DATE=%s, mode=%s) ★", SCORE_DATE, mode)
+
+    if rebuild:
+        log.warning("⚠️ --rebuild: 시작 시 전체 TRUNCATE 후 재적재 (기존 데이터 삭제).")
+    else:
+        log.info("안전 모드: TRUNCATE 생략, 모든 스텝 upsert. 중단돼도 기존 데이터 유지.")
+        log.info("전체 재구축이 필요하면 --rebuild 플래그로 실행하세요.")
+
+    steps = []
+    if rebuild:
+        steps.append(("TRUNCATE", step_truncate))   # 파괴적 — --rebuild 일 때만
+    steps += [
         ("instruments",    step_instruments),
         ("sector",         step_sector),
         ("price",          step_price),
         ("financials",     step_financials),
         ("normalize",      step_normalize),
         ("scoring",        step_scoring),
-        ("shutdown",       step_shutdown),
     ]
+    if shutdown:
+        steps.append(("shutdown", step_shutdown))   # Windows 종료 — --shutdown 일 때만
 
     for name, fn in steps:
         t0 = time.time()
