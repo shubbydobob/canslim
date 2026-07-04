@@ -72,39 +72,39 @@ def main():
 
     # ── 1. 종목 목록 갱신 (월요일) ─────────────────────────────
     if target_date.weekday() == 0:
-        logger.info("[1/5] 종목 목록 갱신 (월요일)")
+        logger.info("[1/10] 종목 목록 갱신 (월요일)")
         from .instrument_loader import load as load_instruments
         load_instruments(target_date)
     else:
-        logger.info("[1/5] 종목 목록 갱신 생략 (월요일 아님)")
+        logger.info("[1/10] 종목 목록 갱신 생략 (월요일 아님)")
 
     # ── 2. 당일 가격 수집 ──────────────────────────────────────
-    logger.info("[2/5] 가격 수집 시작")
+    logger.info("[2/10] 가격 수집 시작")
     try:
         from .price_loader import load_daily
         load_daily(target_date)
-        logger.info("[2/5] 가격 수집 완료")
+        logger.info("[2/10] 가격 수집 완료")
     except Exception as e:
-        logger.warning("[2/5] 가격 수집 실패 (비치명적): %s", e)
+        logger.warning("[2/10] 가격 수집 실패 (비치명적): %s", e)
 
     # ── 3. KIS 수급 수집 ───────────────────────────────────────
-    logger.info("[3/6] KIS 수급 수집 시작")
+    logger.info("[3/10] KIS 수급 수집 시작")
     try:
         from .investor_flow_loader import load_investor_flow
         load_investor_flow(as_of_date=target_date)
-        logger.info("[3/6] KIS 수급 수집 완료")
+        logger.info("[3/10] KIS 수급 수집 완료")
     except Exception as e:
-        logger.warning("[3/6] KIS 수급 수집 실패 (비치명적): %s", e)
+        logger.warning("[3/10] KIS 수급 수집 실패 (비치명적): %s", e)
 
     # ── 4. DART 재무 수집 (매월 첫 거래일 리셋 후 재수집, 나머지는 resume) ─
-    logger.info("[4/7] DART 재무 수집 시작")
+    logger.info("[4/10] DART 재무 수집 시작")
     try:
         _maybe_reset_dart_ingestion(target_date)
         from .dart_loader import load as load_dart
         load_dart(target_date)
-        logger.info("[4/7] DART 재무 수집 완료")
+        logger.info("[4/10] DART 재무 수집 완료")
     except Exception as e:
-        logger.warning("[4/7] DART 재무 수집 실패 (비치명적): %s", e)
+        logger.warning("[4/10] DART 재무 수집 실패 (비치명적): %s", e)
 
     # ── 5. KIS 재무 수집 (전종목 커버리지 — DART 미등록 소형주 포함) ──
     logger.info("[5/10] KIS 재무 수집 시작")
@@ -120,21 +120,21 @@ def main():
     try:
         from .financial_normalizer import normalize_all
         normalize_all(target_date)
-        logger.info("[5/7] financial_normalizer 완료")
+        logger.info("[6/10] financial_normalizer 완료")
     except Exception as e:
-        logger.warning("[5/7] financial_normalizer 실패 (비치명적): %s", e)
+        logger.warning("[6/10] financial_normalizer 실패 (비치명적): %s", e)
 
-    # ── 6. derived_metrics 가격 컬럼 계산 ─────────────────────
-    logger.info("[6/8] derived_metrics 계산 시작")
+    # ── 7. derived_metrics 가격 컬럼 계산 ─────────────────────
+    logger.info("[7/10] derived_metrics 계산 시작")
     try:
         from .derived_metrics_calculator import calculate as calc_derived
         updated = calc_derived(target_date)
-        logger.info("[6/8] derived_metrics 계산 완료: %d 행", updated)
+        logger.info("[7/10] derived_metrics 계산 완료: %d 행", updated)
     except Exception as e:
-        logger.warning("[6/8] derived_metrics 계산 실패 (비치명적): %s", e)
+        logger.warning("[7/10] derived_metrics 계산 실패 (비치명적): %s", e)
 
-    # ── 7. market_state 갱신 (KOSPI/KOSDAQ MA50/MA200 기반 국면 판정) ──
-    logger.info("[7/9] market_state 갱신 시작")
+    # ── 8. market_state 갱신 (KOSPI/KOSDAQ MA50/MA200 기반 국면 판정) ──
+    logger.info("[8/10] market_state 갱신 시작")
     try:
         from datetime import timedelta
         start_str = (target_date - timedelta(days=250)).strftime("%Y%m%d")
@@ -142,25 +142,25 @@ def main():
         from .market_state_seeder import seed
         seed("KOSPI",  start_date=start_str, end_date=end_str)
         seed("KOSDAQ", start_date=start_str, end_date=end_str)
-        logger.info("[7/9] market_state 갱신 완료")
+        logger.info("[8/10] market_state 갱신 완료")
     except Exception as e:
-        logger.warning("[7/9] market_state 갱신 실패 (비치명적): %s", e)
+        logger.warning("[8/10] market_state 갱신 실패 (비치명적): %s", e)
 
-    # ── 8. 스코어링 트리거 ─────────────────────────────────────
-    logger.info("[8/9] 스코어링 트리거")
+    # ── 9. 스코어링 트리거 ─────────────────────────────────────
+    logger.info("[9/10] 스코어링 트리거")
     ok = trigger_scoring()
     if ok:
-        logger.info("[8/9] 스코어링 완료")
+        logger.info("[9/10] 스코어링 완료")
     else:
-        logger.warning("[8/9] 스코어링 실패 — 수동 트리거 필요")
+        logger.warning("[9/10] 스코어링 실패 — 수동 트리거 필요")
 
-    # ── 9. SNS 카드 생성 + 포스팅 (스코어링 성공 시) ──────────
+    # ── 10. SNS 카드 생성 + 포스팅 (스코어링 성공 시) ──────────
     if ok:
-        logger.info("[9/9] SNS 카드 생성 시작")
+        logger.info("[10/10] SNS 카드 생성 시작")
         try:
             from ..sns_publisher.card_generator import run as generate_card
             result = generate_card(n=5)
-            logger.info("[9/9] 카드 생성 완료: %s", result["cover"])
+            logger.info("[10/10] 카드 생성 완료: %s", result["cover"])
 
             from pathlib import Path
             image_path = Path(result["cover"])
@@ -171,35 +171,35 @@ def main():
                 try:
                     from ..sns_publisher.threads_poster import post_to_threads
                     post_id = post_to_threads(caption, image_path)
-                    logger.info("[9/9] Threads 게시 완료: %s", post_id)
+                    logger.info("[10/10] Threads 게시 완료: %s", post_id)
                 except Exception as e:
-                    logger.warning("[9/9] Threads 게시 실패 (비치명적): %s", e)
+                    logger.warning("[10/10] Threads 게시 실패 (비치명적): %s", e)
             else:
-                logger.info("[9/9] THREADS 환경변수 미설정 — Threads 게시 생략")
+                logger.info("[10/10] THREADS 환경변수 미설정 — Threads 게시 생략")
 
             # Instagram 게시 (환경변수 있을 때만)
             if os.environ.get("INSTAGRAM_USER_ID") and os.environ.get("INSTAGRAM_TOKEN"):
                 try:
                     from ..sns_publisher.instagram_poster import post_to_instagram
                     media_id = post_to_instagram(caption, image_path)
-                    logger.info("[9/9] Instagram 게시 완료: media_id=%s", media_id)
+                    logger.info("[10/10] Instagram 게시 완료: media_id=%s", media_id)
                 except Exception as e:
-                    logger.warning("[9/9] Instagram 게시 실패 (비치명적): %s", e)
+                    logger.warning("[10/10] Instagram 게시 실패 (비치명적): %s", e)
             else:
-                logger.info("[9/9] INSTAGRAM 환경변수 미설정 — Instagram 게시 생략")
+                logger.info("[10/10] INSTAGRAM 환경변수 미설정 — Instagram 게시 생략")
 
             # 블로그 포스트 생성
             try:
                 from ..sns_publisher.blog_generator import run as generate_blog
                 blog = generate_blog(n=5)
-                logger.info("[9/9] 블로그 생성 완료: %s", blog["markdown"])
+                logger.info("[10/10] 블로그 생성 완료: %s", blog["markdown"])
             except Exception as e:
-                logger.warning("[9/9] 블로그 생성 실패 (비치명적): %s", e)
+                logger.warning("[10/10] 블로그 생성 실패 (비치명적): %s", e)
 
         except Exception as e:
-            logger.warning("[9/9] SNS 카드 생성 실패 (비치명적): %s", e)
+            logger.warning("[10/10] SNS 카드 생성 실패 (비치명적): %s", e)
     else:
-        logger.info("[9/9] 스코어링 실패로 SNS 카드 생성 생략")
+        logger.info("[10/10] 스코어링 실패로 SNS 카드 생성 생략")
 
     logger.info("=" * 60)
     logger.info("KR 일별 ETL 완료: %s", target_date)
