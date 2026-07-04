@@ -80,34 +80,49 @@ def main():
 
     # ── 2. 당일 가격 수집 ──────────────────────────────────────
     logger.info("[2/5] 가격 수집 시작")
-    from .price_loader import load_daily
-    load_daily(target_date)
-    logger.info("[2/5] 가격 수집 완료")
+    try:
+        from .price_loader import load_daily
+        load_daily(target_date)
+        logger.info("[2/5] 가격 수집 완료")
+    except Exception as e:
+        logger.warning("[2/5] 가격 수집 실패 (비치명적): %s", e)
 
     # ── 3. KIS 수급 수집 ───────────────────────────────────────
     logger.info("[3/6] KIS 수급 수집 시작")
-    from .investor_flow_loader import load_investor_flow
-    load_investor_flow(as_of_date=target_date)
-    logger.info("[3/6] KIS 수급 수집 완료")
+    try:
+        from .investor_flow_loader import load_investor_flow
+        load_investor_flow(as_of_date=target_date)
+        logger.info("[3/6] KIS 수급 수집 완료")
+    except Exception as e:
+        logger.warning("[3/6] KIS 수급 수집 실패 (비치명적): %s", e)
 
     # ── 4. DART 재무 수집 (매월 첫 거래일 리셋 후 재수집, 나머지는 resume) ─
     logger.info("[4/7] DART 재무 수집 시작")
-    _maybe_reset_dart_ingestion(target_date)
-    from .dart_loader import load as load_dart
-    load_dart(target_date)
-    logger.info("[4/7] DART 재무 수집 완료")
+    try:
+        _maybe_reset_dart_ingestion(target_date)
+        from .dart_loader import load as load_dart
+        load_dart(target_date)
+        logger.info("[4/7] DART 재무 수집 완료")
+    except Exception as e:
+        logger.warning("[4/7] DART 재무 수집 실패 (비치명적): %s", e)
 
     # ── 5. financial_normalizer: DART EPS/ROE → derived_metrics ──
     logger.info("[5/7] financial_normalizer 시작")
-    from .financial_normalizer import normalize_all
-    normalize_all(target_date)
-    logger.info("[5/7] financial_normalizer 완료")
+    try:
+        from .financial_normalizer import normalize_all
+        normalize_all(target_date)
+        logger.info("[5/7] financial_normalizer 완료")
+    except Exception as e:
+        logger.warning("[5/7] financial_normalizer 실패 (비치명적): %s", e)
 
     # ── 6. derived_metrics 가격 컬럼 계산 ─────────────────────
     logger.info("[6/8] derived_metrics 계산 시작")
-    from .derived_metrics_calculator import calculate as calc_derived
-    updated = calc_derived(target_date)
-    logger.info("[6/8] derived_metrics 계산 완료: %d 행", updated)
+    try:
+        from .derived_metrics_calculator import calculate as calc_derived
+        updated = calc_derived(target_date)
+        logger.info("[6/8] derived_metrics 계산 완료: %d 행", updated)
+    except Exception as e:
+        logger.warning("[6/8] derived_metrics 계산 실패 (비치명적): %s", e)
 
     # ── 7. market_state 갱신 (KOSPI/KOSDAQ MA50/MA200 기반 국면 판정) ──
     logger.info("[7/9] market_state 갱신 시작")
