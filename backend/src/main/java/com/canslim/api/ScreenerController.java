@@ -55,14 +55,14 @@ public class ScreenerController {
 
     // 섹터 집계 캐시 (일 1회 배치 데이터 → 2분 TTL로 충분). key=market → {data, expiryMs}
     private final java.util.Map<String, Object[]> sectorCache = new java.util.concurrent.ConcurrentHashMap<>();
-    private static final long SECTOR_CACHE_TTL_MS = 120_000;
+    private static final long SECTOR_CACHE_TTL_MS = 1_800_000; // 30분
 
     /** 섹터별 집계 — 한 방 GROUP BY. 등락률은 직전 거래일이 7일 이내일 때만(수정주가 왜곡 가드). */
     private static final String SECTOR_SUMMARY_SQL = """
         WITH latest AS (
             SELECT DISTINCT ON (p.security_id) p.security_id, p.close_adj, p.trade_date
             FROM price_daily p
-            WHERE p.trade_date <= ?
+            WHERE p.trade_date <= ? AND p.trade_date >= ? - INTERVAL '10 days'
             ORDER BY p.security_id, p.trade_date DESC
         ),
         enriched AS (
@@ -77,7 +77,9 @@ public class ScreenerController {
             JOIN latest l ON l.security_id = cs.security_id
             LEFT JOIN LATERAL (
                 SELECT close_adj, trade_date FROM price_daily p2
-                WHERE p2.security_id = cs.security_id AND p2.trade_date < l.trade_date
+                WHERE p2.security_id = cs.security_id
+                  AND p2.trade_date < l.trade_date
+                  AND p2.trade_date >= l.trade_date - INTERVAL '10 days'
                 ORDER BY p2.trade_date DESC LIMIT 1
             ) prev ON true
             WHERE cs.score_date = ? AND cs.market = ?
@@ -276,8 +278,9 @@ public class ScreenerController {
         List<Map<String, Object>> result = jdbc.query(con -> {
             PreparedStatement ps = con.prepareStatement(SECTOR_SUMMARY_SQL);
             ps.setDate(1, d);        // latest: trade_date <= scoreDate
-            ps.setDate(2, d);        // cs.score_date
-            ps.setString(3, market); // cs.market
+            ps.setDate(2, d);        // latest: trade_date >= scoreDate - 10 days
+            ps.setDate(3, d);        // cs.score_date
+            ps.setString(4, market); // cs.market
             return ps;
         }, (rs, i) -> {
             Map<String, Object> m = new java.util.LinkedHashMap<>();
