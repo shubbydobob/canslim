@@ -112,7 +112,6 @@ public class ScreenerController {
 
             // 2차 필터: 시가총액 + 정렬
             Set<Long> breakouts = loadBreakouts(filteredIds, scoreDate);
-            Map<Long, Integer> baseDaysMap = loadBaseDays(filteredIds, scoreDate);
 
             List<ScreenerItemResponse> allResult = filtered.stream()
                     .map(s -> {
@@ -120,8 +119,7 @@ public class ScreenerController {
                         BigDecimal[] data = pf.getOrDefault(s.getSecurityId(), new BigDecimal[8]);
                         BigDecimal delta = deltaMap.get(s.getSecurityId());
                         boolean breakout = breakouts.contains(s.getSecurityId());
-                        Integer bd = baseDaysMap.get(s.getSecurityId());
-                        return ScreenerItemResponse.of(s, inst, data, delta, breakout, bd);
+                        return ScreenerItemResponse.of(s, inst, data, delta, breakout, null);
                     })
                     .filter(r -> {
                         if (minCap == null && maxCap == null) return true;
@@ -166,7 +164,6 @@ public class ScreenerController {
         Map<Long, BigDecimal> deltaMap = loadScoreDeltas(ids, scoreDate);
 
         Set<Long> breakouts2 = loadBreakouts(ids, scoreDate);
-        Map<Long, Integer> baseDaysMap2 = loadBaseDays(ids, scoreDate);
 
         List<ScreenerItemResponse> result = scores.stream()
                 .filter(s -> instMap.containsKey(s.getSecurityId()))
@@ -175,8 +172,7 @@ public class ScreenerController {
                     BigDecimal[] data = priceFlow.getOrDefault(s.getSecurityId(), new BigDecimal[8]);
                     BigDecimal delta = deltaMap.get(s.getSecurityId());
                     boolean breakout = breakouts2.contains(s.getSecurityId());
-                    Integer bd = baseDaysMap2.get(s.getSecurityId());
-                    return ScreenerItemResponse.of(s, inst, data, delta, breakout, bd);
+                    return ScreenerItemResponse.of(s, inst, data, delta, breakout, null);
                 })
                 .toList();
 

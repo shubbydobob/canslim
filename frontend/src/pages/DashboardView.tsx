@@ -102,15 +102,6 @@ export default function DashboardView({
     return 'var(--text-3)'
   }
 
-  if (loading) {
-    return (
-      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 12, padding: '80px 0', color: 'var(--text-3)', fontSize: 13 }}>
-        <span className="spinner" />
-        데이터 로딩 중...
-      </div>
-    )
-  }
-
   return (
     <div style={{ padding: '24px 28px', maxWidth: 1200 }}>
 
@@ -220,7 +211,15 @@ export default function DashboardView({
 
           {/* Ranking list */}
           <div style={{ padding: '8px 0' }}>
-            {topItems.map((item, idx) => {
+            {loading && Array.from({ length: 10 }).map((_, i) => (
+              <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 18px' }}>
+                <div style={{ width: 18, height: 10, borderRadius: 3, background: 'var(--bg-elevated)' }} />
+                <div style={{ flex: '0 0 90px', height: 10, borderRadius: 3, background: 'var(--bg-elevated)' }} />
+                <div style={{ flex: 1, height: 6, borderRadius: 3, background: 'var(--bg-elevated)' }} />
+                <div style={{ width: 28, height: 10, borderRadius: 3, background: 'var(--bg-elevated)' }} />
+              </div>
+            ))}
+            {!loading && topItems.map((item, idx) => {
               const hovered = hoveredRankId === item.securityId
               const sc = scoreColor(item.compositeScore)
               return (
@@ -239,7 +238,6 @@ export default function DashboardView({
                     transition: 'background 0.1s',
                   }}
                 >
-                  {/* Rank */}
                   <span style={{
                     fontSize: 11,
                     fontWeight: 700,
@@ -252,7 +250,6 @@ export default function DashboardView({
                     {idx + 1}
                   </span>
 
-                  {/* Name + ticker */}
                   <div style={{ flex: '0 0 90px', overflow: 'hidden' }}>
                     <div style={{
                       fontSize: 12,
@@ -274,10 +271,8 @@ export default function DashboardView({
                     </div>
                   </div>
 
-                  {/* Progress bar */}
                   <HorizontalBar value={item.compositeScore} max={maxScore} color={sc} />
 
-                  {/* Score */}
                   <span style={{
                     fontSize: 13,
                     fontWeight: 800,
@@ -290,7 +285,6 @@ export default function DashboardView({
                     {Math.round(item.compositeScore)}
                   </span>
 
-                  {/* Change rate */}
                   <span style={{
                     fontSize: 11,
                     fontWeight: 600,
