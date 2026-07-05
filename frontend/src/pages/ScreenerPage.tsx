@@ -460,7 +460,6 @@ export default function ScreenerPage() {
         <Th label="수급" sortKey="sScore" align="center" style={{ width: 46 }} tip="수급: 시총 희소성 + 거래량 급증도" />
         <Th label="선도" sortKey="lScore" align="center" style={{ width: 46 }} tip="선도성: 시장 내 상대강도 순위 (상위일수록 높음)" />
         <Th label="기관" sortKey="iScore" align="center" style={{ width: 46 }} tip="기관투자: 외인+기관 10일 순매수 강도" />
-        <Th label="시장" sortKey="mScore" align="center" style={{ width: 46 }} tip="시장: 시장 전반 건전도 (전 종목 동일)" />
         <Th label="종가" sortKey="closePrice" style={{ width: 78 }} />
         <Th label="등락률" sortKey="changeRate" style={{ width: 64 }} tip="전일 종가 대비 당일 등락률" />
         <Th label="시간외" align="center" style={{ width: 80 }} tip="시간외 단일가 체결가 / 종가 대비 등락률" />
@@ -562,7 +561,6 @@ export default function ScreenerPage() {
         <ScoreCell value={item.sScore} />
         <ScoreCell value={item.lScore} />
         <ScoreCell value={item.iScore} />
-        <ScoreCell value={item.mScore} />
         <td className={flashMap[item.ticker] ? `flash-${flashMap[item.ticker]}` : undefined}
           style={{ ...S.td, textAlign: 'right', fontFamily: 'monospace', color: 'var(--text-1)' }}>
           {fmtPrice(item.closePrice)}
