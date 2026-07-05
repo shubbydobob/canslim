@@ -550,7 +550,7 @@ public class ScreenerController {
                 SELECT DISTINCT ON (security_id)
                     security_id, close_adj, volume, turnover, trade_date
                 FROM price_daily
-                WHERE security_id = ANY(?) AND trade_date >= ? - INTERVAL '14 days' AND trade_date <= ?
+                WHERE security_id = ANY(?) AND trade_date >= ? AND trade_date <= ?
                 ORDER BY security_id, trade_date DESC
             ) p
             JOIN instruments i ON i.id = p.security_id
@@ -564,7 +564,7 @@ public class ScreenerController {
             jdbc.query(con -> {
                 PreparedStatement ps = con.prepareStatement(priceSql);
                 ps.setArray(1, con.createArrayOf("bigint", idArr));
-                ps.setDate(2, java.sql.Date.valueOf(scoreDate));
+                ps.setDate(2, java.sql.Date.valueOf(scoreDate.minusDays(14)));
                 ps.setDate(3, java.sql.Date.valueOf(scoreDate));
                 return ps;
             }, rs -> {
