@@ -17,12 +17,17 @@ interface Props {
   onStockClick: (id: number) => void
 }
 
-function computeMarketLabel(marketStates: Props['marketStates'], items: ScreenerItem[]): { label: string; color: string; bg: string } {
+function computeMarketLabel(marketStates: Props['marketStates'], items: ScreenerItem[], loading: boolean): { label: string; color: string; bg: string } {
   const kospi = marketStates.find(m => m.market === 'KOSPI')
-  const avgM = items.length > 0
-    ? items.reduce((s, i) => s + (i.mScore ?? 0), 0) / items.length
-    : 0
 
+  // items가 아직 로딩 중이면 marketStates만으로 판단 (avgM=0 로 잘못 계산 방지)
+  if (loading || items.length === 0) {
+    if (kospi?.marketPhase === 'BULL') return { label: '위험선호 우위', color: '#4ade80', bg: 'rgba(74,222,128,0.12)' }
+    if (kospi?.marketPhase === 'BEAR') return { label: '하락 조심', color: '#f87171', bg: 'rgba(248,113,113,0.12)' }
+    return { label: '선별적 접근', color: '#fabd44', bg: 'rgba(250,189,68,0.12)' }
+  }
+
+  const avgM = items.reduce((s, i) => s + (i.mScore ?? 0), 0) / items.length
   if (kospi?.marketPhase === 'BULL' && avgM >= 40) {
     return { label: '위험선호 우위', color: '#4ade80', bg: 'rgba(74,222,128,0.12)' }
   }
@@ -79,7 +84,7 @@ export default function DashboardView({
     avgChange: r.avg_change != null ? Number(r.avg_change) : 0,
     avgScore:  r.avg_score  != null ? Number(r.avg_score)  : 0,
   }))
-  const marketLabel = computeMarketLabel(marketStates, items)
+  const marketLabel = computeMarketLabel(marketStates, items, loading)
 
   // TOP 15 for ranking panel
   const topItems = [...items]

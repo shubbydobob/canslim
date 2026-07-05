@@ -540,13 +540,12 @@ public class ScreenerController {
 
         Long[] idArr = ids.toArray(new Long[0]);
 
-        // 종가·등락률·거래량·거래대금·52주 신고가·시가총액
+        // 종가·등락률·거래량·거래대금·시가총액 (high_52w 제거 — UI 컬럼 삭제됨)
         String priceSql = """
             SELECT p.security_id, p.close_adj, p.volume, p.turnover,
                    CASE WHEN prev.close_adj > 0
                         THEN ROUND((p.close_adj - prev.close_adj) / prev.close_adj * 100, 2)
                    END AS change_rate,
-                   h52.high_52w,
                    p.close_adj * i.total_shares AS market_cap
             FROM (
                 SELECT DISTINCT ON (security_id)
@@ -561,12 +560,6 @@ public class ScreenerController {
                 WHERE p2.security_id = p.security_id AND p2.trade_date < p.trade_date
                 ORDER BY p2.trade_date DESC LIMIT 1
             ) prev ON true
-            LEFT JOIN LATERAL (
-                SELECT MAX(close_adj) AS high_52w FROM price_daily p3
-                WHERE p3.security_id = p.security_id
-                  AND p3.trade_date > p.trade_date - INTERVAL '365 days'
-                  AND p3.trade_date <= p.trade_date
-            ) h52 ON true
             """;
         try {
             jdbc.query(con -> {
@@ -580,7 +573,6 @@ public class ScreenerController {
                 BigDecimal[] row = result.get(sid);
                 row[0] = rs.getBigDecimal("close_adj");
                 row[3] = rs.getBigDecimal("change_rate");
-                row[4] = rs.getBigDecimal("high_52w");
                 row[5] = rs.getBigDecimal("volume");
                 row[6] = rs.getBigDecimal("turnover");
                 row[7] = rs.getBigDecimal("market_cap");
