@@ -163,16 +163,15 @@ public class ScreenerController {
         Map<Long, BigDecimal[]> priceFlow = loadPriceAndFlow(ids, scoreDate);
         Map<Long, BigDecimal> deltaMap = loadScoreDeltas(ids, scoreDate);
 
-        Set<Long> breakouts2 = loadBreakouts(ids, scoreDate);
-
+        // 기본 페이징 경로: breakout 계산 생략 (365일 self-join 비용)
+        // 필터/정렬 경로(useAllPath)에서만 계산
         List<ScreenerItemResponse> result = scores.stream()
                 .filter(s -> instMap.containsKey(s.getSecurityId()))
                 .map(s -> {
                     Instrument inst = instMap.get(s.getSecurityId());
                     BigDecimal[] data = priceFlow.getOrDefault(s.getSecurityId(), new BigDecimal[8]);
                     BigDecimal delta = deltaMap.get(s.getSecurityId());
-                    boolean breakout = breakouts2.contains(s.getSecurityId());
-                    return ScreenerItemResponse.of(s, inst, data, delta, breakout, null);
+                    return ScreenerItemResponse.of(s, inst, data, delta, false, null);
                 })
                 .toList();
 
