@@ -7,6 +7,9 @@ import MacroTicker from '../components/MacroTicker'
 import StockDetailPanel from '../components/StockDetailPanel'
 import GachaModal from '../components/GachaModal'
 import SectorMap from '../components/SectorMap'
+import AppSidebar from '../components/AppSidebar'
+import DashboardView from './DashboardView'
+import RankingView from './RankingView'
 import type { ScreenerItem } from '../types'
 import { fmtPrice, fmtRate, fmtMarketCap, fmtVolume, fmtHigh52pct, fmtAmt } from '../utils/format'
 import FactorBars from '../components/FactorBars'
@@ -15,6 +18,7 @@ import { canslimValues } from '../utils/canslim'
 // ── types ──────────────────────────────────────────────────────
 type ViewTab = 'table' | 'detail'
 type SortDir = 'desc' | 'asc'
+type MainTab = 'dashboard' | 'ranking' | 'screener' | 'watchlist'
 type SortKey = keyof Pick<ScreenerItem,
   'compositeScore' | 'cScore' | 'aScore' | 'nScore' | 'sScore' | 'lScore' | 'iScore' | 'mScore' |
   'closePrice' | 'changeRate' | 'weekHigh52' | 'turnover' | 'volume' |
@@ -190,8 +194,12 @@ export default function ScreenerPage() {
     const until = localStorage.getItem(GUIDE_KEY)
     return !until || Date.now() > parseInt(until)
   })
-  const [mainTab, setMainTab] = useState<'screener' | 'market' | 'sector'>(
-    () => (sessionStorage.getItem('screener_mainTab') as 'screener' | 'market' | 'sector') || 'screener'
+  const [mainTab, setMainTab] = useState<MainTab>(
+    () => {
+      const saved = sessionStorage.getItem('screener_mainTab') as MainTab | null
+      const valid: MainTab[] = ['dashboard', 'ranking', 'screener', 'watchlist']
+      return (saved && valid.includes(saved)) ? saved : 'dashboard'
+    }
   )
   const [selectedStockId, setSelectedStockId] = useState<number | null>(null)
   const [showGacha, setShowGacha] = useState(false)
@@ -242,7 +250,6 @@ export default function ScreenerPage() {
     fetch('/api/admin/market-state').then(r => r.json()).then(setMarketStates).catch(() => {})
   }, [])
   useEffect(() => {
-    if (mainTab !== 'market') return
     Promise.all(['KOSPI', 'KOSDAQ'].map(m =>
       fetch(`/api/admin/market-state/history?market=${m}&days=60`)
         .then(r => r.json())
@@ -600,8 +607,38 @@ export default function ScreenerPage() {
   const hasActiveFilter = sector !== '' || capRange !== 'all' || query !== '' || minScore > 0 || showWatchOnly || showBreakoutOnly
   const activeFilterCount = [sector !== '', capRange !== 'all', query !== '', minScore > 0, showWatchOnly, showBreakoutOnly].filter(Boolean).length
 
+  // ── sector stats for dashboard ─────────────────────────────
+  const sectorStats = (() => {
+    const map = new Map<string, { changes: number[]; scores: number[]; count: number }>()
+    for (const item of items) {
+      const s = item.sector ?? '기타'
+      if (!map.has(s)) map.set(s, { changes: [], scores: [], count: 0 })
+      const g = map.get(s)!
+      g.count++
+      if (item.changeRate != null) g.changes.push(item.changeRate)
+      g.scores.push(item.compositeScore)
+    }
+    return Array.from(map.entries()).map(([sector, g]) => ({
+      sector,
+      avgChange: g.changes.length ? g.changes.reduce((a, b) => a + b, 0) / g.changes.length : 0,
+      count: g.count,
+      avgScore: g.scores.reduce((a, b) => a + b, 0) / g.scores.length,
+    }))
+  })()
+
+  const topSector = sectorStats.length > 0
+    ? sectorStats.reduce((best, s) => s.avgChange > best.avgChange ? s : best, sectorStats[0])
+    : null
+
+  const toggleTheme = () => {
+    const next = document.documentElement.getAttribute('data-theme') === 'light' ? 'dark' : 'light'
+    document.documentElement.setAttribute('data-theme', next)
+    localStorage.setItem('canslim_theme', next)
+    setTheme(next as 'dark' | 'light')
+  }
+
   return (
-    <div style={{ minHeight: '100vh', background: 'var(--bg-base)', color: 'var(--text-1)' }}>
+    <div style={{ minHeight: '100vh', background: 'var(--bg-base)', color: 'var(--text-1)', display: 'flex', flexDirection: 'column' }}>
       {showGuide && <GuidePopup onClose={closeGuide} />}
 
       {/* 프리미엄 게이팅 모달 */}
@@ -642,71 +679,109 @@ export default function ScreenerPage() {
           </div>
         </div>
       )}
+
+      {/* ══ MacroTicker (full-width top strip) ═════════════════ */}
       <MacroTicker />
 
-      {/* ══ Section 1: 브랜드 네비게이션 ═══════════════════════ */}
-      <div className="nav-bar" style={{
-        background: 'var(--bg-nav)', borderBottom: '1px solid var(--border)',
-        padding: '0 20px', display: 'flex', alignItems: 'center',
-        justifyContent: 'space-between', height: 40,
+      {/* ══ New Header ══════════════════════════════════════════ */}
+      <header className="nav-bar" style={{
+        background: 'var(--bg-nav)',
+        borderBottom: '1px solid var(--border)',
+        padding: '0 20px',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        height: 48,
+        flexShrink: 0,
+        gap: 16,
       }}>
-        <div className="nav-left" style={{ display: 'flex', alignItems: 'center', gap: 24 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-            <span style={{ fontFamily: 'var(--font-mono)', fontSize: 16, fontWeight: 800, letterSpacing: '1px',
-              cursor: 'pointer', whiteSpace: 'nowrap', display: 'inline-flex', alignItems: 'center', gap: 6 }}
-              onClick={() => setShowGuide(true)}>
-              <span style={{ width: 7, height: 7, background: 'var(--accent)', borderRadius: 1.5, display: 'inline-block' }} />
-              NEXT<span style={{ color: 'var(--accent)' }}>PICK</span>
-            </span>
-          </div>
-          <nav style={{ display: 'flex', gap: 0 }}>
-            {([
-              { label: '스크리너', action: () => { setMainTab('screener'); if (viewTab === 'detail') setViewTab('table') }, active: mainTab === 'screener' },
-              { label: '섹터맵',   action: () => setMainTab('sector'),   active: mainTab === 'sector' },
-              { label: '시장',     action: () => setMainTab('market'),   active: mainTab === 'market' },
-              { label: '플래너',   action: () => navigate('/calc'),      active: false },
-            ]).map(({ label, action, active }) => (
-              <span key={label} onClick={action} style={{
-                padding: '0 12px', fontSize: 13,
-                color: active ? 'var(--text-1)' : 'var(--text-3)',
-                fontWeight: active ? 600 : 400,
-                cursor: 'pointer', lineHeight: '40px',
-                borderBottom: active ? '2px solid var(--accent)' : '2px solid transparent',
-                whiteSpace: 'nowrap',
-              }}>{label}</span>
-            ))}
-          </nav>
+        {/* Left: Logo + tagline */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
+          <span
+            style={{
+              fontFamily: 'var(--font-mono)',
+              fontSize: 16,
+              fontWeight: 800,
+              letterSpacing: '1px',
+              cursor: 'pointer',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 6,
+              whiteSpace: 'nowrap',
+            }}
+            onClick={() => setShowGuide(true)}
+          >
+            <span style={{
+              width: 8, height: 8,
+              background: 'var(--accent)',
+              borderRadius: 2,
+              display: 'inline-block',
+              boxShadow: '0 0 6px var(--accent)',
+            }} />
+            NEXT<span style={{ color: 'var(--accent)' }}>PICK</span>
+          </span>
+          <span style={{
+            fontSize: 11,
+            color: 'var(--text-4)',
+            borderLeft: '1px solid var(--border)',
+            paddingLeft: 10,
+            whiteSpace: 'nowrap',
+          }}>
+            주도주 스코어
+          </span>
         </div>
-        <div className="nav-right" style={{ display: 'flex', alignItems: 'center', gap: 20 }}>
-          {/* 가챠 뽑기 버튼 */}
+
+        {/* Center: Search */}
+        <div style={{ flex: 1, maxWidth: 360, position: 'relative' }}>
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="none"
+            style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', opacity: 0.4, pointerEvents: 'none' }}>
+            <circle cx="6.5" cy="6.5" r="5" stroke="currentColor" strokeWidth="1.5"/>
+            <path d="M10.5 10.5L14 14" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+          </svg>
+          <input
+            placeholder="종목명 · 코드 · 섹터 검색"
+            value={query}
+            onChange={e => handleQuery(e.target.value)}
+            style={{
+              width: '100%',
+              background: 'var(--bg-elevated)',
+              border: '1px solid var(--border)',
+              borderRadius: 8,
+              color: 'var(--text-1)',
+              padding: '7px 12px 7px 32px',
+              fontSize: 13,
+              outline: 'none',
+            }}
+            onFocus={e => { e.currentTarget.style.borderColor = 'var(--accent)' }}
+            onBlur={e => { e.currentTarget.style.borderColor = 'var(--border)' }}
+          />
+        </div>
+
+        {/* Right: date, theme toggle, gacha, visitor */}
+        <div className="nav-right" style={{ display: 'flex', alignItems: 'center', gap: 16, flexShrink: 0 }}>
+          {items[0] && (
+            <span style={{ fontSize: 11, color: 'var(--text-4)', whiteSpace: 'nowrap' }}>
+              매일 갱신 · {items[0].scoreDate}
+            </span>
+          )}
+
+          {/* Gacha */}
           <button onClick={() => setShowGacha(true)} style={{
-            background: 'linear-gradient(135deg, #1f6feb, #7c3aed)', border: 'none',
-            borderRadius: 6, padding: '4px 14px', cursor: 'pointer',
+            background: 'linear-gradient(135deg, #1f6feb, #7c3aed)',
+            border: 'none', borderRadius: 6, padding: '5px 12px', cursor: 'pointer',
             color: '#fff', fontSize: 11, fontWeight: 700, letterSpacing: '0.03em',
-            display: 'flex', alignItems: 'center', gap: 5,
+            display: 'flex', alignItems: 'center', gap: 4,
             boxShadow: '0 2px 8px rgba(31,111,235,0.3)',
             transition: 'transform 0.15s, box-shadow 0.15s',
           }}
           onMouseEnter={e => { e.currentTarget.style.transform = 'scale(1.05)'; e.currentTarget.style.boxShadow = '0 4px 16px rgba(31,111,235,0.5)' }}
-          onMouseLeave={e => { e.currentTarget.style.transform = 'scale(1)'; e.currentTarget.style.boxShadow = '0 2px 8px rgba(31,111,235,0.3)' }}
-          >
-            <span style={{ fontSize: 14 }}>PICK</span>
+          onMouseLeave={e => { e.currentTarget.style.transform = 'scale(1)'; e.currentTarget.style.boxShadow = '0 2px 8px rgba(31,111,235,0.3)' }}>
+            PICK
           </button>
-          {items[0] && (
-            <div style={{ display: 'flex', gap: 20 }}>
-              <Stat label="기준일" value={items[0].scoreDate} />
-              <Stat label="Top" value={String(Math.round(items[0].compositeScore))} color="#4ade80" />
-              <Stat label="Avg" value={String(Math.round(items.reduce((s, i) => s + i.compositeScore, 0) / items.length))} />
-            </div>
-          )}
-          {/* 다크/라이트 토글 */}
+
+          {/* Theme toggle */}
           <button
-            onClick={() => {
-              const next = document.documentElement.getAttribute('data-theme') === 'light' ? 'dark' : 'light'
-              document.documentElement.setAttribute('data-theme', next)
-              localStorage.setItem('canslim_theme', next)
-              setTheme(next as 'dark' | 'light')
-            }}
+            onClick={toggleTheme}
             title={theme === 'dark' ? '라이트 모드' : '다크 모드'}
             style={{
               width: 32, height: 18, borderRadius: 9, border: '1px solid var(--border-sub)',
@@ -722,47 +797,85 @@ export default function ScreenerPage() {
               transition: 'left 0.2s, background 0.2s',
             }} />
           </button>
-          {visitCount !== null && (
-            <span style={{ fontSize: 12, color: 'var(--text-3)', display: 'flex', alignItems: 'center', gap: 3, whiteSpace: 'nowrap' }}>
-              <span style={{ fontSize: 11 }}>👥</span>
-              {visitCount.toLocaleString()}
-            </span>
-          )}
-        </div>
-        {/* Mobile: only show toggle + visitor */}
-        <div className="nav-right-mobile" style={{ display: 'none', alignItems: 'center', gap: 12 }}>
-          <button
-            onClick={() => {
-              const next = document.documentElement.getAttribute('data-theme') === 'light' ? 'dark' : 'light'
-              document.documentElement.setAttribute('data-theme', next)
-              localStorage.setItem('canslim_theme', next)
-              setTheme(next as 'dark' | 'light')
-            }}
-            style={{
-              width: 32, height: 18, borderRadius: 9, border: '1px solid var(--border-sub)',
-              background: theme === 'light' ? '#e2e8f0' : 'var(--bg-elevated)',
-              padding: 0, position: 'relative', flexShrink: 0,
-              display: 'flex', alignItems: 'center', transition: 'background 0.2s',
-            }}
-          >
-            <span style={{
-              position: 'absolute', width: 12, height: 12, borderRadius: '50%',
-              background: theme === 'light' ? '#fabd44' : '#58a6ff',
-              top: 2, left: theme === 'light' ? 16 : 2,
-              transition: 'left 0.2s, background 0.2s',
-            }} />
-          </button>
-          {visitCount !== null && (
-            <span style={{ fontSize: 12, color: 'var(--text-3)', display: 'flex', alignItems: 'center', gap: 3, whiteSpace: 'nowrap' }}>
-              <span style={{ fontSize: 11 }}>👥</span>
-              {visitCount.toLocaleString()}
-            </span>
-          )}
-        </div>
-      </div>
 
-      {/* ══ 시장 탭 ══════════════════════════════════════════════ */}
-      {mainTab === 'market' && (() => {
+          {/* Visitor count */}
+          {visitCount !== null && (
+            <span style={{ fontSize: 11, color: 'var(--text-4)', whiteSpace: 'nowrap' }}>
+              👥 {visitCount.toLocaleString()}
+            </span>
+          )}
+
+          {/* Planner link */}
+          <button onClick={() => navigate('/calc')} style={{
+            fontSize: 12, color: 'var(--text-3)', background: 'none', border: '1px solid var(--border)',
+            borderRadius: 6, padding: '4px 10px', cursor: 'pointer',
+          }}>
+            플래너
+          </button>
+        </div>
+
+        {/* Mobile right */}
+        <div className="nav-right-mobile" style={{ display: 'none', alignItems: 'center', gap: 12 }}>
+          <button onClick={toggleTheme}
+            style={{ width: 32, height: 18, borderRadius: 9, border: '1px solid var(--border-sub)',
+              background: theme === 'light' ? '#e2e8f0' : 'var(--bg-elevated)',
+              padding: 0, position: 'relative', flexShrink: 0, display: 'flex', alignItems: 'center' }}>
+            <span style={{ position: 'absolute', width: 12, height: 12, borderRadius: '50%',
+              background: theme === 'light' ? '#fabd44' : '#58a6ff',
+              top: 2, left: theme === 'light' ? 16 : 2, transition: 'left 0.2s' }} />
+          </button>
+        </div>
+      </header>
+
+      {/* ══ Body: sidebar + main content ═══════════════════════ */}
+      <div style={{ display: 'flex', flex: 1, minHeight: 0, overflow: 'hidden' }}>
+
+        {/* Sidebar */}
+        <AppSidebar
+          activeTab={mainTab}
+          onTabChange={(tab) => {
+            setMainTab(tab)
+            if (tab === 'screener' && viewTab === 'detail') setViewTab('table')
+          }}
+          watchlistCount={watchlist.size}
+          topSector={topSector ? { name: topSector.sector, change: topSector.avgChange } : null}
+          totalStocks={total}
+        />
+
+        {/* Main content area */}
+        <main style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden' }}>
+
+      {/* ══ 시장 탭 (legacy — now accessible via sector/market logic) ═════ */}
+      {mainTab === 'dashboard' && (
+        <DashboardView
+          items={items}
+          sectors={sectorStats}
+          loading={loading}
+          marketStates={marketStates}
+          onViewRanking={() => setMainTab('ranking')}
+          onSectorClick={(s) => { setSector(s); setMainTab('screener'); setViewTab('table'); setPage(0) }}
+          onStockClick={(id) => { setSelectedStockId(id); setMainTab('screener'); setViewTab('detail') }}
+        />
+      )}
+
+      {mainTab === 'ranking' && (
+        <RankingView
+          items={items}
+          loading={loading}
+          onStockClick={(id) => { setSelectedStockId(id); setMainTab('screener'); setViewTab('detail') }}
+        />
+      )}
+
+      {mainTab === 'watchlist' && (
+        <RankingView
+          items={items.filter(i => watchlist.has(i.securityId))}
+          loading={loading}
+          onStockClick={(id) => { setSelectedStockId(id); setMainTab('screener'); setViewTab('detail') }}
+        />
+      )}
+
+      {/* ══ Legacy market tab ═══════════════════════════════════ */}
+      {(mainTab as string) === 'market' && (() => {
         // 국면별 스타일 + 메시지
         const phaseInfo = (p?: string) => p === 'BULL'
           ? { bg: 'rgba(74,222,128,0.08)', border: '#166534', text: '#4ade80', icon: '🟢', label: '강세장', verdict: '신규 매수 가능', desc: '주가가 장기 상승 추세 위에서 움직이고 있습니다.' }
@@ -1259,12 +1372,15 @@ export default function ScreenerPage() {
       </>}
       </>}
 
-      {/* ══ 섹터맵 탭 ══════════════════════════════════════════════ */}
-      {mainTab === 'sector' && (
+      {/* ══ 섹터맵 — keep accessible from screener sector click ══ */}
+      {(mainTab as string) === 'sector' && (
         <SectorMap onSectorClick={(s) => { setSector(s); setMainTab('screener'); setViewTab('table'); setPage(0) }} />
       )}
 
-      {/* ══ 가챠 모달 ══════════════════════════════════════════════ */}
+        </main>
+      </div>
+
+      {/* ══ 가챠 모달 (outside layout flow, fixed/portal) ══════════ */}
       {showGacha && (
         <GachaModal
           items={items}
@@ -1272,16 +1388,6 @@ export default function ScreenerPage() {
           onClose={() => setShowGacha(false)}
         />
       )}
-    </div>
-  )
-}
-
-// ── small helpers ──────────────────────────────────────────────
-function Stat({ label, value, color }: { label: string; value: string; color?: string }) {
-  return (
-    <div style={{ display: 'flex', alignItems: 'baseline', gap: 4 }}>
-      <span style={{ fontSize: 11, color: 'var(--text-4)', fontWeight: 600, letterSpacing: '0.05em' }}>{label}</span>
-      <span style={{ fontSize: 13, color: color ?? 'var(--text-3)', fontWeight: 600 }}>{value}</span>
     </div>
   )
 }
