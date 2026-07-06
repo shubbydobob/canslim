@@ -185,7 +185,24 @@ function GuidePopup({ onClose }: { onClose: (hide24h: boolean) => void }) {
 }
 
 // ── main component ─────────────────────────────────────────────
+// 좁은 화면(모바일/앱) 감지 — 리사이즈에 반응. 테이블 대신 카드 리스트로 전환.
+function useIsMobile(breakpoint = 768) {
+  const [isMobile, setIsMobile] = useState(
+    () => typeof window !== 'undefined'
+      && window.matchMedia(`(max-width: ${breakpoint}px)`).matches
+  )
+  useEffect(() => {
+    const mq = window.matchMedia(`(max-width: ${breakpoint}px)`)
+    const handler = (e: MediaQueryListEvent) => setIsMobile(e.matches)
+    mq.addEventListener('change', handler)
+    setIsMobile(mq.matches)
+    return () => mq.removeEventListener('change', handler)
+  }, [breakpoint])
+  return isMobile
+}
+
 export default function ScreenerPage() {
+  const isMobile = useIsMobile()
   const [items, setItems] = useState<ScreenerItem[]>([])
   const [liveMap, setLiveMap] = useState<Record<string, LiveQuote>>({})
   const [flashMap, setFlashMap] = useState<Record<string, 'up' | 'down'>>({})
@@ -580,6 +597,77 @@ export default function ScreenerPage() {
           {fmtMarketCap(item.marketCap)}
         </td>
       </>
+    )
+  }
+
+  // ── 모바일 카드 렌더 (좁은 화면 전용) ────────────────────────
+  const renderCard = (item: ScreenerItem, _idx: number) => {
+    const grade = compositeGrade(item.compositeScore)
+    const isWatched = watchlist.has(item.securityId)
+    const flash = flashMap[item.ticker]
+    const factors: { k: string; v: number | null }[] = [
+      { k: '실적', v: item.cScore }, { k: '성장', v: item.aScore }, { k: '고가', v: item.nScore },
+      { k: '수급', v: item.sScore }, { k: '선도', v: item.lScore }, { k: '기관', v: item.iScore },
+    ]
+    return (
+      <div key={item.securityId}
+        onClick={() => { setSelectedStockId(item.securityId); setViewTab('detail') }}
+        style={{
+          background: 'var(--bg-nav)', border: '1px solid var(--border)', borderRadius: 10,
+          padding: '12px 14px', marginBottom: 8, cursor: 'pointer',
+        }}>
+        {/* 1행: 순위·종목명·티커/섹터 | 관심·SCORE */}
+        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 10 }}>
+          <div style={{ minWidth: 0, flex: 1 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <span style={{ fontSize: 11, color: 'var(--text-4)', fontFamily: 'var(--font-mono)', flexShrink: 0 }}>#{item.marketRank}</span>
+              <span style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-1)',
+                overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.name}</span>
+              {item.breakoutToday === true && (
+                <span style={{ fontSize: 9, background: '#16a34a', color: '#fff', borderRadius: 3, padding: '1px 4px', flexShrink: 0 }}>NEW</span>
+              )}
+            </div>
+            <div style={{ fontSize: 11, color: 'var(--text-3)', marginTop: 3, fontFamily: 'var(--font-mono)',
+              overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              <span style={{ color: '#3b82f6', fontWeight: 700 }}>{item.ticker}</span>
+              {item.sector && <span> · {item.sector}</span>}
+            </div>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexShrink: 0 }}>
+            <span onClick={e => toggleWatch(item.securityId, e)}
+              style={{ fontSize: 18, lineHeight: 1, color: isWatched ? '#facc15' : 'var(--text-4)', userSelect: 'none' }}>
+              {isWatched ? '★' : '☆'}
+            </span>
+            <div style={{ textAlign: 'right' }}>
+              <div style={{ fontSize: 22, fontWeight: 800, color: grade.color, lineHeight: 1 }}>
+                {Math.round(item.compositeScore)}
+              </div>
+              <div style={{ fontSize: 10, color: grade.color, opacity: 0.85, marginTop: 1 }}>{grade.label}</div>
+            </div>
+          </div>
+        </div>
+
+        {/* 2행: 종가 · 등락률 · 시총 */}
+        <div className={flash ? `flash-${flash}` : undefined}
+          style={{ display: 'flex', alignItems: 'baseline', gap: 12, marginTop: 10, borderRadius: 6,
+            fontFamily: 'var(--font-mono)' }}>
+          <span style={{ fontSize: 16, fontWeight: 700, color: 'var(--text-1)' }}>{fmtPrice(item.closePrice)}</span>
+          <span style={{ fontSize: 14, fontWeight: 700, color: changeColor(item.changeRate) }}>{fmtRate(item.changeRate)}</span>
+          <span style={{ marginLeft: 'auto', fontSize: 12, color: 'var(--text-3)' }}>시총 {fmtMarketCap(item.marketCap)}</span>
+        </div>
+
+        {/* 3행: C·A·N·S·L·I 팩터 스트립 */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: 4, marginTop: 10 }}>
+          {factors.map(f => (
+            <div key={f.k} style={{ textAlign: 'center', background: scoreColor(f.v), borderRadius: 5, padding: '4px 0' }}>
+              <div style={{ fontSize: 9, color: 'var(--text-4)' }}>{f.k}</div>
+              <div style={{ fontSize: 13, fontWeight: 700, fontFamily: 'var(--font-mono)', color: scoreText(f.v) }}>
+                {f.v !== null ? Math.round(f.v) : '·'}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
     )
   }
 
@@ -1298,6 +1386,11 @@ export default function ScreenerPage() {
               <span className="spinner" />
               종목 데이터 불러오는 중…
             </div>
+          ) : isMobile ? (
+            /* 모바일/앱: 카드 리스트 (가로 스크롤 없는 세로 레이아웃) */
+            <div style={{ padding: '2px 0' }}>
+              {displayItems.map((item, idx) => renderCard(mergeLive(item), idx))}
+            </div>
           ) : (
             <table style={{
               width: '100%', borderCollapse: 'collapse', tableLayout: 'fixed',
@@ -1330,15 +1423,17 @@ export default function ScreenerPage() {
           )}
         </div>
 
-        {/* sticky mirror scrollbar */}
-        <div ref={mirrorRef} onScroll={onMirrorScroll} style={{
-          position: 'sticky', bottom: 0, overflowX: 'auto', overflowY: 'hidden',
-          zIndex: 5, background: 'var(--bg-base)', borderTop: '1px solid var(--bg-surface)',
-        }}>
-          <div style={{
-            minWidth: 1200, height: 1,
-          }} />
-        </div>
+        {/* sticky mirror scrollbar (넓은 테이블 전용 — 모바일 카드 뷰에선 숨김) */}
+        {!isMobile && (
+          <div ref={mirrorRef} onScroll={onMirrorScroll} style={{
+            position: 'sticky', bottom: 0, overflowX: 'auto', overflowY: 'hidden',
+            zIndex: 5, background: 'var(--bg-base)', borderTop: '1px solid var(--bg-surface)',
+          }}>
+            <div style={{
+              minWidth: 1200, height: 1,
+            }} />
+          </div>
+        )}
       </div>
 
       {/* ── Pagination ───────────────────────────────────────── */}
