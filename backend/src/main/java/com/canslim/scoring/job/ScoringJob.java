@@ -40,8 +40,8 @@ public class ScoringJob {
         this.marketAdapters    = marketAdapters;
     }
 
-    /** 평일 18:30 KST (= 09:30 UTC) 자동 실행 */
-    @Scheduled(cron = "0 30 9 * * MON-FRI", zone = "UTC")
+    /** 평일 16:40 KST (= 07:40 UTC) 자동 실행 — ETL(16:10) 직후 스코어링 */
+    @Scheduled(cron = "0 40 7 * * MON-FRI", zone = "UTC")
     public void scheduledRun() {
         runNow(LocalDate.now());
     }

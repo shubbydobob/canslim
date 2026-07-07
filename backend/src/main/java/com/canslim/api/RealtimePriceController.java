@@ -262,21 +262,21 @@ public class RealtimePriceController {
     }
 
     /**
-     * 평일 09:00~18:00 KST 여부 (공휴일 미고려 — 공휴일엔 KIS가 전일값 반환).
+     * 평일 09:00~18:30 KST 여부 (공휴일 미고려 — 공휴일엔 KIS가 전일값 반환).
      *
-     * 정규장은 15:30에 끝나지만 그 상한을 18:00으로 늘렸다:
+     * 정규장은 15:30에 끝나지만 그 상한을 18:30으로 늘렸다:
      *   - 15:30 종가 확정 후에도 KIS FHKST01010100은 '오늘 종가 + 오늘 등락률'을 반환.
      *   - EOD 배치(run_daily, crontab 16:10 KST)가 price_daily에 오늘 종가를 적재하기까지
      *     15:30~16:20 공백이 생겨, 이 구간엔 배치값이 '어제 종가'라 오늘 급등락이 안 보였다.
      *   - 마감 후에도 오버레이를 열어두어 배치가 따라잡기 전까지 오늘 등락을 계속 노출.
-     *   - 18:00이면 배치·채점이 모두 끝나므로 이후엔 배치값으로 자연 폴백.
+     *   - 16:40 ScoringJob + ETL 완료 후에도 여유를 두어 18:30까지 오버레이 유지.
      */
     private boolean isKrMarketOpen() {
         ZonedDateTime now = ZonedDateTime.now(KST);
         DayOfWeek d = now.getDayOfWeek();
         if (d == DayOfWeek.SATURDAY || d == DayOfWeek.SUNDAY) return false;
         LocalTime t = now.toLocalTime();
-        return !t.isBefore(LocalTime.of(9, 0)) && !t.isAfter(LocalTime.of(18, 0));
+        return !t.isBefore(LocalTime.of(9, 0)) && !t.isAfter(LocalTime.of(18, 30));
     }
 
     private long parseLong(String s) {
