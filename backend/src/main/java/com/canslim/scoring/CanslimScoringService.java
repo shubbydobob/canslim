@@ -124,6 +124,15 @@ public class CanslimScoringService {
         }
 
         scoreRepository.updateRankings(scoreDate, market);
+
+        // 가격 스냅샷 적재 (정렬 인덱스용)
+        try {
+            scoreRepository.updatePriceSnapshot(scoreDate, market);
+            log.info("[{}] 가격 스냅샷 적재 완료", market);
+        } catch (Exception e) {
+            log.warn("[{}] 가격 스냅샷 적재 실패 (비치명적): {}", market, e.getMessage());
+        }
+
         log.info("[{}] 채점 완료: {}건 저장, {}건 오류", market, done, skipped);
     }
 

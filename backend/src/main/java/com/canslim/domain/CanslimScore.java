@@ -36,6 +36,15 @@ public class CanslimScore {
     @Column(name = "market_rank")      private Integer marketRank;
     @Column(name = "market_percentile") private BigDecimal marketPercentile;
     @Column(name = "config_version")   private Integer configVersion;
+
+    // 가격 스냅샷 (ScoringJob이 채점 후 price_daily에서 복사)
+    @Column(name = "close_price")  private BigDecimal closePrice;
+    @Column(name = "prev_close")   private BigDecimal prevClose;
+    @Column(name = "change_rate")  private BigDecimal changeRate;
+    @Column(name = "volume")       private Long priceVolume;
+    @Column(name = "turnover")     private BigDecimal turnover;
+    @Column(name = "market_cap")   private BigDecimal marketCap;
+
     @Column(name = "created_at")       private LocalDateTime createdAt;
 
     // ── factory ──────────────────────────────────────────────
@@ -81,6 +90,19 @@ public class CanslimScore {
     public BigDecimal getMarketPercentile() { return marketPercentile; }
     public Integer getConfigVersion() { return configVersion; }
 
+    public BigDecimal getClosePrice()  { return closePrice; }
+    public BigDecimal getPrevClose()   { return prevClose; }
+    public BigDecimal getChangeRate()  { return changeRate; }
+    public Long getPriceVolume()       { return priceVolume; }
+    public BigDecimal getTurnover()    { return turnover; }
+    public BigDecimal getMarketCap()   { return marketCap; }
+
     public void setMarketRank(Integer rank)              { this.marketRank = rank; }
     public void setMarketPercentile(BigDecimal pct)      { this.marketPercentile = pct; }
+    public void setClosePrice(BigDecimal v)  { this.closePrice = v; }
+    public void setPrevClose(BigDecimal v)   { this.prevClose = v; }
+    public void setChangeRate(BigDecimal v)  { this.changeRate = v; }
+    public void setPriceVolume(Long v)       { this.priceVolume = v; }
+    public void setTurnover(BigDecimal v)    { this.turnover = v; }
+    public void setMarketCap(BigDecimal v)   { this.marketCap = v; }
 }

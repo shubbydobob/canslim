@@ -682,7 +682,7 @@ public class ScreenerController {
     }
 
     /**
-     * 가격 기반 정렬: DB에서 JOIN + ORDER BY + LIMIT/OFFSET (2558 전체 로드 회피).
+     * 가격 기반 정렬: canslim_scores 내장 가격 컬럼으로 인덱스 정렬 (CTE 없음).
      */
     private ScreenerPageResponse screenByPriceSort(
             LocalDate scoreDate, String market, String sortBy, boolean desc,
@@ -690,14 +690,14 @@ public class ScreenerController {
             String keyword, String sector, Long minCap, Long maxCap) {
 
         String sortCol = switch (sortBy) {
-            case "closePrice"       -> "effective_close";
-            case "changeRate"       -> "change_rate";
-            case "volume"           -> "c.volume";
-            case "turnover"         -> "c.turnover";
-            case "marketCap"        -> "market_cap";
+            case "closePrice"       -> "cs.close_price";
+            case "changeRate"       -> "cs.change_rate";
+            case "volume"           -> "cs.volume";
+            case "turnover"         -> "cs.turnover";
+            case "marketCap"        -> "cs.market_cap";
             case "foreignNetBuy10d" -> "f.foreign_net_buy_10d";
             case "instNetBuy10d"    -> "f.inst_net_buy_10d";
-            default                 -> "c.turnover";
+            default                 -> "cs.turnover";
         };
         String direction = desc ? "DESC NULLS LAST" : "ASC NULLS LAST";
 
@@ -717,51 +717,28 @@ public class ScreenerController {
             params.add(sector);
         }
         if (minCap != null) {
-            where.append(" AND COALESCE(f.after_hours_close, c.close_adj) * i.total_shares >= ?");
+            where.append(" AND cs.market_cap >= ?");
             params.add(BigDecimal.valueOf(minCap));
         }
         if (maxCap != null) {
-            where.append(" AND COALESCE(f.after_hours_close, c.close_adj) * i.total_shares <= ?");
+            where.append(" AND cs.market_cap <= ?");
             params.add(BigDecimal.valueOf(maxCap));
         }
 
-        // 단일 쿼리: COUNT(*) OVER()로 count+data 한 번에 (CTE 중복 실행 제거)
         String sql = """
-            WITH ranked AS (
-                SELECT security_id, close_adj, volume, turnover, trade_date,
-                       ROW_NUMBER() OVER (PARTITION BY security_id ORDER BY trade_date DESC) rn,
-                       LEAD(close_adj) OVER (PARTITION BY security_id ORDER BY trade_date DESC) AS prev_close
-                FROM price_daily
-                WHERE trade_date >= CURRENT_DATE - INTERVAL '14 days'
-            ),
-            cur AS (
-                SELECT security_id, close_adj, volume, turnover, trade_date, prev_close
-                FROM ranked WHERE rn = 1
-            ),
-            flow AS (
-                SELECT security_id, inst_net_buy_10d, foreign_net_buy_10d, program_net_buy_10d,
-                       after_hours_close, after_hours_change_pct
-                FROM derived_metrics
-                WHERE as_of_date = (SELECT MAX(as_of_date) FROM derived_metrics WHERE inst_net_buy_10d IS NOT NULL)
-            )
             SELECT cs.security_id, cs.score_date, cs.market, cs.market_rank, cs.market_percentile,
                    cs.composite_score, cs.c_score, cs.a_score, cs.n_score,
                    cs.s_score, cs.l_score, cs.i_score, cs.m_score,
                    i.ticker, i.name, i.sector,
-                   COALESCE(f.after_hours_close, c.close_adj) AS effective_close,
-                   c.volume, c.turnover,
-                   CASE WHEN c.prev_close > 0
-                        THEN ROUND((COALESCE(f.after_hours_close, c.close_adj) - c.prev_close) / c.prev_close * 100, 2)
-                   END AS change_rate,
-                   COALESCE(f.after_hours_close, c.close_adj) * i.total_shares AS market_cap,
+                   cs.close_price, cs.change_rate, cs.volume, cs.turnover, cs.market_cap,
                    f.inst_net_buy_10d, f.foreign_net_buy_10d, f.program_net_buy_10d,
                    f.after_hours_close, f.after_hours_change_pct,
                    cs.composite_score - prev_s.composite_score AS score_delta,
                    COUNT(*) OVER() AS total_count
             FROM canslim_scores cs
             JOIN instruments i ON i.id = cs.security_id
-            JOIN cur c ON c.security_id = cs.security_id
-            LEFT JOIN flow f ON f.security_id = cs.security_id
+            LEFT JOIN derived_metrics f ON f.security_id = cs.security_id
+                AND f.as_of_date = (SELECT MAX(as_of_date) FROM derived_metrics WHERE inst_net_buy_10d IS NOT NULL)
             LEFT JOIN canslim_scores prev_s ON prev_s.security_id = cs.security_id
                 AND prev_s.score_date = cs.score_date - INTERVAL '1 day'
             WHERE """ + where + """
@@ -788,7 +765,7 @@ public class ScreenerController {
                 rs.getBigDecimal("c_score"), rs.getBigDecimal("a_score"),
                 rs.getBigDecimal("n_score"), rs.getBigDecimal("s_score"),
                 rs.getBigDecimal("l_score"), rs.getBigDecimal("i_score"), rs.getBigDecimal("m_score"),
-                rs.getBigDecimal("effective_close"),
+                rs.getBigDecimal("close_price"),
                 rs.getBigDecimal("change_rate"),
                 null,
                 rs.getBigDecimal("volume"),

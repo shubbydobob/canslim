@@ -63,6 +63,39 @@ public interface CanslimScoreRepository extends JpaRepository<CanslimScore, Long
                 @Param("compositeScore") double compositeScore,
                 @Param("configVersion") Integer configVersion);
 
+    /** 채점 완료 후 가격 스냅샷 일괄 적재 (score_date 기준 최신 가격) */
+    @Modifying
+    @Query(value = """
+        WITH ranked AS (
+            SELECT security_id, close_adj, volume, turnover, trade_date,
+                   ROW_NUMBER() OVER (PARTITION BY security_id ORDER BY trade_date DESC) rn,
+                   LEAD(close_adj) OVER (PARTITION BY security_id ORDER BY trade_date DESC) AS prev_close
+            FROM price_daily
+            WHERE trade_date >= :scoreDate - INTERVAL '14 days'
+              AND trade_date <= :scoreDate
+        ),
+        cur AS (
+            SELECT security_id, close_adj, prev_close, volume, turnover
+            FROM ranked WHERE rn = 1
+        )
+        UPDATE canslim_scores cs SET
+            close_price = cur.close_adj,
+            prev_close  = cur.prev_close,
+            change_rate = CASE WHEN cur.prev_close > 0
+                          THEN ROUND(CAST((cur.close_adj - cur.prev_close) / cur.prev_close * 100 AS NUMERIC), 2)
+                          END,
+            volume      = cur.volume,
+            turnover    = cur.turnover,
+            market_cap  = cur.close_adj * i.total_shares
+        FROM cur
+        JOIN instruments i ON i.id = cur.security_id
+        WHERE cs.security_id = cur.security_id
+          AND cs.score_date = :scoreDate
+          AND cs.market = :market
+        """, nativeQuery = true)
+    void updatePriceSnapshot(@Param("scoreDate") LocalDate scoreDate,
+                             @Param("market") String market);
+
     /** 오닐 방식 M 점수: market_state의 notes 컬럼에서 "M=XX" 값 추출.
      *  KOSPI/KOSDAQ 각각의 M 점수를 시가총액 비중으로 가중 평균하는 대신
      *  해당 markets 중 가장 최근 데이터의 평균을 사용한다. */

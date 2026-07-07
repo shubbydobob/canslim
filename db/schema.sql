@@ -1,24 +1,11 @@
 -- ============================================================
--- CANSLIM Screener — PostgreSQL DDL v2
+-- CANSLIM Screener — PostgreSQL DDL v3
 -- ============================================================
 
 CREATE EXTENSION IF NOT EXISTS pg_trgm;
 
 -- ============================================================
--- 1. industry_groups (instruments FK 선행)
--- ============================================================
-CREATE TABLE industry_groups (
-    id            BIGSERIAL PRIMARY KEY,
-    code          VARCHAR(50)  NOT NULL UNIQUE,
-    name          VARCHAR(200) NOT NULL,
-    market        VARCHAR(10)  NOT NULL,
-    parent_sector VARCHAR(100),
-    created_at    TIMESTAMPTZ  NOT NULL DEFAULT NOW()
-);
-CREATE INDEX idx_industry_groups_market ON industry_groups (market);
-
--- ============================================================
--- 2. instruments
+-- 1. instruments
 -- ============================================================
 CREATE TABLE instruments (
     id                BIGSERIAL PRIMARY KEY,
@@ -28,7 +15,6 @@ CREATE TABLE instruments (
     listing_date      DATE,
     float_shares      BIGINT,
     total_shares      BIGINT,
-    industry_group_id BIGINT       REFERENCES industry_groups(id),
     sector            VARCHAR(100),
     -- COMMON / PREFERRED / REIT / SPAC / ETF / ETN / OTHER
     security_type     VARCHAR(20)  NOT NULL DEFAULT 'COMMON',
@@ -39,12 +25,10 @@ CREATE TABLE instruments (
     CONSTRAINT uq_instruments_ticker_market UNIQUE (ticker, market)
 );
 CREATE INDEX idx_instruments_market         ON instruments (market);
-CREATE INDEX idx_instruments_industry_group ON instruments (industry_group_id);
 CREATE INDEX idx_instruments_active         ON instruments (is_active) WHERE is_active = TRUE;
 
 -- ============================================================
--- 3. price_daily (연도별 범위 파티션)
--- 2027까지 수동 파티션. 이후 연도는 V3 패턴으로 파티션 추가.
+-- 2. price_daily (연도별 범위 파티션)
 -- ============================================================
 CREATE TABLE price_daily (
     id             BIGSERIAL,
@@ -75,7 +59,7 @@ CREATE INDEX idx_price_daily_sec_date ON price_daily (security_id, trade_date DE
 CREATE INDEX idx_price_daily_date     ON price_daily (trade_date DESC);
 
 -- ============================================================
--- 4. financials — DART 원본만 저장 (누적 그대로)
+-- 3. financials — KIS 원본만 저장 (누적 그대로)
 -- 단독분기값과 YoY는 Python ETL이 derived_metrics에 적재
 -- ============================================================
 CREATE TABLE financials (
@@ -89,7 +73,7 @@ CREATE TABLE financials (
     revenue          NUMERIC(22,4),
     operating_income NUMERIC(22,4),
     net_income       NUMERIC(22,4),
-    eps              NUMERIC(14,6),         -- DART 원본 EPS
+    eps              NUMERIC(14,6),
     shares_diluted   BIGINT,
     roe              NUMERIC(8,4),
     is_cumulative    BOOLEAN     NOT NULL DEFAULT FALSE,
@@ -107,7 +91,7 @@ CREATE INDEX idx_financials_period_end    ON financials (security_id, period_end
 CREATE INDEX idx_financials_consolidated  ON financials (security_id, is_consolidated DESC, period_end_date DESC);
 
 -- ============================================================
--- 5. derived_metrics
+-- 4. derived_metrics
 -- Python 담당: eps_* , roe_latest
 -- Java 담당: rs_percentile, volume_ratio_20d, pct_from_52w_high, inst_*
 -- ============================================================
@@ -129,9 +113,7 @@ CREATE TABLE derived_metrics (
     pct_from_52w_high       NUMERIC(8,4),
     price_vs_base_breakout  BOOLEAN,
     volume_ratio_20d        NUMERIC(10,4),
-    buyback_flag            BOOLEAN DEFAULT FALSE,
     rs_percentile           NUMERIC(6,4),
-    industry_rs_rank        INTEGER,
     inst_net_buy_10d        NUMERIC(22,4),
     foreign_net_buy_10d     NUMERIC(22,4),
     program_net_buy_10d     NUMERIC(22,4),
@@ -147,7 +129,7 @@ CREATE INDEX idx_derived_metrics_date     ON derived_metrics (as_of_date DESC);
 CREATE INDEX idx_derived_metrics_rs       ON derived_metrics (as_of_date DESC, rs_percentile DESC);
 
 -- ============================================================
--- 6. canslim_scores — M 서브스코어 없음 (게이트로 분리)
+-- 5. canslim_scores — 점수 + 가격 스냅샷 (정렬 인덱스용)
 -- ============================================================
 CREATE TABLE canslim_scores (
     id                BIGSERIAL PRIMARY KEY,
@@ -160,35 +142,32 @@ CREATE TABLE canslim_scores (
     s_score           NUMERIC(6,2),
     l_score           NUMERIC(6,2),
     i_score           NUMERIC(6,2),
+    m_score           NUMERIC(6,2),
     composite_score   NUMERIC(6,2) NOT NULL,
     market_rank       INTEGER,
     market_percentile NUMERIC(6,4),
     config_version    INTEGER,
+
+    -- 가격 스냅샷 (ScoringJob이 채점 후 price_daily에서 복사)
+    close_price       NUMERIC(18,4),
+    prev_close        NUMERIC(18,4),
+    change_rate       NUMERIC(8,4),
+    volume            BIGINT,
+    turnover          NUMERIC(22,4),
+    market_cap        NUMERIC(22,4),
+
     created_at        TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     CONSTRAINT uq_canslim_scores_sec_date UNIQUE (security_id, score_date)
 );
 CREATE INDEX idx_canslim_scores_sec_date  ON canslim_scores (security_id, score_date DESC);
 CREATE INDEX idx_canslim_scores_date_rank ON canslim_scores (score_date DESC, market, market_rank);
 CREATE INDEX idx_canslim_scores_composite ON canslim_scores (score_date DESC, composite_score DESC);
+CREATE INDEX idx_canslim_scores_turnover  ON canslim_scores (score_date DESC, market, turnover DESC NULLS LAST);
+CREATE INDEX idx_canslim_scores_chg_rate  ON canslim_scores (score_date DESC, market, change_rate DESC NULLS LAST);
+CREATE INDEX idx_canslim_scores_mkt_cap   ON canslim_scores (score_date DESC, market, market_cap DESC NULLS LAST);
 
 -- ============================================================
--- 7. industry_scores
--- ============================================================
-CREATE TABLE industry_scores (
-    id                BIGSERIAL PRIMARY KEY,
-    industry_group_id BIGINT    NOT NULL REFERENCES industry_groups(id),
-    score_date        DATE      NOT NULL,
-    avg_composite     NUMERIC(6,2),
-    median_composite  NUMERIC(6,2),
-    avg_rs_percentile NUMERIC(6,4),
-    stock_count       INTEGER,
-    industry_rank     INTEGER,
-    CONSTRAINT uq_industry_scores_grp_date UNIQUE (industry_group_id, score_date)
-);
-CREATE INDEX idx_industry_scores_date_rank ON industry_scores (score_date DESC, industry_rank);
-
--- ============================================================
--- 8. market_state (M 게이트 전이 지원)
+-- 6. market_state (M 게이트 전이 지원)
 -- ============================================================
 CREATE TABLE market_state (
     id                      BIGSERIAL PRIMARY KEY,
@@ -210,7 +189,7 @@ CREATE TABLE market_state (
 CREATE INDEX idx_market_state_market_date ON market_state (market, state_date DESC);
 
 -- ============================================================
--- 9. ingestion_meta
+-- 7. ingestion_meta
 -- ============================================================
 CREATE TABLE ingestion_meta (
     id            BIGSERIAL PRIMARY KEY,
@@ -230,7 +209,7 @@ CREATE INDEX idx_ingestion_meta_source ON ingestion_meta (source_name, target_da
 CREATE INDEX idx_ingestion_meta_status ON ingestion_meta (status) WHERE status IN ('PENDING','FAILED');
 
 -- ============================================================
--- 10. market_config (weight_m 없음, CHECK constraint)
+-- 8. market_config (weight_m 없음, CHECK constraint)
 -- ============================================================
 CREATE TABLE market_config (
     id                       BIGSERIAL PRIMARY KEY,
@@ -240,7 +219,6 @@ CREATE TABLE market_config (
 
     c_eps_growth_threshold   NUMERIC(8,4) DEFAULT 0.25,
     c_use_percentile         BOOLEAN      DEFAULT FALSE,
-    c_percentile_min         NUMERIC(6,4),
     c_neg_growth_score_cap   NUMERIC(6,2) DEFAULT 20.0,
     c_accel_max_bonus        NUMERIC(6,2) DEFAULT 20.0,
 
@@ -251,7 +229,7 @@ CREATE TABLE market_config (
     n_max_pct_from_high      NUMERIC(8,4) DEFAULT 0.10,
     n_breakout_vol_min       NUMERIC(8,4) DEFAULT 1.40,
 
-    s_float_max_billions     NUMERIC(14,4),
+    s_cap_max_tril           NUMERIC(14,4),
     s_vol_surge_threshold    NUMERIC(8,4) DEFAULT 1.50,
 
     l_rs_min_percentile      NUMERIC(6,4) DEFAULT 80.0,
@@ -260,7 +238,6 @@ CREATE TABLE market_config (
     i_net_buy_window_days    SMALLINT     DEFAULT 10,
     i_net_buy_threshold      NUMERIC(22,4),
 
-    m_distribution_day_limit SMALLINT     DEFAULT 4,
     m_gate_phases            VARCHAR(50)  DEFAULT 'BEAR',
 
     -- 가중치 합 = 1.0 (M 제외 6개)
@@ -272,11 +249,9 @@ CREATE TABLE market_config (
     weight_i                 NUMERIC(6,4) DEFAULT 0.10,
 
     effective_from           DATE         NOT NULL,
-    effective_to             DATE,
     created_at               TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
 
     CONSTRAINT uq_market_config_market_version UNIQUE (market, version),
-    -- 새 버전 INSERT 시에만 가중치 합 검증
     CONSTRAINT chk_weights_sum CHECK (
         ABS(weight_c + weight_a + weight_n + weight_s + weight_l + weight_i - 1.0) < 0.001
     )

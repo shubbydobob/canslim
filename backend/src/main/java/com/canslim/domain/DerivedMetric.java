@@ -53,16 +53,12 @@ public class DerivedMetric {
     private Boolean priceVsBaseBreakout;
     @Column(name = "volume_ratio_20d")
     private BigDecimal volumeRatio20d;
-    @Column(name = "buyback_flag")
-    private Boolean buybackFlag;
     /**
      * RS 백분위. close_adj 기준 252일 수익률로 계산.
      * 함정: 상장 252일 미만 신규주 → NULL. 단기 수익률로 대체 금지.
      */
     @Column(name = "rs_percentile")
     private BigDecimal rsPercentile;
-    @Column(name = "industry_rs_rank")
-    private Integer industryRsRank;
     @Column(name = "market_cap_tril")
     private BigDecimal marketCapTril;
 
@@ -86,9 +82,7 @@ public class DerivedMetric {
     public BigDecimal getPctFrom52wHigh() { return pctFrom52wHigh; }
     public Boolean getPriceVsBaseBreakout() { return priceVsBaseBreakout; }
     public BigDecimal getVolumeRatio20d() { return volumeRatio20d; }
-    public Boolean getBuybackFlag() { return buybackFlag; }
     public BigDecimal getRsPercentile() { return rsPercentile; }
-    public Integer getIndustryRsRank() { return industryRsRank; }
     public BigDecimal getMarketCapTril() { return marketCapTril; }
     public BigDecimal getInstNetBuy10d() { return instNetBuy10d; }
     public BigDecimal getForeignNetBuy10d() { return foreignNetBuy10d; }

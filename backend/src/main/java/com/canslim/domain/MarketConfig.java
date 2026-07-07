@@ -2,7 +2,6 @@ package com.canslim.domain;
 
 import jakarta.persistence.*;
 import java.math.BigDecimal;
-import java.time.LocalDate;
 
 @Entity
 @Table(name = "market_config")
@@ -64,8 +63,6 @@ public class MarketConfig {
     private BigDecimal iNetBuyThreshold;
 
     // M (게이트)
-    @Column(name = "m_distribution_day_limit")
-    private Short mDistributionDayLimit;
     @Column(name = "m_gate_phases", length = 50)
     private String mGatePhases;
 
@@ -82,9 +79,6 @@ public class MarketConfig {
     private BigDecimal weightL;
     @Column(name = "weight_i")
     private BigDecimal weightI;
-
-    @Column(name = "effective_from")
-    private LocalDate effectiveFrom;
 
     /** m_gate_phases 문자열 파싱 → 게이트 대상 phase 목록 */
     public java.util.Set<String> getGatePhaseSet() {
@@ -112,7 +106,6 @@ public class MarketConfig {
     public Short getLRsWindowDays() { return lRsWindowDays; }
     public Short getINetBuyWindowDays() { return iNetBuyWindowDays; }
     public BigDecimal getINetBuyThreshold() { return iNetBuyThreshold; }
-    public Short getMDistributionDayLimit() { return mDistributionDayLimit; }
     public String getMGatePhases() { return mGatePhases; }
     public BigDecimal getWeightC() { return weightC; }
     public BigDecimal getWeightA() { return weightA; }
