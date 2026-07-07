@@ -22,6 +22,7 @@ jobs:
           command_timeout: 5m
           script: |
             cd /home/ubuntu/canslim
+            git stash --include-untracked 2>/dev/null || true
             git pull --ff-only
 
             echo "===== Running: ${{ github.event.inputs.script }} ====="
