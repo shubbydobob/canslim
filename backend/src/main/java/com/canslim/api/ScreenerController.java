@@ -279,8 +279,11 @@ public class ScreenerController {
 
         LocalDate scoreDate = resolveDate(market, null);
         if (scoreDate == null) return ResponseEntity.ok(List.of());
+        // 가격 앵커는 '최신 가격일'(채점보다 앞설 수 있음) — 채점이 밀려도 당일 등락은 최신 가격으로.
+        LocalDate priceDate = jdbc.queryForObject("SELECT max(trade_date) FROM price_daily", LocalDate.class);
+        if (priceDate == null) priceDate = scoreDate;
 
-        // score_date 이하 최신 2개 거래일(cur/prev)로 당일 등락률 계산 (연속 거래일 = 주말 제외).
+        // 최신 가격일 이하 최신 2개 거래일(cur/prev)로 당일 등락률 계산 (연속 거래일 = 주말 제외).
         String sql = """
             WITH ranked AS (
               SELECT security_id, close_adj, trade_date,
@@ -311,7 +314,7 @@ public class ScreenerController {
                     rs.getString("name"), rs.getString("sector"),
                     rs.getDouble("change_rate"), rs.getDouble("close_price"),
                     comp == null ? null : ((Number) comp).doubleValue());
-        }, scoreDate, scoreDate, scoreDate, market, threshold);
+        }, priceDate, priceDate, scoreDate, market, threshold);
 
         return ResponseEntity.ok(rows);
     }
