@@ -725,6 +725,13 @@ public class ScreenerController {
             params.add(BigDecimal.valueOf(maxCap));
         }
 
+        // 총 건수: 가벼운 count 쿼리 (JOIN/윈도우 없음)
+        boolean needInst = keyword != null || sector != null;
+        String countSql = "SELECT COUNT(*) FROM canslim_scores cs"
+                + (needInst ? " JOIN instruments i ON i.id = cs.security_id" : "")
+                + " WHERE " + where;
+        long totalCount = jdbc.queryForObject(countSql, Long.class, params.toArray());
+
         String sql = """
             SELECT cs.security_id, cs.score_date, cs.market, cs.market_rank, cs.market_percentile,
                    cs.composite_score, cs.c_score, cs.a_score, cs.n_score,
@@ -732,15 +739,11 @@ public class ScreenerController {
                    i.ticker, i.name, i.sector,
                    cs.close_price, cs.change_rate, cs.volume, cs.turnover, cs.market_cap,
                    f.inst_net_buy_10d, f.foreign_net_buy_10d, f.program_net_buy_10d,
-                   f.after_hours_close, f.after_hours_change_pct,
-                   cs.composite_score - prev_s.composite_score AS score_delta,
-                   COUNT(*) OVER() AS total_count
+                   f.after_hours_close, f.after_hours_change_pct
             FROM canslim_scores cs
             JOIN instruments i ON i.id = cs.security_id
             LEFT JOIN derived_metrics f ON f.security_id = cs.security_id
                 AND f.as_of_date = (SELECT MAX(as_of_date) FROM derived_metrics WHERE inst_net_buy_10d IS NOT NULL)
-            LEFT JOIN canslim_scores prev_s ON prev_s.security_id = cs.security_id
-                AND prev_s.score_date = cs.score_date - INTERVAL '1 day'
             WHERE """ + where + """
             ORDER BY """ + sortCol + " " + direction + """
             LIMIT ? OFFSET ?
@@ -750,9 +753,7 @@ public class ScreenerController {
         dataParams.add(size);
         dataParams.add((long) page * size);
 
-        long[] totalHolder = {0};
         List<ScreenerItemResponse> items = jdbc.query(sql, (rs, idx) -> {
-            if (idx == 0) totalHolder[0] = rs.getLong("total_count");
             return new ScreenerItemResponse(
                 rs.getLong("security_id"),
                 rs.getString("ticker"),
@@ -777,12 +778,12 @@ public class ScreenerController {
                 rs.getBigDecimal("after_hours_change_pct"),
                 rs.getBigDecimal("market_cap"),
                 rs.getString("sector"),
-                rs.getBigDecimal("score_delta"),
+                null,
                 false, null
             );
         }, dataParams.toArray());
 
-        return new ScreenerPageResponse(items, totalHolder[0], page, size);
+        return new ScreenerPageResponse(items, totalCount, page, size);
     }
 
     private Set<Long> loadBreakouts(List<Long> ids, LocalDate scoreDate) {
