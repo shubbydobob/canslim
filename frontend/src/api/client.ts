@@ -50,10 +50,10 @@ export interface LimitUpStock {
   compositeScore: number | null
 }
 
-/** 상한가·급등 종목 (당일 등락률 >= 29%). 대시보드 섹션용. */
-export async function fetchLimitUp(market = 'KR'): Promise<LimitUpStock[]> {
+/** 상한가·급등 후보 (배치 등락률 >= threshold%). 실시간 오버레이 전 후보군. */
+export async function fetchLimitUp(market = 'KR', threshold = 29): Promise<LimitUpStock[]> {
   try {
-    const res = await fetch(`${BASE}/screener/limit-up?market=${market}`)
+    const res = await fetch(`${BASE}/screener/limit-up?market=${market}&threshold=${threshold}`)
     if (!res.ok) return []
     return res.json()
   } catch { return [] }

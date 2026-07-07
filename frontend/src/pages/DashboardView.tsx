@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import type { ScreenerItem } from '../types'
-import { fetchScreenerStats, fetchLimitUp } from '../api/client'
-import type { ScreenerStats, LimitUpStock } from '../api/client'
+import { fetchScreenerStats, fetchLimitUp, fetchLiveQuotes } from '../api/client'
+import type { ScreenerStats, LimitUpStock, LiveQuote } from '../api/client'
 import { useIsMobile } from '../hooks/useIsMobile'
 
 interface Props {
@@ -70,12 +70,37 @@ export default function DashboardView({
   const [hoveredRankId, setHoveredRankId] = useState<number | null>(null)
   const [stats, setStats] = useState<ScreenerStats | null>(null)
   const [limitUp, setLimitUp] = useState<LimitUpStock[]>([])
+  const [liveMap, setLiveMap] = useState<Record<string, LiveQuote>>({})
   const isMobile = useIsMobile()
 
   useEffect(() => {
     fetchScreenerStats('KR').then(setStats).catch(() => {})
-    fetchLimitUp('KR').then(setLimitUp).catch(() => {})
+
+    // 상한가 후보(배치 ≥10%)를 받아 KIS 실시간 등락률로 덮어씀 → 실시간 기준 필터.
+    const loadLimit = async () => {
+      const cands = await fetchLimitUp('KR', 10).catch(() => [])
+      setLimitUp(cands)
+      if (cands.length) {
+        const lq = await fetchLiveQuotes(cands.map(c => c.ticker)).catch(() => ({}))
+        setLiveMap(lq)
+      } else {
+        setLiveMap({})
+      }
+    }
+    loadLimit()
+    const timer = setInterval(loadLimit, 15000)   // 15초 실시간 갱신
+    return () => clearInterval(timer)
   }, [])
+
+  // 실시간 등락률로 덮어쓰고, 진짜 상한가·급등(실시간 ≥29%)만 노출.
+  const LIMIT_MIN = 29
+  const limitUpLive = limitUp
+    .map(s => {
+      const live = liveMap[s.ticker]?.changeRate
+      return { ...s, effChange: live != null ? live : s.changeRate }
+    })
+    .filter(s => s.effChange >= LIMIT_MIN)
+    .sort((a, b) => b.effChange - a.effChange)
 
   // ── Stats (전체 2558종목 기준) ──────────────────────────────────
   const bullCount = stats?.bullCount ?? 0
@@ -185,20 +210,20 @@ export default function DashboardView({
           display: 'flex', alignItems: 'center', gap: 8,
         }}>
           <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-1)' }}>🚀 상한가·급등</span>
-          <span style={{ fontSize: 11, color: 'var(--text-4)' }}>당일 +29% 이상</span>
-          {limitUp.length > 0 && (
+          <span style={{ fontSize: 11, color: 'var(--text-4)' }}>실시간 +29% 이상</span>
+          {limitUpLive.length > 0 && (
             <span style={{ marginLeft: 'auto', fontSize: 12, fontWeight: 700, color: 'var(--up)', fontFamily: 'var(--font-mono)' }}>
-              {limitUp.length}종목
+              {limitUpLive.length}종목
             </span>
           )}
         </div>
-        {limitUp.length === 0 ? (
+        {limitUpLive.length === 0 ? (
           <div style={{ padding: '22px', textAlign: 'center', color: 'var(--text-4)', fontSize: 12 }}>
             오늘 상한가·급등 종목 없음
           </div>
         ) : (
           <div className="hide-scrollbar" style={{ display: 'flex', gap: 8, padding: 12, overflowX: 'auto' }}>
-            {limitUp.map(s => (
+            {limitUpLive.map(s => (
               <button
                 key={s.securityId}
                 onClick={() => onStockClick(s.securityId)}
@@ -212,7 +237,7 @@ export default function DashboardView({
                   overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.name}</div>
                 <div style={{ fontSize: 10, color: 'var(--accent)', fontFamily: 'var(--font-mono)', fontWeight: 700, marginTop: 2 }}>{s.ticker}</div>
                 <div style={{ fontSize: 16, fontWeight: 800, color: 'var(--up)', fontFamily: 'var(--font-mono)', marginTop: 5 }}>
-                  +{s.changeRate.toFixed(2)}%
+                  +{s.effChange.toFixed(2)}%
                 </div>
                 <div style={{ fontSize: 10, color: 'var(--text-3)', fontFamily: 'var(--font-mono)', marginTop: 1 }}>
                   {Math.round(s.closePrice).toLocaleString()}원{s.compositeScore != null ? ` · ${Math.round(s.compositeScore)}점` : ''}
