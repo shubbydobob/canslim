@@ -705,7 +705,7 @@ export default function ScreenerPage() {
   }
 
   return (
-    <div style={{ minHeight: '100vh', background: 'var(--bg-base)', color: 'var(--text-1)', display: 'flex', flexDirection: 'column' }}>
+    <div style={{ height: '100dvh', background: 'var(--bg-base)', color: 'var(--text-1)', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
       {showGuide && <GuidePopup onClose={closeGuide} />}
 
       {/* 프리미엄 게이팅 모달 */}
