@@ -28,6 +28,10 @@ jobs:
             echo "===== 백엔드 로그 마지막 35줄 ====="
             docker logs canslim-backend --tail 35 2>&1 | tail -35 || echo "(로그 없음)"
 
+            echo "===== 제이케이시냅스 진단 (close vs close_adj) ====="
+            $PSQL -c "SELECT i.id, i.ticker, i.name FROM instruments i WHERE i.name LIKE '%제이케이시냅스%' OR i.name LIKE '%시냅스%';" 2>&1 || true
+            $PSQL -c "SELECT p.trade_date, p.close, p.close_adj FROM price_daily p JOIN instruments i ON i.id=p.security_id WHERE i.name LIKE '%시냅스%' ORDER BY p.trade_date DESC LIMIT 10;" 2>&1 || true
+
             echo "===== 테이블별 row 수 ====="
             $PSQL -c "SELECT relname, n_live_tup FROM pg_stat_user_tables ORDER BY n_live_tup DESC;"
 
