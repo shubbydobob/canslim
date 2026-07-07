@@ -76,21 +76,24 @@ export default function DashboardView({
   useEffect(() => {
     fetchScreenerStats('KR').then(setStats).catch(() => {})
 
-    // 상한가 후보(배치 ≥10%)를 받아 KIS 실시간 등락률로 덮어씀 → 실시간 기준 필터.
-    const loadLimit = async () => {
+    // 상한가 후보(배치 ≥10%) + TOP 랭킹 종목의 KIS 실시간 등락률을 받아 오버레이.
+    const loadLive = async () => {
       const cands = await fetchLimitUp('KR', 10).catch(() => [])
       setLimitUp(cands)
-      if (cands.length) {
-        const lq = await fetchLiveQuotes(cands.map(c => c.ticker)).catch(() => ({}))
+      const top15 = [...items].sort((a, b) => b.compositeScore - a.compositeScore).slice(0, 15)
+      // TOP 종목 우선 + 상한가 후보, 중복 제거, 배치 상한 60개.
+      const tickers = Array.from(new Set([...top15.map(t => t.ticker), ...cands.map(c => c.ticker)])).slice(0, 60)
+      if (tickers.length) {
+        const lq = await fetchLiveQuotes(tickers).catch(() => ({}))
         setLiveMap(lq)
       } else {
         setLiveMap({})
       }
     }
-    loadLimit()
-    const timer = setInterval(loadLimit, 15000)   // 15초 실시간 갱신
+    loadLive()
+    const timer = setInterval(loadLive, 15000)   // 15초 실시간 갱신
     return () => clearInterval(timer)
-  }, [])
+  }, [items])
 
   // 실시간 등락률로 덮어쓰고, 진짜 상한가·급등(실시간 ≥29%)만 노출.
   const LIMIT_MIN = 29
@@ -306,6 +309,8 @@ export default function DashboardView({
             {!loading && topItems.map((item, idx) => {
               const hovered = hoveredRankId === item.securityId
               const sc = scoreColor(item.compositeScore)
+              const liveCh = liveMap[item.ticker]?.changeRate
+              const dispChange = liveCh != null ? liveCh : item.changeRate
               return (
                 <div
                   key={item.securityId}
@@ -372,14 +377,14 @@ export default function DashboardView({
                   <span style={{
                     fontSize: 11,
                     fontWeight: 600,
-                    color: changeColor(item.changeRate),
+                    color: changeColor(dispChange),
                     fontFamily: 'var(--font-mono)',
                     width: 44,
                     textAlign: 'right',
                     flexShrink: 0,
                   }}>
-                    {item.changeRate !== null
-                      ? (item.changeRate >= 0 ? '+' : '') + item.changeRate.toFixed(2) + '%'
+                    {dispChange !== null
+                      ? (dispChange >= 0 ? '+' : '') + dispChange.toFixed(2) + '%'
                       : '—'}
                   </span>
                 </div>
