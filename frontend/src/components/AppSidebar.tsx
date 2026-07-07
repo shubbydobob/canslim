@@ -1,4 +1,5 @@
 import React from 'react'
+import { useIsMobile } from '../hooks/useIsMobile'
 
 type MainTab = 'dashboard' | 'ranking' | 'screener' | 'watchlist'
 
@@ -62,6 +63,45 @@ const NAV_ITEMS: { id: MainTab; label: string; icon: React.ReactNode }[] = [
 ]
 
 export default function AppSidebar({ activeTab, onTabChange, watchlistCount, topSector, totalStocks }: Props) {
+  const isMobile = useIsMobile()
+
+  // 모바일/앱: 좌측 사이드바 대신 하단 고정 탭바 (앱 관례)
+  if (isMobile) {
+    return (
+      <nav style={{
+        position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 100,
+        height: 56, background: 'var(--bg-nav)', borderTop: '1px solid var(--border)',
+        display: 'flex', boxShadow: '0 -2px 12px rgba(0,0,0,0.15)',
+      }}>
+        {NAV_ITEMS.map(item => {
+          const active = activeTab === item.id
+          return (
+            <button
+              key={item.id}
+              onClick={() => onTabChange(item.id)}
+              style={{
+                flex: 1, display: 'flex', flexDirection: 'column',
+                alignItems: 'center', justifyContent: 'center', gap: 3,
+                background: 'none', border: 'none', cursor: 'pointer', position: 'relative',
+                color: active ? 'var(--accent)' : 'var(--text-3)',
+              }}
+            >
+              <span style={{ display: 'flex', opacity: active ? 1 : 0.75 }}>{item.icon}</span>
+              <span style={{ fontSize: 10, fontWeight: active ? 700 : 500 }}>{item.label}</span>
+              {item.id === 'watchlist' && watchlistCount > 0 && (
+                <span style={{
+                  position: 'absolute', top: 4, left: '50%', marginLeft: 6,
+                  background: 'var(--accent)', color: '#fff', borderRadius: 999,
+                  fontSize: 9, fontWeight: 700, padding: '0 4px', minWidth: 14, textAlign: 'center',
+                }}>{watchlistCount}</span>
+              )}
+            </button>
+          )
+        })}
+      </nav>
+    )
+  }
+
   return (
     <aside style={{
       width: 220,

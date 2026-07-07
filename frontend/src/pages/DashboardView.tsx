@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import type { ScreenerItem } from '../types'
 import { fetchScreenerStats } from '../api/client'
 import type { ScreenerStats } from '../api/client'
+import { useIsMobile } from '../hooks/useIsMobile'
 
 interface Props {
   items: ScreenerItem[]
@@ -68,6 +69,7 @@ export default function DashboardView({
 }: Props) {
   const [hoveredRankId, setHoveredRankId] = useState<number | null>(null)
   const [stats, setStats] = useState<ScreenerStats | null>(null)
+  const isMobile = useIsMobile()
 
   useEffect(() => {
     fetchScreenerStats('KR').then(setStats).catch(() => {})
@@ -108,14 +110,14 @@ export default function DashboardView({
   }
 
   return (
-    <div style={{ padding: '24px 28px', maxWidth: 1200 }}>
+    <div style={{ padding: isMobile ? '16px 16px 24px' : '24px 28px', maxWidth: 1200 }}>
 
       {/* ── Stat cards ──────────────────────────────────────────── */}
       <div style={{
         display: 'grid',
-        gridTemplateColumns: 'repeat(3, 1fr) 1fr',
-        gap: 12,
-        marginBottom: 24,
+        gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(3, 1fr) 1fr',
+        gap: isMobile ? 10 : 12,
+        marginBottom: isMobile ? 14 : 24,
       }}>
 
         {/* Card 1: 강세 종목 */}
@@ -170,11 +172,11 @@ export default function DashboardView({
         </div>
       </div>
 
-      {/* ── Bottom 2-col: Ranking + Sector Heatmap ──────────────── */}
+      {/* ── Bottom: Ranking + Sector Heatmap (모바일은 세로 스택) ── */}
       <div style={{
         display: 'grid',
-        gridTemplateColumns: '1fr 1fr',
-        gap: 16,
+        gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr',
+        gap: isMobile ? 12 : 16,
         alignItems: 'start',
       }}>
 
@@ -182,7 +184,8 @@ export default function DashboardView({
         <div style={{
           background: 'var(--bg-surface)',
           border: '1px solid var(--border)',
-          borderRadius: 12,
+          borderRadius: 16,
+          boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
           overflow: 'hidden',
         }}>
           {/* Panel header */}
@@ -313,7 +316,8 @@ export default function DashboardView({
         <div style={{
           background: 'var(--bg-surface)',
           border: '1px solid var(--border)',
-          borderRadius: 12,
+          borderRadius: 16,
+          boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
           overflow: 'hidden',
         }}>
           {/* Panel header */}
@@ -330,8 +334,8 @@ export default function DashboardView({
           <div style={{
             padding: '12px',
             display: 'grid',
-            gridTemplateColumns: 'repeat(3, 1fr)',
-            gap: 6,
+            gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(3, 1fr)',
+            gap: isMobile ? 8 : 6,
           }}>
             {sectorStats.length === 0 ? (
               <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '32px 0', color: 'var(--text-4)', fontSize: 12 }}>
@@ -425,7 +429,8 @@ function StatCard({
     <div style={{
       background: 'var(--bg-surface)',
       border: '1px solid var(--border)',
-      borderRadius: 12,
+      borderRadius: 16,
+      boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
       padding: '16px 18px',
       display: 'flex',
       flexDirection: 'column',

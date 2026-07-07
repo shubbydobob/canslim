@@ -10,6 +10,7 @@ import SectorMap from '../components/SectorMap'
 import AppSidebar from '../components/AppSidebar'
 import DashboardView from './DashboardView'
 import RankingView from './RankingView'
+import { useIsMobile } from '../hooks/useIsMobile'
 import type { ScreenerItem } from '../types'
 import { fmtPrice, fmtRate, fmtMarketCap, fmtAmt } from '../utils/format'
 
@@ -185,22 +186,6 @@ function GuidePopup({ onClose }: { onClose: (hide24h: boolean) => void }) {
 }
 
 // ── main component ─────────────────────────────────────────────
-// 좁은 화면(모바일/앱) 감지 — 리사이즈에 반응. 테이블 대신 카드 리스트로 전환.
-function useIsMobile(breakpoint = 768) {
-  const [isMobile, setIsMobile] = useState(
-    () => typeof window !== 'undefined'
-      && window.matchMedia(`(max-width: ${breakpoint}px)`).matches
-  )
-  useEffect(() => {
-    const mq = window.matchMedia(`(max-width: ${breakpoint}px)`)
-    const handler = (e: MediaQueryListEvent) => setIsMobile(e.matches)
-    mq.addEventListener('change', handler)
-    setIsMobile(mq.matches)
-    return () => mq.removeEventListener('change', handler)
-  }, [breakpoint])
-  return isMobile
-}
-
 export default function ScreenerPage() {
   const isMobile = useIsMobile()
   const [items, setItems] = useState<ScreenerItem[]>([])
@@ -925,7 +910,8 @@ export default function ScreenerPage() {
         />
 
         {/* Main content area */}
-        <main style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden' }}>
+        <main style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden',
+          paddingBottom: isMobile ? 64 : 0 }}>
 
       {/* ══ 시장 탭 (legacy — now accessible via sector/market logic) ═════ */}
       {mainTab === 'dashboard' && (
