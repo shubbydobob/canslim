@@ -76,11 +76,19 @@ public class ScreenerController {
         if (scoreDate == null) return ResponseEntity.ok(new ScreenerPageResponse(List.of(), 0, page, size));
 
         boolean isSearch = q != null && !q.isBlank();
-        boolean hasFilter = isSearch || sector != null || minCap != null || maxCap != null;
         boolean isPriceSort = PRICE_SORT_FIELDS.contains(sortBy);
         boolean isDefaultSort = "compositeScore".equals(sortBy) && "desc".equals(sortDir);
-        boolean useAllPath = hasFilter || isPriceSort || !isDefaultSort;
         final String keyword = isSearch ? q.trim().toLowerCase() : null;
+
+        // 가격 기반 정렬: DB에서 직접 정렬+페이징 (전체 로드 회피)
+        if (isPriceSort) {
+            return ResponseEntity.ok(screenByPriceSort(
+                    scoreDate, market, sortBy, "desc".equals(sortDir),
+                    page, size, minScore, keyword, sector, minCap, maxCap));
+        }
+
+        boolean hasFilter = isSearch || sector != null || minCap != null || maxCap != null;
+        boolean useAllPath = hasFilter || !isDefaultSort;
 
         if (useAllPath || minScore > 0) {
             // 전체 로드 후 필터 + 정렬 + 수동 페이징
@@ -589,8 +597,10 @@ public class ScreenerController {
     }
 
     /**
+     * 가격+수급 통합 조회 (단일 SQL). 시간외 종가(after_hours_close) 우선 반영.
      * [0]=closePrice [1]=instNetBuy10d [2]=foreignNetBuy10d
      * [3]=changeRate(%) [4]=52wHigh [5]=volume [6]=turnover [7]=marketCap(원)
+     * [8]=programNetBuy10d [9]=afterHoursClose [10]=afterHoursChangePct
      */
     private Map<Long, BigDecimal[]> loadPriceAndFlow(List<Long> ids, LocalDate scoreDate) {
         if (ids.isEmpty()) return Map.of();
@@ -600,77 +610,200 @@ public class ScreenerController {
 
         Long[] idArr = ids.toArray(new Long[0]);
 
-        // 종가·등락률·거래량·거래대금·시가총액 — scoreDate와 무관하게 최신 price_daily 사용
-        String priceSql = """
-            SELECT p.security_id, p.close_adj, p.volume, p.turnover,
-                   CASE WHEN prev.close_adj > 0
-                        THEN ROUND((p.close_adj - prev.close_adj) / prev.close_adj * 100, 2)
-                   END AS change_rate,
-                   p.close_adj * i.total_shares AS market_cap
-            FROM (
+        String sql = """
+            WITH cur AS (
                 SELECT DISTINCT ON (security_id)
                     security_id, close_adj, volume, turnover, trade_date
                 FROM price_daily
                 WHERE security_id = ANY(?) AND trade_date >= CURRENT_DATE - INTERVAL '14 days'
                 ORDER BY security_id, trade_date DESC
-            ) p
-            JOIN instruments i ON i.id = p.security_id
+            ),
+            flow AS (
+                SELECT security_id, inst_net_buy_10d, foreign_net_buy_10d, program_net_buy_10d,
+                       after_hours_close, after_hours_change_pct
+                FROM derived_metrics
+                WHERE as_of_date = (SELECT MAX(as_of_date) FROM derived_metrics WHERE inst_net_buy_10d IS NOT NULL)
+            )
+            SELECT c.security_id,
+                   COALESCE(f.after_hours_close, c.close_adj) AS effective_close,
+                   c.volume, c.turnover,
+                   CASE WHEN prev.close_adj > 0
+                        THEN ROUND((COALESCE(f.after_hours_close, c.close_adj) - prev.close_adj) / prev.close_adj * 100, 2)
+                   END AS change_rate,
+                   COALESCE(f.after_hours_close, c.close_adj) * i.total_shares AS market_cap,
+                   f.inst_net_buy_10d, f.foreign_net_buy_10d, f.program_net_buy_10d,
+                   f.after_hours_close, f.after_hours_change_pct
+            FROM cur c
+            JOIN instruments i ON i.id = c.security_id
             LEFT JOIN LATERAL (
                 SELECT close_adj FROM price_daily p2
-                WHERE p2.security_id = p.security_id AND p2.trade_date < p.trade_date
+                WHERE p2.security_id = c.security_id AND p2.trade_date < c.trade_date
                 ORDER BY p2.trade_date DESC LIMIT 1
             ) prev ON true
+            LEFT JOIN flow f ON f.security_id = c.security_id
             """;
         try {
             jdbc.query(con -> {
-                PreparedStatement ps = con.prepareStatement(priceSql);
+                PreparedStatement ps = con.prepareStatement(sql);
                 ps.setArray(1, con.createArrayOf("bigint", idArr));
                 return ps;
             }, rs -> {
                 long sid = rs.getLong("security_id");
                 if (!result.containsKey(sid)) return;
                 BigDecimal[] row = result.get(sid);
-                row[0] = rs.getBigDecimal("close_adj");
+                row[0] = rs.getBigDecimal("effective_close");
+                row[1] = rs.getBigDecimal("inst_net_buy_10d");
+                row[2] = rs.getBigDecimal("foreign_net_buy_10d");
                 row[3] = rs.getBigDecimal("change_rate");
                 row[5] = rs.getBigDecimal("volume");
                 row[6] = rs.getBigDecimal("turnover");
                 row[7] = rs.getBigDecimal("market_cap");
-            });
-        } catch (Exception e) {
-            log.warn("price_daily 조회 실패: {}", e.getMessage());
-        }
-
-        // 수급: derived_metrics — scoreDate와 무관하게 최신 수급 데이터 사용
-        String flowSql = """
-            SELECT security_id, inst_net_buy_10d, foreign_net_buy_10d, program_net_buy_10d,
-                   after_hours_close, after_hours_change_pct
-            FROM derived_metrics
-            WHERE security_id = ANY(?)
-              AND as_of_date = (
-                  SELECT MAX(as_of_date) FROM derived_metrics
-                  WHERE inst_net_buy_10d IS NOT NULL
-              )
-            """;
-        try {
-            jdbc.query(con -> {
-                PreparedStatement ps = con.prepareStatement(flowSql);
-                ps.setArray(1, con.createArrayOf("bigint", idArr));
-                return ps;
-            }, rs -> {
-                long sid = rs.getLong("security_id");
-                if (!result.containsKey(sid)) return;
-                BigDecimal[] row = result.get(sid);
-                row[1] = rs.getBigDecimal("inst_net_buy_10d");
-                row[2] = rs.getBigDecimal("foreign_net_buy_10d");
                 row[8] = rs.getBigDecimal("program_net_buy_10d");
                 row[9] = rs.getBigDecimal("after_hours_close");
                 row[10] = rs.getBigDecimal("after_hours_change_pct");
             });
         } catch (Exception e) {
-            log.warn("derived_metrics 조회 실패: {}", e.getMessage());
+            log.warn("price+flow 조회 실패: {}", e.getMessage());
         }
 
         return result;
+    }
+
+    /**
+     * 가격 기반 정렬: DB에서 JOIN + ORDER BY + LIMIT/OFFSET (2558 전체 로드 회피).
+     */
+    private ScreenerPageResponse screenByPriceSort(
+            LocalDate scoreDate, String market, String sortBy, boolean desc,
+            int page, int size, double minScore,
+            String keyword, String sector, Long minCap, Long maxCap) {
+
+        String sortCol = switch (sortBy) {
+            case "closePrice"       -> "effective_close";
+            case "changeRate"       -> "change_rate";
+            case "volume"           -> "c.volume";
+            case "turnover"         -> "c.turnover";
+            case "marketCap"        -> "market_cap";
+            case "foreignNetBuy10d" -> "f.foreign_net_buy_10d";
+            case "instNetBuy10d"    -> "f.inst_net_buy_10d";
+            default                 -> "c.turnover";
+        };
+        String direction = desc ? "DESC NULLS LAST" : "ASC NULLS LAST";
+
+        List<Object> params = new ArrayList<>();
+        StringBuilder where = new StringBuilder("cs.score_date = ? AND cs.market = ? AND cs.composite_score >= ?");
+        params.add(java.sql.Date.valueOf(scoreDate));
+        params.add(market);
+        params.add(minScore);
+
+        if (keyword != null) {
+            where.append(" AND (LOWER(i.name) LIKE ? OR i.ticker LIKE ?)");
+            params.add("%" + keyword + "%");
+            params.add("%" + keyword.toUpperCase() + "%");
+        }
+        if (sector != null) {
+            where.append(" AND i.sector = ?");
+            params.add(sector);
+        }
+        if (minCap != null) {
+            where.append(" AND COALESCE(f.after_hours_close, c.close_adj) * i.total_shares >= ?");
+            params.add(BigDecimal.valueOf(minCap));
+        }
+        if (maxCap != null) {
+            where.append(" AND COALESCE(f.after_hours_close, c.close_adj) * i.total_shares <= ?");
+            params.add(BigDecimal.valueOf(maxCap));
+        }
+
+        String cte = """
+            WITH cur AS (
+                SELECT DISTINCT ON (security_id)
+                    security_id, close_adj, volume, turnover, trade_date
+                FROM price_daily
+                WHERE trade_date >= CURRENT_DATE - INTERVAL '14 days'
+                ORDER BY security_id, trade_date DESC
+            ),
+            flow AS (
+                SELECT security_id, inst_net_buy_10d, foreign_net_buy_10d, program_net_buy_10d,
+                       after_hours_close, after_hours_change_pct
+                FROM derived_metrics
+                WHERE as_of_date = (SELECT MAX(as_of_date) FROM derived_metrics WHERE inst_net_buy_10d IS NOT NULL)
+            )
+            """;
+
+        // count
+        String countSql = cte +
+            "SELECT COUNT(*) FROM canslim_scores cs " +
+            "JOIN instruments i ON i.id = cs.security_id " +
+            "JOIN cur c ON c.security_id = cs.security_id " +
+            "LEFT JOIN flow f ON f.security_id = cs.security_id " +
+            "WHERE " + where;
+        Long total = jdbc.queryForObject(countSql, Long.class, params.toArray());
+        if (total == null || total == 0)
+            return new ScreenerPageResponse(List.of(), 0, page, size);
+
+        // data
+        String dataSql = cte + """
+            SELECT cs.security_id, cs.score_date, cs.market, cs.market_rank, cs.market_percentile,
+                   cs.composite_score, cs.c_score, cs.a_score, cs.n_score,
+                   cs.s_score, cs.l_score, cs.i_score, cs.m_score,
+                   i.ticker, i.name, i.sector,
+                   COALESCE(f.after_hours_close, c.close_adj) AS effective_close,
+                   c.volume, c.turnover,
+                   CASE WHEN prev.close_adj > 0
+                        THEN ROUND((COALESCE(f.after_hours_close, c.close_adj) - prev.close_adj) / prev.close_adj * 100, 2)
+                   END AS change_rate,
+                   COALESCE(f.after_hours_close, c.close_adj) * i.total_shares AS market_cap,
+                   f.inst_net_buy_10d, f.foreign_net_buy_10d, f.program_net_buy_10d,
+                   f.after_hours_close, f.after_hours_change_pct,
+                   cs.composite_score - prev_s.composite_score AS score_delta
+            FROM canslim_scores cs
+            JOIN instruments i ON i.id = cs.security_id
+            JOIN cur c ON c.security_id = cs.security_id
+            LEFT JOIN LATERAL (
+                SELECT close_adj FROM price_daily p2
+                WHERE p2.security_id = c.security_id AND p2.trade_date < c.trade_date
+                ORDER BY p2.trade_date DESC LIMIT 1
+            ) prev ON true
+            LEFT JOIN flow f ON f.security_id = cs.security_id
+            LEFT JOIN canslim_scores prev_s ON prev_s.security_id = cs.security_id
+                AND prev_s.score_date = cs.score_date - INTERVAL '1 day'
+            WHERE """ + where + """
+            ORDER BY """ + sortCol + " " + direction + """
+            LIMIT ? OFFSET ?
+            """;
+
+        List<Object> dataParams = new ArrayList<>(params);
+        dataParams.add(size);
+        dataParams.add((long) page * size);
+
+        List<ScreenerItemResponse> items = jdbc.query(dataSql, (rs, idx) -> new ScreenerItemResponse(
+            rs.getLong("security_id"),
+            rs.getString("ticker"),
+            rs.getString("name"),
+            rs.getString("market"),
+            rs.getDate("score_date").toLocalDate(),
+            rs.getObject("market_rank") != null ? rs.getInt("market_rank") : null,
+            rs.getBigDecimal("market_percentile"),
+            rs.getBigDecimal("composite_score"),
+            rs.getBigDecimal("c_score"), rs.getBigDecimal("a_score"),
+            rs.getBigDecimal("n_score"), rs.getBigDecimal("s_score"),
+            rs.getBigDecimal("l_score"), rs.getBigDecimal("i_score"), rs.getBigDecimal("m_score"),
+            rs.getBigDecimal("effective_close"),
+            rs.getBigDecimal("change_rate"),
+            null,
+            rs.getBigDecimal("volume"),
+            rs.getBigDecimal("turnover"),
+            rs.getBigDecimal("inst_net_buy_10d"),
+            rs.getBigDecimal("foreign_net_buy_10d"),
+            rs.getBigDecimal("program_net_buy_10d"),
+            rs.getBigDecimal("after_hours_close"),
+            rs.getBigDecimal("after_hours_change_pct"),
+            rs.getBigDecimal("market_cap"),
+            rs.getString("sector"),
+            rs.getBigDecimal("score_delta"),
+            false, null
+        ), dataParams.toArray());
+
+        return new ScreenerPageResponse(items, total, page, size);
     }
 
     private Set<Long> loadBreakouts(List<Long> ids, LocalDate scoreDate) {
