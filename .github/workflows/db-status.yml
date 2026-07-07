@@ -19,6 +19,15 @@ jobs:
           script: |
             PSQL="docker exec canslim-postgres psql -U canslim_user -d canslim -A -t"
 
+            echo "===== 백엔드 컨테이너 상태 ====="
+            docker ps -a --filter name=canslim-backend --format "{{.Status}}" 2>&1 || true
+            echo "===== 백엔드 헬스 (screener) ====="
+            curl -s -o /dev/null -w "HTTP %{http_code}\n" "http://localhost:8080/api/screener?market=KR&size=1" 2>&1 || echo "(연결 실패)"
+            echo "===== flyway 최근 마이그레이션 ====="
+            $PSQL -c "SELECT version, left(description,30), success, installed_on FROM flyway_schema_history ORDER BY installed_rank DESC LIMIT 6;" 2>&1 || echo "(조회 실패)"
+            echo "===== 백엔드 로그 마지막 35줄 ====="
+            docker logs canslim-backend --tail 35 2>&1 | tail -35 || echo "(로그 없음)"
+
             echo "===== 테이블별 row 수 ====="
             $PSQL -c "SELECT relname, n_live_tup FROM pg_stat_user_tables ORDER BY n_live_tup DESC;"
 
