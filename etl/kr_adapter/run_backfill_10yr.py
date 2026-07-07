@@ -56,11 +56,11 @@ def step_truncate():
     from ..shared.db_writer import get_session
     from sqlalchemy import text
 
-    # instruments CASCADE → price_daily/financials/derived_metrics/canslim_scores/industry_scores 자동 삭제
+    # instruments CASCADE → price_daily/financials/derived_metrics/canslim_scores 자동 삭제
     # market_config 는 채점 설정이므로 보존
     with get_session() as session:
         session.execute(text(
-            "TRUNCATE instruments, ingestion_meta, market_state, industry_groups "
+            "TRUNCATE instruments, ingestion_meta, market_state "
             "RESTART IDENTITY CASCADE"
         ))
     log.info("TRUNCATE 완료 (market_config 보존)")

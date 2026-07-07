@@ -1,25 +1,9 @@
 -- ============================================================
--- V3 마이그레이션: canslim_scores에 가격 스냅샷 컬럼 추가
+-- V3 가격 스냅샷 백필 (Flyway V17이 컬럼+인덱스 생성 후 실행)
 -- 실행: psql -U canslim_user -d canslim -f migrate_v3_price_snapshot.sql
 -- ============================================================
 
--- 1. canslim_scores 가격 컬럼 추가
-ALTER TABLE canslim_scores ADD COLUMN IF NOT EXISTS close_price NUMERIC(18,4);
-ALTER TABLE canslim_scores ADD COLUMN IF NOT EXISTS prev_close  NUMERIC(18,4);
-ALTER TABLE canslim_scores ADD COLUMN IF NOT EXISTS change_rate NUMERIC(8,4);
-ALTER TABLE canslim_scores ADD COLUMN IF NOT EXISTS volume      BIGINT;
-ALTER TABLE canslim_scores ADD COLUMN IF NOT EXISTS turnover    NUMERIC(22,4);
-ALTER TABLE canslim_scores ADD COLUMN IF NOT EXISTS market_cap  NUMERIC(22,4);
-
--- 2. 가격 정렬용 인덱스
-CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_canslim_scores_turnover
-    ON canslim_scores (score_date DESC, market, turnover DESC NULLS LAST);
-CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_canslim_scores_chg_rate
-    ON canslim_scores (score_date DESC, market, change_rate DESC NULLS LAST);
-CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_canslim_scores_mkt_cap
-    ON canslim_scores (score_date DESC, market, market_cap DESC NULLS LAST);
-
--- 3. 기존 데이터 백필 (최신 score_date만)
+-- 기존 최신 score_date 데이터에 가격 백필
 WITH ranked AS (
     SELECT security_id, close_adj, volume, turnover,
            ROW_NUMBER() OVER (PARTITION BY security_id ORDER BY trade_date DESC) rn,
