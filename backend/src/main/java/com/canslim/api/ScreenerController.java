@@ -732,22 +732,20 @@ public class ScreenerController {
                 + " WHERE " + where;
         long totalCount = jdbc.queryForObject(countSql, Long.class, params.toArray());
 
-        String sql = """
-            SELECT cs.security_id, cs.score_date, cs.market, cs.market_rank, cs.market_percentile,
-                   cs.composite_score, cs.c_score, cs.a_score, cs.n_score,
-                   cs.s_score, cs.l_score, cs.i_score, cs.m_score,
-                   i.ticker, i.name, i.sector,
-                   cs.close_price, cs.change_rate, cs.volume, cs.turnover, cs.market_cap,
-                   f.inst_net_buy_10d, f.foreign_net_buy_10d, f.program_net_buy_10d,
-                   f.after_hours_close, f.after_hours_change_pct
-            FROM canslim_scores cs
-            JOIN instruments i ON i.id = cs.security_id
-            LEFT JOIN derived_metrics f ON f.security_id = cs.security_id
-                AND f.as_of_date = (SELECT MAX(as_of_date) FROM derived_metrics WHERE inst_net_buy_10d IS NOT NULL)
-            WHERE """ + " " + where + """
-            ORDER BY """ + " " + sortCol + " " + direction + """
-            LIMIT ? OFFSET ?
-            """;
+        String sql = "SELECT cs.security_id, cs.score_date, cs.market, cs.market_rank, cs.market_percentile,"
+                + " cs.composite_score, cs.c_score, cs.a_score, cs.n_score,"
+                + " cs.s_score, cs.l_score, cs.i_score, cs.m_score,"
+                + " i.ticker, i.name, i.sector,"
+                + " cs.close_price, cs.change_rate, cs.volume, cs.turnover, cs.market_cap,"
+                + " f.inst_net_buy_10d, f.foreign_net_buy_10d, f.program_net_buy_10d,"
+                + " f.after_hours_close, f.after_hours_change_pct"
+                + " FROM canslim_scores cs"
+                + " JOIN instruments i ON i.id = cs.security_id"
+                + " LEFT JOIN derived_metrics f ON f.security_id = cs.security_id"
+                + "   AND f.as_of_date = (SELECT MAX(as_of_date) FROM derived_metrics WHERE inst_net_buy_10d IS NOT NULL)"
+                + " WHERE " + where
+                + " ORDER BY " + sortCol + " " + direction
+                + " LIMIT ? OFFSET ?";
 
         List<Object> dataParams = new ArrayList<>(params);
         dataParams.add(size);
