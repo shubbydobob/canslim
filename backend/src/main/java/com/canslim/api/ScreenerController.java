@@ -795,7 +795,45 @@ public class ScreenerController {
             );
         }, dataParams.toArray());
 
+        // 표시 가격/수급을 다른 경로(loadPriceAndFlow, price_daily 최신 앵커)와 통일 —
+        // 정렬은 canslim_scores 인덱스 유지(성능), 표시값만 최신으로 교체해 탭 간 불일치 제거.
+        // price_daily에 없는 종목(거래정지 등)은 loadPriceAndFlow 값이 null이라 기존값 보존(coalesce).
+        if (!items.isEmpty()) {
+            List<Long> ids = items.stream().map(ScreenerItemResponse::securityId).toList();
+            Map<Long, BigDecimal[]> pf = loadPriceAndFlow(ids, scoreDate);
+            items = items.stream()
+                    .map(it -> {
+                        BigDecimal[] d = pf.get(it.securityId());
+                        return d == null ? it : withPriceFlow(it, d);
+                    })
+                    .collect(java.util.stream.Collectors.toList());
+        }
+
         return new ScreenerPageResponse(items, totalCount, page, size);
+    }
+
+    private static BigDecimal coalesce(BigDecimal a, BigDecimal b) { return a != null ? a : b; }
+
+    /** 가격/수급 필드만 loadPriceAndFlow 값(price_daily 최신 앵커)으로 교체(널이면 기존값 유지). */
+    private static ScreenerItemResponse withPriceFlow(ScreenerItemResponse it, BigDecimal[] d) {
+        // d 인덱스: [0]close [1]inst [2]foreign [3]changeRate [4]52wHigh [5]vol [6]turnover [7]cap [8]program [9]ahClose [10]ahChg
+        return new ScreenerItemResponse(
+                it.securityId(), it.ticker(), it.name(), it.market(), it.scoreDate(),
+                it.marketRank(), it.marketPercentile(), it.compositeScore(),
+                it.cScore(), it.aScore(), it.nScore(), it.sScore(), it.lScore(), it.iScore(), it.mScore(),
+                coalesce(d[0], it.closePrice()),
+                coalesce(d[3], it.changeRate()),
+                coalesce(d[4], it.weekHigh52()),
+                coalesce(d[5], it.volume()),
+                coalesce(d[6], it.turnover()),
+                coalesce(d[1], it.instNetBuy10d()),
+                coalesce(d[2], it.foreignNetBuy10d()),
+                coalesce(d[8], it.programNetBuy10d()),
+                coalesce(d[9], it.afterHoursPrice()),
+                coalesce(d[10], it.afterHoursChangeRate()),
+                coalesce(d[7], it.marketCap()),
+                it.sector(), it.scoreDelta(), it.breakoutToday(), it.baseDays(), it.statuses()
+        );
     }
 
     /** PostgreSQL TEXT[] → String[] (null 안전). */
