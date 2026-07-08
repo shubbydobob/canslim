@@ -163,6 +163,17 @@ def main():
     except Exception as e:
         logger.warning("[7b/9] KIS 종목상태 수집 실패 (비치명적): %s", e)
 
+    # ── 7c. 시간외 단일가 종가 오버레이 (KIS) ─────────────────
+    # 정규장 종가(close)는 불변, derived_metrics.after_hours_close에만 적재.
+    # 파생(6단계) 이후여야 UPDATE가 당일 행에 매칭됨. 비치명적.
+    logger.info("[7c/9] 시간외 단일가 수집 시작")
+    try:
+        from .after_hours_loader import load_after_hours
+        load_after_hours(target_date)
+        logger.info("[7c/9] 시간외 단일가 수집 완료")
+    except Exception as e:
+        logger.warning("[7c/9] 시간외 단일가 수집 실패 (비치명적): %s", e)
+
     # ── 8. 스코어링 트리거 ─────────────────────────────────────
     logger.info("[8/9] 스코어링 트리거")
     ok = trigger_scoring()

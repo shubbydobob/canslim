@@ -1,21 +1,19 @@
 """
 시간외 단일가 종가 → derived_metrics 적재
 
-⚠️ DEPRECATED / 미사용 (2026-07): run_daily 파이프라인에 편입돼 있지 않고,
-   TR(FHKST01010300)과 URL(inquire-asking-price-exp-ccn)이 불일치하며,
-   18:10 크론 시점엔 당일 derived_metrics 행이 아직 없어 UPDATE가 0건 매칭됐다.
-   → 실제로 after_hours_close가 적재된 적이 없으며, 관련 18:10 크론은 제거됨.
-   시간외 단일가를 반영하려면 (1) TR/URL을 정정하고 (2) run_daily의 derived 생성
-   '이후' 단계로 편입해야 한다. 그 전까지 백엔드의 COALESCE(after_hours_close, ...)는
-   항상 close_adj로 폴백(무해).
+2026-07 정정: 기존 TR(FHKST01010300)/URL(exp-ccn) 불일치 + 18:10 크론 타이밍
+문제로 무효였던 것을, 운영 진단(kis-probe)으로 확정한 TR/필드로 수정하고
+run_daily의 derived 생성 '이후' 단계(20:05)로 편입했다.
 
 데이터 소스: 한국투자증권 KIS Developers Open API
-  TR: FHKST01010300 (주식현재가 시간외현재가)
-  - 시간외 단일가 현재가/전일대비/등락률 반환
+  TR: FHPST02300000 (inquire-overtime-price, 시간외 단일가 현재가)
+  - ovtm_untp_prpr(시간외 단일가), ovtm_untp_prdy_ctrt(정규장 종가 대비 등락률)
 
-저장 컬럼:
+저장 컬럼(derived_metrics UPDATE — 정규장 종가 close는 불변, 오버레이 전용):
   after_hours_close      : 시간외 단일가 체결가 (원)
   after_hours_change_pct : 정규장 종가 대비 등락률 (%)
+
+백엔드는 COALESCE(after_hours_close, close_adj)로 시간외가 있으면 우선 표시.
 """
 import time
 import logging
@@ -33,13 +31,15 @@ logger = logging.getLogger(__name__)
 
 
 def _fetch_after_hours_price(ticker: str, cfg: dict, token: str) -> dict | None:
-    """FHKST01010300 TR로 시간외 현재가 조회."""
+    """시간외 단일가 현재가 조회 (KIS FHPST02300000 / inquire-overtime-price).
+    운영 진단(kis-probe)으로 확정: output은 단일 객체, 시간외가=ovtm_untp_prpr,
+    등락률=ovtm_untp_prdy_ctrt. (기존 FHKST01010300/exp-ccn은 TR/URL 불일치였음.)"""
     headers = {
         "content-type": "application/json; charset=utf-8",
         "authorization": f"Bearer {token}",
         "appkey":        cfg["app_key"],
         "appsecret":     cfg["app_secret"],
-        "tr_id":         "FHKST01010300",
+        "tr_id":         "FHPST02300000",
     }
     params = {
         "fid_cond_mrkt_div_code": "J",
@@ -47,7 +47,7 @@ def _fetch_after_hours_price(ticker: str, cfg: dict, token: str) -> dict | None:
     }
     try:
         r = requests.get(
-            f"{_BASE_URL}/uapi/domestic-stock/v1/quotations/inquire-asking-price-exp-ccn",
+            f"{_BASE_URL}/uapi/domestic-stock/v1/quotations/inquire-overtime-price",
             headers=headers, params=params, timeout=10,
         )
         if r.status_code != 200:
@@ -56,19 +56,17 @@ def _fetch_after_hours_price(ticker: str, cfg: dict, token: str) -> dict | None:
         if d.get("rt_cd") != "0":
             return None
 
-        out = d.get("output", [])
+        out = d.get("output")
         if not out:
             return None
 
-        # output은 체결시간 내림차순 배열 — 첫 번째가 가장 최근 체결
-        latest = out[0] if isinstance(out, list) else out
-
-        price_str = latest.get("stck_prpr", "0")       # 체결가
-        change_str = latest.get("prdy_ctrt", "0")       # 전일대비 등락률(%)
+        price_str  = out.get("ovtm_untp_prpr", "0")        # 시간외 단일가 체결가
+        change_str = out.get("ovtm_untp_prdy_ctrt", "0")   # 정규장 종가 대비 등락률(%)
 
         price = int(price_str) if price_str else 0
         change_pct = float(change_str) if change_str else 0.0
 
+        # 시간외 미체결(0)이면 정규장 종가 유지 위해 스킵.
         if price <= 0:
             return None
 
