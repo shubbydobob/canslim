@@ -1,0 +1,55 @@
+name: KIS TR probe (manual, read-only)
+
+# 프로그램매매·시간외 TR 후보를 운영 EC2에서 실호출해 rt_cd/필드를 로그로 확인.
+# DB를 건드리지 않는 읽기 전용 진단 — 정확한 TR/필드/단위 확정 후 로더를 작성하기 위함.
+on:
+  workflow_dispatch:
+    inputs:
+      ticker:
+        description: "진단 종목코드"
+        type: string
+        default: "005930"
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Probe via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ubuntu
+          key: ${{ secrets.EC2_SSH_KEY }}
+          command_timeout: 5m
+          script: |
+            cd /home/ubuntu/canslim
+            TICKER="${{ inputs.ticker }}" PYTHONUTF8=1 .venv/bin/python - <<'PY'
+            import os, json, requests
+            from etl.kr_adapter.investor_flow_loader import _load_config, _get_token, _BASE_URL
+            cfg = _load_config(); token = _get_token(cfg)
+            ticker = os.environ.get("TICKER", "005930")
+
+            def probe(label, tr, path, params):
+                h = {"content-type":"application/json; charset=utf-8",
+                     "authorization": f"Bearer {token}", "appkey": cfg["app_key"],
+                     "appsecret": cfg["app_secret"], "tr_id": tr, "custtype": "P"}
+                try:
+                    r = requests.get(_BASE_URL + path, headers=h, params=params, timeout=10)
+                    j = r.json()
+                    print(f"\n=== {label} | TR={tr} | HTTP={r.status_code} | rt_cd={j.get('rt_cd')} | msg={j.get('msg1')}")
+                    out = j.get("output") or j.get("output1") or j.get("output2")
+                    if isinstance(out, list): out = out[:2]
+                    print(json.dumps(out, ensure_ascii=False)[:2500])
+                except Exception as e:
+                    print(f"\n=== {label} | TR={tr} | ERROR {e}")
+
+            base = {"fid_cond_mrkt_div_code":"J","fid_input_iscd":ticker}
+            # 프로그램매매 종목별 추이 후보
+            probe("프로그램-일별A", "FHPPG04650200", "/uapi/domestic-stock/v1/quotations/inquire-program-trade-by-stock", base)
+            probe("프로그램-일별B", "FHPPG04650100", "/uapi/domestic-stock/v1/quotations/inquire-program-trade-by-stock", base)
+            # 시간외 단일가 후보
+            probe("시간외-현재가A", "FHKST02300100", "/uapi/domestic-stock/v1/quotations/inquire-price", base)
+            probe("시간외-일자별B", "FHKST03010200", "/uapi/domestic-stock/v1/quotations/inquire-daily-overtimeprice",
+                  {"fid_cond_mrkt_div_code":"J","fid_input_iscd":ticker,"fid_period_div_code":"D"})
+            probe("시간외-현재가C", "FHPST02300000", "/uapi/domestic-stock/v1/quotations/inquire-overtime-price", base)
+            PY
