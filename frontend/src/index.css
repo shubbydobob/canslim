@@ -176,6 +176,22 @@ body {
 .scard-factor-k { font-size: 9px; color: var(--text-4); }
 .scard-factor-v { font-size: 13px; font-weight: 700; font-family: var(--font-mono); color: var(--sc-fg, var(--text-1)); }
 
+/* 스크리너 필터·칩·페이지네이션 (공통) */
+.chip-row { display: flex; gap: 3px; }
+.chip-row.wrap { flex-wrap: wrap; }
+.chip-btn { padding: 3px 9px; font-size: 11px; font-weight: 600; border-radius: 3px; background: var(--bg-surface); color: var(--text-3); border: 1px solid var(--border); cursor: pointer; white-space: nowrap; }
+.chip-btn.wide { padding: 3px 12px; }
+.chip-btn.on { background: #1f3a5f; color: #58a6ff; border-color: var(--accent-strong); }
+.chip-btn.on.purple { background: #2d1a4a; color: #c084fc; border-color: #7c3aed; }
+.chip-btn.on.green { background: #052e16; color: #4ade80; border-color: #16a34a; }
+.filter-cell-label { background: var(--bg-nav); padding: 8px 12px; display: flex; align-items: center; border-right: 1px solid var(--border); }
+.filter-cell-label > span { font-size: 11px; font-weight: 700; color: var(--text-4); letter-spacing: 0.06em; white-space: nowrap; }
+.filter-cell-body { background: var(--bg-base); padding: 8px 12px; display: flex; align-items: center; border-right: 1px solid var(--border); }
+.filter-note { font-size: 11px; color: var(--text-3); margin-top: 2px; }
+.pg-btn { min-width: 28px; height: 26px; padding: 0 6px; background: transparent; border: 1px solid var(--border); border-radius: 4px; color: var(--text-3); font-size: 12px; cursor: pointer; }
+.pg-btn.on { background: #1f3a5f; border-color: var(--accent); color: #58a6ff; font-weight: 700; }
+.pg-btn:disabled { color: var(--border); cursor: default; }
+
 /* 로딩 스피너 */
 @keyframes spin { to { transform: rotate(360deg); } }
 .spinner {

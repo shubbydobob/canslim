@@ -988,17 +988,10 @@ export default function ScreenerPage() {
 
             {/* 시가총액 */}
             <FilterCell label="시가총액">
-              <div style={{ display: 'flex', gap: 3 }}>
+              <div className="chip-row">
                 {(['all', 'large', 'mid', 'small'] as const).map(k => (
-                  <button key={k} onClick={() => { setCapRange(k); setPage(0) }} style={{
-                    padding: '3px 9px', fontSize: 11, fontWeight: 600, borderRadius: 3,
-                    background: capRange === k ? '#1f3a5f' : 'var(--bg-surface)',
-                    color: capRange === k ? '#58a6ff' : 'var(--text-3)',
-                    border: `1px solid ${capRange === k ? 'var(--accent-strong)' : 'var(--border)'}`,
-                    cursor: 'pointer',
-                  }}>
-                    {k === 'all' ? '전체' : k === 'large' ? '대형(1조↑)' : k === 'mid' ? '중형' : '소형'}
-                  </button>
+                  <ChipBtn key={k} on={capRange === k} onClick={() => { setCapRange(k); setPage(0) }}
+                    label={k === 'all' ? '전체' : k === 'large' ? '대형(1조↑)' : k === 'mid' ? '중형' : '소형'} />
                 ))}
               </div>
             </FilterCell>
@@ -1012,68 +1005,35 @@ export default function ScreenerPage() {
 
             {/* SCORE 최소 */}
             <FilterCell label="SCORE 최소">
-              <div style={{ display: 'flex', gap: 3 }}>
+              <div className="chip-row">
                 {([0, 60, 70, 80] as const).map(v => (
-                  <button key={v} onClick={() => { setMinScore(v); setPage(0) }} style={{
-                    padding: '3px 9px', fontSize: 11, fontWeight: 600, borderRadius: 3,
-                    background: minScore === v ? '#1f3a5f' : 'var(--bg-surface)',
-                    color: minScore === v ? '#58a6ff' : 'var(--text-3)',
-                    border: `1px solid ${minScore === v ? 'var(--accent-strong)' : 'var(--border)'}`,
-                    cursor: 'pointer',
-                  }}>
-                    {v === 0 ? '전체' : String(v)}
-                  </button>
+                  <ChipBtn key={v} on={minScore === v} onClick={() => { setMinScore(v); setPage(0) }}
+                    label={v === 0 ? '전체' : String(v)} />
                 ))}
               </div>
             </FilterCell>
 
             {/* 정렬 */}
             <FilterCell label="정렬">
-              <div style={{ display: 'flex', gap: 3, flexWrap: 'wrap' }}>
+              <div className="chip-row wrap">
                 {([
                   ['compositeScore', '종합점수'],
                   ['turnover', '거래대금'],
                   ['marketCap', '시총'],
                   ['changeRate', '등락률'],
                 ] as const).map(([k, lbl]) => (
-                  <button key={k} onClick={() => { setSortKey(k as SortKey); setSortDir('desc'); setPage(0) }} style={{
-                    padding: '3px 9px', fontSize: 11, fontWeight: 600, borderRadius: 3,
-                    background: sortKey === k ? '#1f3a5f' : 'var(--bg-surface)',
-                    color: sortKey === k ? '#58a6ff' : 'var(--text-3)',
-                    border: `1px solid ${sortKey === k ? 'var(--accent-strong)' : 'var(--border)'}`,
-                    cursor: 'pointer', whiteSpace: 'nowrap',
-                  }}>
-                    {lbl}
-                  </button>
+                  <ChipBtn key={k} on={sortKey === k} onClick={() => { setSortKey(k as SortKey); setSortDir('desc'); setPage(0) }} label={lbl} />
                 ))}
               </div>
             </FilterCell>
 
             {/* 관심종목 */}
             <FilterCell label="관심종목">
-              <button onClick={() => setShowWatchOnly(v => !v)} style={{
-                padding: '3px 12px', fontSize: 11, fontWeight: 600, borderRadius: 3,
-                background: showWatchOnly ? '#2d1a4a' : 'var(--bg-surface)',
-                color: showWatchOnly ? '#c084fc' : 'var(--text-3)',
-                border: `1px solid ${showWatchOnly ? '#7c3aed' : 'var(--border)'}`,
-                cursor: 'pointer',
-              }}>
-                {showWatchOnly ? '★ 관심종목만' : '☆ 전체보기'}
-              </button>
-              {showWatchOnly && (
-                <span style={{ fontSize: 11, color: 'var(--text-3)', marginTop: 2 }}>
-                  현재 페이지 내 필터
-                </span>
-              )}
-              <button onClick={() => { setShowBreakoutOnly(v => !v); setPage(0) }} style={{
-                padding: '3px 12px', fontSize: 11, fontWeight: 600, borderRadius: 3,
-                background: showBreakoutOnly ? '#052e16' : 'var(--bg-surface)',
-                color: showBreakoutOnly ? '#4ade80' : 'var(--text-3)',
-                border: `1px solid ${showBreakoutOnly ? '#16a34a' : 'var(--border)'}`,
-                cursor: 'pointer',
-              }}>
-                {showBreakoutOnly ? '🚀 돌파 종목만' : '⬆ 오늘 돌파'}
-              </button>
+              <ChipBtn wide tone="purple" on={showWatchOnly} onClick={() => setShowWatchOnly(v => !v)}
+                label={showWatchOnly ? '★ 관심종목만' : '☆ 전체보기'} />
+              {showWatchOnly && <span className="filter-note">현재 페이지 내 필터</span>}
+              <ChipBtn wide tone="green" on={showBreakoutOnly} onClick={() => { setShowBreakoutOnly(v => !v); setPage(0) }}
+                label={showBreakoutOnly ? '🚀 돌파 종목만' : '⬆ 오늘 돌파'} />
             </FilterCell>
           </div>
         </div>
@@ -1349,23 +1309,8 @@ export default function ScreenerPage() {
 function FilterCell({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <>
-      <div style={{
-        background: 'var(--bg-nav)', padding: '8px 12px',
-        display: 'flex', alignItems: 'center',
-        borderRight: '1px solid var(--border)',
-      }}>
-        <span style={{
-          fontSize: 11, fontWeight: 700, color: 'var(--text-4)',
-          letterSpacing: '0.06em', whiteSpace: 'nowrap',
-        }}>{label}</span>
-      </div>
-      <div style={{
-        background: 'var(--bg-base)', padding: '8px 12px',
-        display: 'flex', alignItems: 'center',
-        borderRight: '1px solid var(--border)',
-      }}>
-        {children}
-      </div>
+      <div className="filter-cell-label"><span>{label}</span></div>
+      <div className="filter-cell-body">{children}</div>
     </>
   )
 }
@@ -1374,14 +1319,16 @@ function PgBtn({ label, onClick, disabled, active }: {
   label: string; onClick: () => void; disabled?: boolean; active?: boolean
 }) {
   return (
-    <button onClick={onClick} disabled={disabled} style={{
-      minWidth: 28, height: 26, padding: '0 6px',
-      background: active ? '#1f3a5f' : 'transparent',
-      border: `1px solid ${active ? 'var(--accent)' : 'var(--border)'}`,
-      borderRadius: 4, color: disabled ? 'var(--border)' : active ? '#58a6ff' : 'var(--text-3)',
-      fontSize: 12, cursor: disabled ? 'default' : 'pointer', fontWeight: active ? 700 : 400,
-    }}>
+    <button onClick={onClick} disabled={disabled} className={active ? 'pg-btn on' : 'pg-btn'}>
       {label}
     </button>
   )
+}
+
+// 필터/정렬 공통 칩 버튼. tone: on 상태 색 변형(blue 기본/purple/green).
+function ChipBtn({ label, on, onClick, wide, tone }: {
+  label: React.ReactNode; on: boolean; onClick: () => void; wide?: boolean; tone?: 'purple' | 'green'
+}) {
+  const cls = 'chip-btn' + (wide ? ' wide' : '') + (on ? ' on' : '') + (on && tone ? ` ${tone}` : '')
+  return <button onClick={onClick} className={cls}>{label}</button>
 }
