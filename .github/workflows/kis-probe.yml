@@ -43,13 +43,20 @@ jobs:
                 except Exception as e:
                     print(f"\n=== {label} | TR={tr} | ERROR {e}")
 
-            base = {"fid_cond_mrkt_div_code":"J","fid_input_iscd":ticker}
-            # 프로그램매매 종목별 추이 후보
-            probe("프로그램-일별A", "FHPPG04650200", "/uapi/domestic-stock/v1/quotations/inquire-program-trade-by-stock", base)
-            probe("프로그램-일별B", "FHPPG04650100", "/uapi/domestic-stock/v1/quotations/inquire-program-trade-by-stock", base)
-            # 시간외 단일가 후보
-            probe("시간외-현재가A", "FHKST02300100", "/uapi/domestic-stock/v1/quotations/inquire-price", base)
-            probe("시간외-일자별B", "FHKST03010200", "/uapi/domestic-stock/v1/quotations/inquire-daily-overtimeprice",
-                  {"fid_cond_mrkt_div_code":"J","fid_input_iscd":ticker,"fid_period_div_code":"D"})
-            probe("시간외-현재가C", "FHPST02300000", "/uapi/domestic-stock/v1/quotations/inquire-overtime-price", base)
+            # 넥스트레이드(NXT) 통합 시세 확인 — 시장구분 J(KRX)/UN(통합)/NX(넥스트) 현재가 비교
+            for mkt in ["J", "UN", "NX"]:
+                def one(label, tr, path, p):
+                    h = {"content-type":"application/json; charset=utf-8",
+                         "authorization": f"Bearer {token}", "appkey": cfg["app_key"],
+                         "appsecret": cfg["app_secret"], "tr_id": tr, "custtype": "P"}
+                    try:
+                        r = requests.get(_BASE_URL + path, headers=h, params=p, timeout=10)
+                        j = r.json(); o = j.get("output") or {}
+                        print(f"=== {label} mkt={mkt} rt_cd={j.get('rt_cd')} msg={j.get('msg1')} "
+                              f"prpr={o.get('stck_prpr')} ctrt={o.get('prdy_ctrt')} vol={o.get('acml_vol')} "
+                              f"rprs_mrkt={o.get('rprs_mrkt_kor_name')}")
+                    except Exception as e:
+                        print(f"=== {label} mkt={mkt} ERROR {e}")
+                one("현재가", "FHKST01010100", "/uapi/domestic-stock/v1/quotations/inquire-price",
+                    {"fid_cond_mrkt_div_code": mkt, "fid_input_iscd": ticker})
             PY
