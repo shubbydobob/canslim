@@ -1,6 +1,6 @@
 // frontend/src/components/CanslimRadar.tsx
 // C·A·N·S·L·I·M 7축 레이더. null 값은 0으로 그리되 꼭짓점은 빈 원(hollow)으로 표시.
-import { CANSLIM } from '../utils/canslim'
+// 축 낱글자 라벨은 표시하지 않는다(그리드/폴리곤만).
 
 interface Props {
   values: (number | null)[]  // canslimValues(item) 결과, 길이 7
@@ -36,14 +36,6 @@ export default function CanslimRadar({ values, size = 260 }: Props) {
           <circle key={i} cx={x.toFixed(1)} cy={y.toFixed(1)} r={3}
             fill={isNull ? 'var(--surface)' : 'var(--accent)'}
             stroke="var(--accent)" strokeWidth={isNull ? 1.5 : 0} />
-        )
-      })}
-      {CANSLIM.map((m, i) => {
-        const [x, y] = pt(i, R + size * 0.07)
-        return (
-          <text key={m.letter} x={x.toFixed(1)} y={y.toFixed(1)}
-            fill="var(--text-3)" fontSize={12} fontWeight={700}
-            textAnchor="middle" dominantBaseline="middle">{m.letter}</text>
         )
       })}
     </svg>
