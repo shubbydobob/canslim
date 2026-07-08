@@ -25,10 +25,7 @@ jobs:
             cd /home/ubuntu/canslim
             TICKER="${{ inputs.ticker }}" PYTHONUTF8=1 .venv/bin/python - <<'PY'
             import os, json, requests
-            from etl.kr_adapter.investor_flow_loader import _load_config, _get_token, _BASE_URL, _TOKEN_CACHE
-            # 토큰 캐시 강제 삭제 후 재발급(백엔드와 캐시 충돌로 만료 방지, 진단 전용)
-            try: os.remove(_TOKEN_CACHE)
-            except Exception: pass
+            from etl.kr_adapter.investor_flow_loader import _load_config, _get_token, _BASE_URL
             cfg = _load_config(); token = _get_token(cfg)
             ticker = os.environ.get("TICKER", "005930")
 

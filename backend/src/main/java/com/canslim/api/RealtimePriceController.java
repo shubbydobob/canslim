@@ -366,11 +366,18 @@ public class RealtimePriceController {
         long now = System.currentTimeMillis();
         if (cached != null && now - cached.ts() < INVESTOR_TTL_MS) return cached.data();
 
-        if (!acquireRate()) return null;   // 전역 초당 레이트리밋
-
         Map<String, Object> cfg = kis.getConfig();
         String token = kis.getToken();
+        // 넥스트레이드 통합(UN) 우선, 미지원/빈값이면 KRX(J) 폴백.
+        Map<String, Object> data = fetchInvestorRow(ticker, cfg, token, "UN");
+        if (data == null) data = fetchInvestorRow(ticker, cfg, token, "J");
+        if (data != null) investorCache.put(ticker, new CachedQuote(data, now));
+        return data;
+    }
 
+    /** 투자자 동향 1콜(시장구분 mktDiv) → 당일 순매수 맵. 실패/빈값이면 null(폴백 유도). */
+    private Map<String, Object> fetchInvestorRow(String ticker, Map<String, Object> cfg, String token, String mktDiv) {
+        if (!acquireRate()) return null;   // 전역 초당 레이트리밋
         HttpHeaders headers = new HttpHeaders();
         headers.set("authorization", "Bearer " + token);
         headers.set("appkey",   (String) cfg.get("app_key"));
@@ -379,32 +386,33 @@ public class RealtimePriceController {
         headers.set("custtype", "P");
 
         String url = KIS_BASE + INVESTOR_PATH
-                + "?FID_COND_MRKT_DIV_CODE=J&FID_INPUT_ISCD=" + ticker;
+                + "?FID_COND_MRKT_DIV_CODE=" + mktDiv + "&FID_INPUT_ISCD=" + ticker;
+        try {
+            ResponseEntity<Map> resp = rest.exchange(url, HttpMethod.GET, new HttpEntity<>(headers), Map.class);
+            if (!resp.getStatusCode().is2xxSuccessful() || resp.getBody() == null) return null;
+            Object rt = resp.getBody().get("rt_cd");
+            if (rt != null && !"0".equals(String.valueOf(rt))) return null;   // 미지원/에러 → 폴백
+            // output = 최근 일자별 배열, [0] = 당일(가장 최근)
+            @SuppressWarnings("unchecked")
+            List<Map<String, Object>> out = (List<Map<String, Object>>) resp.getBody().get("output");
+            if (out == null || out.isEmpty()) return null;
+            Map<String, Object> row = out.get(0);
 
-        ResponseEntity<Map> resp = rest.exchange(
-                url, HttpMethod.GET, new HttpEntity<>(headers), Map.class);
-        if (!resp.getStatusCode().is2xxSuccessful() || resp.getBody() == null) return null;
-
-        // output = 최근 일자별 배열, [0] = 당일(가장 최근)
-        @SuppressWarnings("unchecked")
-        List<Map<String, Object>> out = (List<Map<String, Object>>) resp.getBody().get("output");
-        if (out == null || out.isEmpty()) return null;
-        Map<String, Object> row = out.get(0);
-
-        // KIS 순매수 거래대금(_tr_pbmn)은 백만원 단위 → 원으로 환산(×1,000,000).
-        // (배치 investor_flow_loader와 단위 일치 — 안 하면 실시간이 100만배 작아짐.)
-        final long MW = 1_000_000L;
-        Map<String, Object> data = Map.of(
-                "ticker",            ticker,
-                "date",              row.getOrDefault("stck_bsop_date", ""),
-                "foreignNetBuy",     parseLong((String) row.getOrDefault("frgn_ntby_tr_pbmn", "0")) * MW,
-                "instNetBuy",        parseLong((String) row.getOrDefault("orgn_ntby_tr_pbmn", "0")) * MW,
-                "individualNetBuy",  parseLong((String) row.getOrDefault("prsn_ntby_tr_pbmn", "0")) * MW,
-                "foreignNetVol",     parseLong((String) row.getOrDefault("frgn_ntby_qty", "0")),
-                "instNetVol",        parseLong((String) row.getOrDefault("orgn_ntby_qty", "0"))
-        );
-        investorCache.put(ticker, new CachedQuote(data, now));
-        return data;
+            // KIS 순매수 거래대금(_tr_pbmn)은 백만원 단위 → 원으로 환산(×1,000,000).
+            final long MW = 1_000_000L;
+            return Map.of(
+                    "ticker",            ticker,
+                    "date",              row.getOrDefault("stck_bsop_date", ""),
+                    "foreignNetBuy",     parseLong((String) row.getOrDefault("frgn_ntby_tr_pbmn", "0")) * MW,
+                    "instNetBuy",        parseLong((String) row.getOrDefault("orgn_ntby_tr_pbmn", "0")) * MW,
+                    "individualNetBuy",  parseLong((String) row.getOrDefault("prsn_ntby_tr_pbmn", "0")) * MW,
+                    "foreignNetVol",     parseLong((String) row.getOrDefault("frgn_ntby_qty", "0")),
+                    "instNetVol",        parseLong((String) row.getOrDefault("orgn_ntby_qty", "0"))
+            );
+        } catch (Exception e) {
+            log.debug("KIS 투자자 조회 실패 ({}, mkt={}): {}", ticker, mktDiv, e.getMessage());
+            return null;
+        }
     }
 
     /**
