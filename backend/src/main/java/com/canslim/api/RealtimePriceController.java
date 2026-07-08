@@ -423,14 +423,18 @@ public class RealtimePriceController {
      *   - EOD 배치(run_daily, crontab 16:10 KST)가 price_daily에 오늘 종가를 적재하기까지
      *     15:30~16:20 공백이 생겨, 이 구간엔 배치값이 '어제 종가'라 오늘 급등락이 안 보였다.
      *   - 마감 후에도 오버레이를 열어두어 배치가 따라잡기 전까지 오늘 등락을 계속 노출.
-     *   - 16:40 ScoringJob + ETL 완료 후에도 여유를 두어 18:30까지 오버레이 유지.
+     *
+     * 08:00~20:00로 확장(2026-07, 넥스트레이드 대응): 넥스트레이드 거래시간이
+     *   프리마켓 08:00~08:50 / 메인 09:00~15:30 / 애프터마켓 15:40~20:00 이라,
+     *   UN(통합) inquire-price가 이 전 구간의 통합 체결을 실시간으로 준다(진단 확인).
+     *   전 구간 오버레이를 열어 장중·시간외·넥스트 애프터마켓까지 실시간 통합 시세 노출.
      */
     private boolean isKrMarketOpen() {
         ZonedDateTime now = ZonedDateTime.now(KST);
         DayOfWeek d = now.getDayOfWeek();
         if (d == DayOfWeek.SATURDAY || d == DayOfWeek.SUNDAY) return false;
         LocalTime t = now.toLocalTime();
-        return !t.isBefore(LocalTime.of(9, 0)) && !t.isAfter(LocalTime.of(18, 30));
+        return !t.isBefore(LocalTime.of(8, 0)) && !t.isAfter(LocalTime.of(20, 0));
     }
 
     private long parseLong(String s) {

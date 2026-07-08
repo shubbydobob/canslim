@@ -26,14 +26,15 @@ type SortKey = keyof Pick<ScreenerItem,
   'foreignNetBuy10d' | 'instNetBuy10d' | 'programNetBuy10d' | 'marketPercentile' | 'marketCap'
 >
 
-// 평일 09:00~18:30 KST(실시간 오버레이 창) 여부 — 브라우저 로컬 타임존과 무관하게 UTC→KST 환산.
+// 평일 08:00~20:00 KST(실시간 오버레이 창, 넥스트레이드 프리~애프터마켓) 여부.
+// 브라우저 로컬 타임존과 무관하게 UTC→KST 환산. 백엔드 isKrMarketOpen과 동일 창.
 function isKrMarketHours(): boolean {
   const now = new Date()
   const kst = new Date(now.getTime() + (now.getTimezoneOffset() + 540) * 60000)
   const day = kst.getDay()
   if (day === 0 || day === 6) return false
   const mins = kst.getHours() * 60 + kst.getMinutes()
-  return mins >= 540 && mins <= 1110   // 09:00 ~ 18:30
+  return mins >= 480 && mins <= 1200   // 08:00 ~ 20:00
 }
 
 // ── color helpers ──────────────────────────────────────────────
