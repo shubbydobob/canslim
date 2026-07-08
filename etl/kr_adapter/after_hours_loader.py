@@ -1,6 +1,14 @@
 """
 시간외 단일가 종가 → derived_metrics 적재
 
+⚠️ DEPRECATED / 미사용 (2026-07): run_daily 파이프라인에 편입돼 있지 않고,
+   TR(FHKST01010300)과 URL(inquire-asking-price-exp-ccn)이 불일치하며,
+   18:10 크론 시점엔 당일 derived_metrics 행이 아직 없어 UPDATE가 0건 매칭됐다.
+   → 실제로 after_hours_close가 적재된 적이 없으며, 관련 18:10 크론은 제거됨.
+   시간외 단일가를 반영하려면 (1) TR/URL을 정정하고 (2) run_daily의 derived 생성
+   '이후' 단계로 편입해야 한다. 그 전까지 백엔드의 COALESCE(after_hours_close, ...)는
+   항상 close_adj로 폴백(무해).
+
 데이터 소스: 한국투자증권 KIS Developers Open API
   TR: FHKST01010300 (주식현재가 시간외현재가)
   - 시간외 단일가 현재가/전일대비/등락률 반환
@@ -8,8 +16,6 @@
 저장 컬럼:
   after_hours_close      : 시간외 단일가 체결가 (원)
   after_hours_change_pct : 정규장 종가 대비 등락률 (%)
-
-실행 시점: 평일 18:10 KST (시간외 단일가 마감 18:00 이후)
 """
 import time
 import logging

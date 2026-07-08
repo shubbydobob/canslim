@@ -686,6 +686,13 @@ public class ScreenerController {
 
     /**
      * 가격 기반 정렬: canslim_scores 내장 가격 컬럼으로 인덱스 정렬 (CTE 없음).
+     *
+     * 정합성 주의(알려진 한계): 여기서 쓰는 close_price/change_rate는 채점 시점(score_date)에
+     * canslim_scores로 박아둔 값이라, 기본/필터 경로(loadPriceAndFlow)·limit-up·stats가 쓰는
+     * price_daily의 MAX(trade_date) 앵커와 다르다. 채점이 지연돼 score_date < max(trade_date)면
+     * 가격정렬 탭만 오래된 값을 보일 수 있다. 장중에는 프론트 LIVE_SORT_KEYS 재정렬이 보정한다.
+     * 완전 통일하려면 이 경로도 price_daily 최신 앵커를 단일 소스로 써야 하나, 인덱스 정렬 성능과
+     * 트레이드오프가 있어 별도 과제로 둔다.
      */
     private ScreenerPageResponse screenByPriceSort(
             LocalDate scoreDate, String market, String sortBy, boolean desc,

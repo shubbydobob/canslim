@@ -29,8 +29,9 @@ jobs:
             cd "$REPO_DIR"
             git pull origin master
 
-            echo "===== crontab 20:05로 갱신 (기존 run_daily 라인 교체) ====="
-            ( crontab -l 2>/dev/null | grep -v 'run_daily' ; \
+            echo "===== crontab 20:05로 갱신 (run_daily 교체 + 죽은 after_hours 크론 제거) ====="
+            # after_hours_loader는 TR/URL 불일치 + 타이밍(당일 derived 미생성)으로 무효 → 제거.
+            ( crontab -l 2>/dev/null | grep -v 'run_daily' | grep -v 'after_hours' ; \
               echo "5 20 * * 1-5 cd $REPO_DIR && $REPO_DIR/.venv/bin/python -m etl.kr_adapter.run_daily >> $REPO_DIR/etl_daily.log 2>&1" ) | crontab -
             echo "== 갱신된 crontab =="
             crontab -l
