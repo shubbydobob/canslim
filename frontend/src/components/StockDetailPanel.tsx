@@ -439,24 +439,24 @@ export default function StockDetailPanel({ securityId, onSelectStock, onBack }: 
         const px = live?.price ?? stock.closePrice
         const per = (annualEps != null && annualEps > 0 && px != null) ? px / annualEps : null
         const pbr = (per != null && roeFrac != null) ? per * roeFrac : null   // PBR = PER × ROE (BPS=EPS/ROE 항등식)
-        const cells = [
+        const cells: { label: string; value: string; pos?: boolean; mono?: boolean }[] = [
           { label: 'PER', value: per != null ? `${per.toFixed(1)}배` : '—' },
           { label: 'PBR', value: pbr != null ? `${pbr.toFixed(2)}배` : '—' },
-          { label: 'ROE', value: roeFrac != null ? `${(roeFrac * 100).toFixed(1)}%` : '—', color: roeFrac != null && roeFrac >= 0.15 ? 'var(--up)' : undefined },
+          { label: 'ROE', value: roeFrac != null ? `${(roeFrac * 100).toFixed(1)}%` : '—', pos: roeFrac != null && roeFrac >= 0.15 },
           { label: 'EPS', value: annualEps != null ? fmtPrice(Math.round(annualEps)) : '—', mono: true },
         ]
         if (cells.every(c => c.value === '—')) return null
         return (
-          <div style={{ marginBottom: 16 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
-              <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-3)', letterSpacing: '0.04em' }}>투자지표</span>
-              <span style={{ fontSize: 9, color: 'var(--text-4)' }}>최근 연간 · PER·PBR은 현재가 기준</span>
+          <div className="metric-block">
+            <div className="metric-section-head">
+              <span className="metric-section-title">투자지표</span>
+              <span className="metric-section-sub">최근 연간 · PER·PBR은 현재가 기준</span>
             </div>
-            <div style={{ display: 'flex', background: 'var(--bg-nav)', borderRadius: 10, border: '1px solid var(--border)', overflow: 'hidden' }}>
-              {cells.map(({ label, value, color, mono }, i) => (
-                <div key={label} style={{ flex: 1, padding: '10px 14px', borderRight: i < cells.length - 1 ? '1px solid var(--border)' : 'none' }}>
-                  <div style={{ fontSize: 9, color: 'var(--text-4)', fontWeight: 600, marginBottom: 3 }}>{label}</div>
-                  <div style={{ fontSize: 13, fontWeight: 700, color: color ?? 'var(--text-1)', fontFamily: mono ? 'monospace' : 'inherit' }}>{value}</div>
+            <div className="metric-strip">
+              {cells.map(({ label, value, pos, mono }) => (
+                <div key={label} className="metric-cell">
+                  <div className="metric-cell-label">{label}</div>
+                  <div className={'metric-cell-value' + (mono ? ' mono' : '') + (pos ? ' pos' : '')}>{value}</div>
                 </div>
               ))}
             </div>

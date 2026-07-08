@@ -106,6 +106,19 @@ body {
 [data-theme='light'] .badge-overheat    { --badge-bg: #fce7f0; --badge-fg: #be185d; --badge-bd: #f4bcd6; }
 [data-theme='light'] .badge-manage      { --badge-bg: #ede9fe; --badge-fg: #6d28d9; --badge-bd: #cdbef5; }
 
+/* 지표 스트립 (당일수급·투자지표 등 라벨+값 셀 행 공통) */
+.metric-block { margin-bottom: 16px; }
+.metric-section-head { display: flex; align-items: center; gap: 6px; margin-bottom: 6px; }
+.metric-section-title { font-size: 11px; font-weight: 700; color: var(--text-3); letter-spacing: 0.04em; }
+.metric-section-sub { font-size: 9px; color: var(--text-4); }
+.metric-strip { display: flex; background: var(--bg-nav); border-radius: 10px; border: 1px solid var(--border); overflow: hidden; }
+.metric-cell { flex: 1; padding: 10px 14px; }
+.metric-cell + .metric-cell { border-left: 1px solid var(--border); }
+.metric-cell-label { font-size: 9px; color: var(--text-4); font-weight: 600; margin-bottom: 3px; }
+.metric-cell-value { font-size: 13px; font-weight: 700; color: var(--text-1); }
+.metric-cell-value.mono { font-family: monospace; }
+.metric-cell-value.pos { color: var(--up); }
+
 /* 로딩 스피너 */
 @keyframes spin { to { transform: rotate(360deg); } }
 .spinner {
