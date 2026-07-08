@@ -703,9 +703,26 @@ export default function ScreenerPage() {
       height: '100vh', color: '#f87171' }}>{error}</div>
   )
 
-  const displayItems = items
-    .filter(i => !showWatchOnly || watchlist.has(i.securityId))
-    .filter(i => !showBreakoutOnly || i.breakoutToday)
+  // 실시간 오버레이가 덮어쓰는 필드로 정렬할 땐, 백엔드 정렬(배치 채점일 기준)과
+  // 화면 표시(실시간 등락률 등)가 어긋나 "정렬이 안 된 것처럼" 보인다.
+  // 이 필드들은 라이브 병합값으로 현재 페이지를 다시 정렬해 표시와 순서를 일치시킨다.
+  // (전체 정렬은 백엔드 페이징이 담당 — 장중 실시간 전체 정렬은 보이는 종목 한계상 페이지 단위.)
+  const LIVE_SORT_KEYS = new Set<SortKey>(['changeRate', 'closePrice', 'turnover', 'volume'])
+  const displayItems = (() => {
+    const arr = items
+      .filter(i => !showWatchOnly || watchlist.has(i.securityId))
+      .filter(i => !showBreakoutOnly || i.breakoutToday)
+    if (!LIVE_SORT_KEYS.has(sortKey) || Object.keys(liveMap).length === 0) return arr
+    const dir = sortDir === 'asc' ? 1 : -1
+    return arr.map(mergeLive).sort((a, b) => {
+      const av = a[sortKey] as number | null
+      const bv = b[sortKey] as number | null
+      if (av == null && bv == null) return 0
+      if (av == null) return 1          // null은 항상 뒤로
+      if (bv == null) return -1
+      return (av - bv) * dir
+    })
+  })()
   const hasActiveFilter = sector !== '' || capRange !== 'all' || query !== '' || minScore > 0 || showWatchOnly || showBreakoutOnly
   const activeFilterCount = [sector !== '', capRange !== 'all', query !== '', minScore > 0, showWatchOnly, showBreakoutOnly].filter(Boolean).length
 
