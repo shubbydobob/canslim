@@ -1,0 +1,32 @@
+name: Force redeploy backend (manual, no-cache)
+
+# 배포 반영 실패(옛 jar) 강제 해소 — git 최신화 확인 + --no-cache 재빌드 + 강제 재기동.
+on:
+  workflow_dispatch:
+
+jobs:
+  redeploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Force rebuild via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ubuntu
+          key: ${{ secrets.EC2_SSH_KEY }}
+          command_timeout: 20m
+          script: |
+            set -e
+            cd /home/ubuntu/canslim
+            echo "===== git 최신화 ====="
+            git pull origin master 2>&1 | tail -3
+            echo "현재 커밋: $(git log -1 --oneline)"
+            echo "===== 백엔드 --no-cache 재빌드 ====="
+            docker compose -f docker-compose.prod.yml build --no-cache backend
+            docker compose -f docker-compose.prod.yml up -d --force-recreate backend
+            echo "===== 재기동 대기 (35s) ====="
+            sleep 35
+            echo "===== 검증: quotes 응답 (UN 통합이면 changeRate가 -10%대) ====="
+            curl -s "http://localhost:8080/api/realtime/quotes?tickers=005930" | head -c 500
+            echo ""
+            docker ps --format '{{.Names}} | {{.Status}}' | grep -i backend || true
