@@ -122,6 +122,34 @@ body {
   gap: 12px; padding: 72px 0; color: var(--text-3); font-size: 13px;
 }
 
+/* ── 컴포넌트 공통 클래스 (인라인 스타일 이관) ─────────────────
+   동적 값은 style로 CSS 변수(--*)만 전달하고 선언은 여기서. */
+
+/* 라우트/로딩 폴백 */
+.route-fallback { display: flex; align-items: center; justify-content: center; height: 100vh; gap: 10px; color: var(--text-3); font-size: 13px; }
+
+/* 팩터 미니 막대 (FactorBars) */
+.factor-bars { display: flex; align-items: flex-end; gap: var(--fb-gap, 5px); height: var(--fb-h, 34px); }
+.factor-bar  { width: var(--fb-w, 7px); height: 100%; display: flex; align-items: flex-end; background: var(--track); border-radius: 3px; overflow: hidden; }
+.factor-bar > i { display: block; width: 100%; height: var(--fb-fill, 0%); background: var(--fb-color, var(--track)); border-radius: 3px; }
+
+/* 매크로 티커 */
+.macro-ticker { background: var(--bg-nav); border-bottom: 1px solid var(--border); height: 36px; overflow: hidden; position: relative; }
+@keyframes ticker-scroll { 0% { transform: translateX(0); } 100% { transform: translateX(-50%); } }
+.ticker-inner { display: flex; align-items: center; height: 36px; width: max-content; animation: ticker-scroll var(--ticker-dur, 40s) linear infinite; }
+.ticker-inner:hover { animation-play-state: paused; }
+.macro-quote { display: flex; align-items: center; gap: 10px; padding: 0 20px; border-right: 1px solid var(--border); white-space: nowrap; flex-shrink: 0; }
+.macro-quote .mq-name  { font-size: 11px; color: var(--text-2); font-weight: 600; letter-spacing: 0.05em; }
+.macro-quote .mq-price { font-size: 13px; font-weight: 700; color: var(--text-1); }
+.macro-quote .mq-chg   { font-size: 12px; font-weight: 600; color: var(--mq-color); }
+
+/* 종합 스코어 도넛 게이지 (ScoreGauge) */
+.score-gauge { position: relative; width: var(--sg-size, 200px); height: var(--sg-size, 200px); }
+.sg-progress { transition: stroke-dashoffset 0.6s ease; }
+.score-gauge-label { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+.score-gauge-num  { font-size: var(--sg-fs, 48px); font-weight: 800; line-height: 1; color: var(--sg-color); }
+.score-gauge-tier { font-size: 13px; font-weight: 700; color: var(--sg-color); margin-top: 4px; padding: 3px 10px; background: var(--sg-tint); border-radius: 99px; }
+
 #root { min-height: 100vh; }
 
 a { color: inherit; text-decoration: none; }

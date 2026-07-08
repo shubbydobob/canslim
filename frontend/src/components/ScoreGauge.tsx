@@ -16,22 +16,22 @@ export default function ScoreGauge({ score, size = 200, label }: Props) {
   const off = c * (1 - pct / 100)
 
   return (
-    <div style={{ position: 'relative', width: size, height: size }}>
+    <div className="score-gauge" style={{ ['--sg-size' as string]: `${size}px` }}>
       <svg width="100%" height="100%" viewBox="0 0 200 200">
         <circle cx={100} cy={100} r={r} fill="none" stroke="var(--track)" strokeWidth={14} />
         <circle
+          className="sg-progress"
           cx={100} cy={100} r={r} fill="none"
           stroke={tier.color} strokeWidth={14} strokeLinecap="round"
           strokeDasharray={c} strokeDashoffset={off}
           transform="rotate(-90 100 100)"
-          style={{ transition: 'stroke-dashoffset .6s ease' }}
         />
       </svg>
-      <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
-        <span style={{ fontSize: size * 0.24, fontWeight: 800, lineHeight: 1, color: tier.color }}>
+      <div className="score-gauge-label" style={{ ['--sg-color' as string]: tier.color, ['--sg-tint' as string]: tier.tint }}>
+        <span className="score-gauge-num" style={{ ['--sg-fs' as string]: `${size * 0.24}px` }}>
           {score == null ? '–' : Math.round(score)}
         </span>
-        <span style={{ fontSize: 13, fontWeight: 700, color: tier.color, marginTop: 4, padding: '3px 10px', background: tier.tint, borderRadius: 99 }}>
+        <span className="score-gauge-tier">
           {label ?? tier.label}
         </span>
       </div>

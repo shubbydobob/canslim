@@ -11,14 +11,15 @@ interface Props {
 
 export default function FactorBars({ values, height = 34, barWidth = 7, gap = 5 }: Props) {
   return (
-    <div style={{ display: 'flex', alignItems: 'flex-end', gap, height }}>
+    <div className="factor-bars" style={{ ['--fb-gap' as string]: `${gap}px`, ['--fb-h' as string]: `${height}px` }}>
       {values.map((v, i) => (
         <div
           key={CANSLIM[i].letter}
           title={`${CANSLIM[i].letter} · ${CANSLIM[i].name}${v == null ? ' (미집계)' : ` ${v}점`}`}
-          style={{ width: barWidth, height: '100%', display: 'flex', alignItems: 'flex-end', background: 'var(--track)', borderRadius: 3, overflow: 'hidden' }}
+          className="factor-bar"
+          style={{ ['--fb-w' as string]: `${barWidth}px` }}
         >
-          <div style={{ width: '100%', height: `${v ?? 0}%`, background: factorColor(v), borderRadius: 3 }} />
+          <i style={{ ['--fb-fill' as string]: `${v ?? 0}%`, ['--fb-color' as string]: factorColor(v) }} />
         </div>
       ))}
     </div>

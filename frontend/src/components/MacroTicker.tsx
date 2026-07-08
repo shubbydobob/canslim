@@ -11,18 +11,10 @@ function QuoteItem({ q }: { q: MacroQuote }) {
     v == null ? '—' : v.toLocaleString('ko-KR', { minimumFractionDigits: digits, maximumFractionDigits: digits })
 
   return (
-    <div style={{
-      display: 'flex', alignItems: 'center', gap: 10,
-      padding: '0 20px', borderRight: '1px solid var(--border)',
-      whiteSpace: 'nowrap', flexShrink: 0,
-    }}>
-      <span style={{ fontSize: 11, color: 'var(--text-2)', fontWeight: 600, letterSpacing: '0.05em' }}>
-        {q.name}
-      </span>
-      <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-1)' }}>
-        {fmt(q.price, q.symbol === '^TNX' ? 3 : 2)}
-      </span>
-      <span style={{ fontSize: 12, color, fontWeight: 600 }}>
+    <div className="macro-quote">
+      <span className="mq-name">{q.name}</span>
+      <span className="mq-price">{fmt(q.price, q.symbol === '^TNX' ? 3 : 2)}</span>
+      <span className="mq-chg" style={{ ['--mq-color' as string]: color }}>
         {arrow} {fmt(Math.abs(q.changePct ?? 0), 2)}%
       </span>
     </div>
@@ -47,30 +39,8 @@ export default function MacroTicker() {
   if (!quotes.length) return null
 
   return (
-    <div style={{
-      background: 'var(--bg-nav)',
-      borderBottom: '1px solid var(--border)',
-      height: 36,
-      overflow: 'hidden',
-      position: 'relative',
-    }}>
-      <style>{`
-        @keyframes ticker-scroll {
-          0%   { transform: translateX(0); }
-          100% { transform: translateX(-50%); }
-        }
-        .ticker-inner {
-          display: flex;
-          align-items: center;
-          height: 36px;
-          animation: ticker-scroll ${quotes.length * 4}s linear infinite;
-          width: max-content;
-        }
-        .ticker-inner:hover {
-          animation-play-state: paused;
-        }
-      `}</style>
-      <div className="ticker-inner" ref={tickerRef}>
+    <div className="macro-ticker">
+      <div className="ticker-inner" ref={tickerRef} style={{ ['--ticker-dur' as string]: `${quotes.length * 4}s` }}>
         {items.map((q, i) => <QuoteItem key={`${q.symbol}-${i}`} q={q} />)}
       </div>
     </div>

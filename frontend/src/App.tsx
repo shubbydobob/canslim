@@ -15,8 +15,7 @@ function RequireAuth({ children }: { children: React.ReactNode }) {
 
 function RouteFallback() {
   return (
-    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center',
-      height: '100vh', color: 'var(--text-3)', fontSize: 13, gap: 10 }}>
+    <div className="route-fallback">
       <span className="spinner" /> 로딩 중...
     </div>
   )
