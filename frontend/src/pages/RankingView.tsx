@@ -3,6 +3,8 @@ import type { ScreenerItem } from '../types'
 import type { LiveQuote } from '../api/client'
 import { useIsMobile } from '../hooks/useIsMobile'
 import StatusBadges from '../components/StatusBadges'
+import { scoreFg, changeColor } from '../utils/canslim'
+import { fmtRate } from '../utils/format'
 
 interface Props {
   items: ScreenerItem[]
@@ -10,23 +12,6 @@ interface Props {
   onStockClick: (id: number) => void
   liveMap?: Record<string, LiveQuote>
 }
-
-const scoreColor = (v: number) => {
-  if (v >= 85) return '#4ade80'
-  if (v >= 70) return '#86efac'
-  if (v >= 55) return '#fabd44'
-  return '#f87171'
-}
-
-const changeColor = (v: number | null) => {
-  if (v === null) return 'var(--text-4)'
-  if (v > 0) return 'var(--up)'
-  if (v < 0) return 'var(--down)'
-  return 'var(--text-3)'
-}
-
-const fmtRate = (v: number | null) =>
-  v !== null ? (v >= 0 ? '+' : '') + v.toFixed(2) + '%' : '—'
 
 export default function RankingView({ items, loading, onStockClick, liveMap }: Props) {
   const [hovered, setHovered] = useState<number | null>(null)
@@ -73,7 +58,7 @@ export default function RankingView({ items, loading, onStockClick, liveMap }: P
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           {topItems.map((item, idx) => {
             const live = liveOf(item)
-            const sc = scoreColor(item.compositeScore)
+            const sc = scoreFg(item.compositeScore)
             const barPct = maxScore > 0 ? (item.compositeScore / maxScore) * 100 : 0
             const medal = medalColor(idx)
 
@@ -201,7 +186,7 @@ export default function RankingView({ items, loading, onStockClick, liveMap }: P
 
         {topItems.map((item, idx) => {
           const live = liveOf(item)
-          const sc = scoreColor(item.compositeScore)
+          const sc = scoreFg(item.compositeScore)
           const isHov = hovered === item.securityId
           const barPct = maxScore > 0 ? (item.compositeScore / maxScore) * 100 : 0
           const medal = medalColor(idx)

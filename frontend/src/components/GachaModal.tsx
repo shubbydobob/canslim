@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import type { ScreenerItem } from '../types'
+import { scoreFg } from '../utils/canslim'
 
 interface Props {
   items: ScreenerItem[]
@@ -16,7 +17,6 @@ const RARITY = (score: number) => {
   return { label: 'N', color: '#4ade80', glow: '#4ade8044', bg: 'linear-gradient(135deg, #001a0d, #002d15)', border: '#4ade80' }
 }
 
-const scoreColor = (v: number) => v >= 85 ? '#4ade80' : v >= 70 ? '#9ae6b4' : v >= 55 ? '#f6ad55' : '#fc8181'
 
 export default function GachaModal({ items, onSelect, onClose }: Props) {
   const [phase, setPhase] = useState<Phase>('idle')
@@ -175,9 +175,9 @@ export default function GachaModal({ items, onSelect, onClose }: Props) {
 
               {/* Score */}
               <div style={{
-                fontSize: 48, fontWeight: 900, color: scoreColor(picked.compositeScore),
+                fontSize: 48, fontWeight: 900, color: scoreFg(picked.compositeScore),
                 lineHeight: 1, marginTop: 4,
-                textShadow: `0 0 20px ${scoreColor(picked.compositeScore)}44`,
+                textShadow: `0 0 20px ${scoreFg(picked.compositeScore)}44`,
               }}>{picked.compositeScore.toFixed(1)}</div>
 
               <div style={{ fontSize: 11, color: 'var(--text-3)' }}>

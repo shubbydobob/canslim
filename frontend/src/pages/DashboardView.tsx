@@ -3,6 +3,7 @@ import type { ScreenerItem } from '../types'
 import { fetchScreenerStats, fetchLimitUp, fetchLiveQuotes, fetchSectorIndices } from '../api/client'
 import type { ScreenerStats, LimitUpStock, LiveQuote, SectorIndex } from '../api/client'
 import { useIsMobile } from '../hooks/useIsMobile'
+import { scoreFg, changeColor } from '../utils/canslim'
 
 interface Props {
   items: ScreenerItem[]
@@ -130,21 +131,6 @@ export default function DashboardView({
     .sort((a, b) => b.compositeScore - a.compositeScore)
     .slice(0, 15)
   const maxScore = topItems[0]?.compositeScore ?? 100
-
-  // Score color
-  const scoreColor = (v: number) => {
-    if (v >= 85) return '#4ade80'
-    if (v >= 70) return '#86efac'
-    if (v >= 55) return '#fabd44'
-    return '#f87171'
-  }
-
-  const changeColor = (v: number | null) => {
-    if (v === null) return 'var(--text-4)'
-    if (v > 0) return 'var(--up)'
-    if (v < 0) return 'var(--down)'
-    return 'var(--text-3)'
-  }
 
   return (
     <div style={{ padding: isMobile ? '16px 16px 24px' : '24px 28px', maxWidth: 1200 }}>
@@ -315,7 +301,7 @@ export default function DashboardView({
             ))}
             {!loading && topItems.map((item, idx) => {
               const hovered = hoveredRankId === item.securityId
-              const sc = scoreColor(item.compositeScore)
+              const sc = scoreFg(item.compositeScore)
               const liveCh = liveMap[item.ticker]?.changeRate
               const dispChange = liveCh != null ? liveCh : item.changeRate
               return (

@@ -14,6 +14,7 @@ import StatusBadges from '../components/StatusBadges'
 import { useIsMobile } from '../hooks/useIsMobile'
 import type { ScreenerItem } from '../types'
 import { fmtPrice, fmtRate, fmtMarketCap, fmtAmt, fmtVolume } from '../utils/format'
+import { scoreBg, scoreFg, scoreGrade, changeColor } from '../utils/canslim'
 
 
 // ── types ──────────────────────────────────────────────────────
@@ -37,46 +38,13 @@ function isKrMarketHours(): boolean {
   return mins >= 480 && mins <= 1200   // 08:00 ~ 20:00
 }
 
-// ── color helpers ──────────────────────────────────────────────
-
-const scoreColor = (v: number | null) => {
-  if (v === null) return 'transparent'
-  if (v >= 85) return 'rgba(74,222,128,0.18)'
-  if (v >= 70) return 'rgba(74,222,128,0.09)'
-  if (v >= 55) return 'rgba(250,189,68,0.15)'
-  if (v >= 40) return 'rgba(249,115,22,0.18)'
-  return 'rgba(248,113,113,0.15)'
-}
-const scoreText = (v: number | null) => {
-  if (v === null) return 'var(--text-4)'
-  if (v >= 70) return '#4ade80'
-  if (v >= 55) return '#fabd44'
-  if (v >= 40) return '#f97316'
-  return '#f87171'
-}
-const compositeGrade = (v: number) => {
-  if (v >= 85) return { color: '#4ade80', label: 'A+' }
-  if (v >= 75) return { color: '#86efac', label: 'A' }
-  if (v >= 65) return { color: '#fabd44', label: 'B+' }
-  if (v >= 55) return { color: '#fbbf24', label: 'B' }
-  if (v >= 45) return { color: '#f97316', label: 'C' }
-  return { color: '#f87171', label: 'D' }
-}
-const changeColor = (v: number | null) => {
-  if (v === null) return 'var(--text-3)'
-  if (v > 0) return 'var(--up)'    // 상승 = 빨강 (한국식)
-  if (v < 0) return 'var(--down)'  // 하락 = 파랑
-  return 'var(--text-3)'
-}
-
-// ── format helpers ─────────────────────────────────────────────
 // ── sub-components ─────────────────────────────────────────────
 
 function ScoreCell({ value }: { value: number | null }) {
   return (
     <td style={{
       padding: '0 5px', textAlign: 'center', fontFamily: 'var(--font-mono)',
-      background: scoreColor(value), color: scoreText(value),
+      background: scoreBg(value), color: scoreFg(value),
       fontWeight: value !== null ? 600 : 400, fontSize: 12,
       borderRight: '1px solid var(--score-sep)',
     }}>
@@ -519,7 +487,7 @@ export default function ScreenerPage() {
 
   const renderRow = (item: ScreenerItem, _idx: number) => {
     const hovered = hoveredId === item.securityId
-    const grade = compositeGrade(item.compositeScore)
+    const grade = scoreGrade(item.compositeScore)
     const isWatched = watchlist.has(item.securityId)
 
     const watchBtn = (
@@ -615,7 +583,7 @@ export default function ScreenerPage() {
 
   // ── 모바일 카드 렌더 (좁은 화면 전용) ────────────────────────
   const renderCard = (item: ScreenerItem, _idx: number) => {
-    const grade = compositeGrade(item.compositeScore)
+    const grade = scoreGrade(item.compositeScore)
     const isWatched = watchlist.has(item.securityId)
     const flash = flashMap[item.ticker]
     const factors: { k: string; v: number | null }[] = [
@@ -674,9 +642,9 @@ export default function ScreenerPage() {
         {/* 3행: C·A·N·S·L·I 팩터 스트립 */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: 4, marginTop: 10 }}>
           {factors.map(f => (
-            <div key={f.k} style={{ textAlign: 'center', background: scoreColor(f.v), borderRadius: 5, padding: '4px 0' }}>
+            <div key={f.k} style={{ textAlign: 'center', background: scoreBg(f.v), borderRadius: 5, padding: '4px 0' }}>
               <div style={{ fontSize: 9, color: 'var(--text-4)' }}>{f.k}</div>
-              <div style={{ fontSize: 13, fontWeight: 700, fontFamily: 'var(--font-mono)', color: scoreText(f.v) }}>
+              <div style={{ fontSize: 13, fontWeight: 700, fontFamily: 'var(--font-mono)', color: scoreFg(f.v) }}>
                 {f.v !== null ? Math.round(f.v) : '·'}
               </div>
             </div>

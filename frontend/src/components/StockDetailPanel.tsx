@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
-import { fmtPrice, fmtRate, fmtMarketCap, fmtAmt, fmtFinAmt } from '../utils/format'
+import { fmtPrice, fmtRate, fmtMarketCap, fmtAmt, fmtFinAmt, fmtVol, fmtFlow } from '../utils/format'
+import { scoreGrade } from '../utils/canslim'
 import { isPremium, isLoggedIn } from '../api/auth'
 import {
   Bar, XAxis, YAxis, CartesianGrid, Tooltip,
@@ -24,32 +25,11 @@ const FACTORS: { key: ScoreKey; label: string; desc: string; color: string }[] =
   { key: 'mScore', label: '7', desc: '시장방향',  color: '#d6bcfa' },
 ]
 
-function scoreGrade(v: number | null): { grade: string; color: string } {
-  if (v === null) return { grade: 'N/A', color: '#484f58' }
-  if (v >= 85) return { grade: 'A+', color: '#68d391' }
-  if (v >= 70) return { grade: 'A',  color: '#9ae6b4' }
-  if (v >= 55) return { grade: 'B+', color: '#f6ad55' }
-  if (v >= 40) return { grade: 'B',  color: '#ed8936' }
-  if (v >= 25) return { grade: 'C',  color: '#fc8181' }
-  return { grade: 'D', color: '#f56565' }
-}
-
-function fmtVol(v: number | null) {
-  if (v === null) return '—'
-  if (v >= 10_000_000) return (v / 10_000_000).toFixed(1) + '천만주'
-  return (v / 10_000).toFixed(0) + '만주'
-}
-function fmtFlow(v: number | null) {
-  if (v === null) return '—'
-  const b = v / 1e8
-  return (b > 0 ? '+' : '') + b.toFixed(1) + '억'
-}
-
 function FactorCard({ label, desc, value, color }: {
   label: string; desc: string; value: number | null; color: string
 }) {
   const pct = value ?? 0
-  const { grade, color: gc } = scoreGrade(value)
+  const { label: grade, color: gc } = scoreGrade(value)
   return (
     <div style={{
       background: 'var(--bg-nav)', borderRadius: 10, padding: '14px 16px',

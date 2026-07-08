@@ -36,6 +36,20 @@ export function fmtFinAmt(v: number | null): number | null {
   return v === null ? null : Math.round(v / 1e8)
 }
 
+/** 거래량: 천만주 / 만주 단위 (상세용, '주' 접미) */
+export function fmtVol(v: number | null): string {
+  if (v === null) return '—'
+  if (v >= 1e7) return Math.round(v / 1e7) + '천만주'
+  return Math.round(v / 1e4) + '만주'
+}
+
+/** 순매수 금액 → 억 단위 부호 표기 */
+export function fmtFlow(v: number | null): string {
+  if (v === null) return '—'
+  const b = v / 1e8
+  return (b > 0 ? '+' : '') + Math.round(b) + '억'
+}
+
 /** 52주 고가 대비 등락률 */
 export function fmtHigh52pct(close: number | null, high: number | null): string {
   if (!close || !high || high <= 0) return '—'
