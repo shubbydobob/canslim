@@ -60,3 +60,10 @@ jobs:
                 one("현재가", "FHKST01010100", "/uapi/domestic-stock/v1/quotations/inquire-price",
                     {"fid_cond_mrkt_div_code": mkt, "fid_input_iscd": ticker})
             PY
+
+            echo ""
+            echo "===== 운영 백엔드 실제 응답 (localhost:8080/api/realtime/quotes) ====="
+            curl -s "http://localhost:8080/api/realtime/quotes?tickers=${{ inputs.ticker }}" | head -c 1000
+            echo ""
+            echo "===== 백엔드 컨테이너 최근 시작 시각 (배포 반영 확인) ====="
+            docker ps --format '{{.Names}} | {{.Status}}' | grep -i backend || true
