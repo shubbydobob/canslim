@@ -82,8 +82,10 @@ export default function DashboardView({
       const cands = await fetchLimitUp('KR', 10).catch(() => [])
       setLimitUp(cands)
       const top15 = [...items].sort((a, b) => b.compositeScore - a.compositeScore).slice(0, 15)
-      // TOP 종목 우선 + 상한가 후보, 중복 제거, 배치 상한 60개.
-      const tickers = Array.from(new Set([...top15.map(t => t.ticker), ...cands.map(c => c.ticker)])).slice(0, 60)
+      // 상한가 후보 우선 + TOP 종목, 중복 제거, 배치 상한 60개.
+      // (후보를 앞에 둬야 급등주가 많은 날에도 slice(60)에서 잘려 실시간 조회가
+      //  누락되는 일이 없음 — 누락되면 stale 배치 상한가가 그대로 노출됨.)
+      const tickers = Array.from(new Set([...cands.map(c => c.ticker), ...top15.map(t => t.ticker)])).slice(0, 60)
       if (tickers.length) {
         const lq = await fetchLiveQuotes(tickers).catch(() => ({}))
         setLiveMap(lq)
@@ -101,13 +103,19 @@ export default function DashboardView({
   }, [items])
 
   // 실시간 등락률로 덮어쓰고, 진짜 상한가·급등(실시간 ≥29%)만 노출.
+  // liveMap이 채워진 '실시간 활성' 구간(장중~마감 후 배치 전)에는 실시간을 받은
+  // 종목만 신뢰한다. 실시간을 못 받은 종목의 배치 등락률은 어제 상한가일 수 있어
+  // (예: 효성화학 어제 +29% → 오늘 +2%인데 배치값 29% 잔존) 상한가로 오노출되므로 배제.
+  // liveMap이 완전히 빈 '실시간 비활성'(장외/주말) 구간에는 배치 종가가 곧 당일
+  // 종가이므로 배치 등락률을 그대로 사용한다.
   const LIMIT_MIN = 29
+  const liveActive = Object.keys(liveMap).length > 0
   const limitUpLive = limitUp
     .map(s => {
       const live = liveMap[s.ticker]?.changeRate
-      return { ...s, effChange: live != null ? live : s.changeRate }
+      return { ...s, effChange: live != null ? live : s.changeRate, hasLive: live != null }
     })
-    .filter(s => s.effChange >= LIMIT_MIN)
+    .filter(s => (liveActive ? s.hasLive : true) && s.effChange >= LIMIT_MIN)
     .sort((a, b) => b.effChange - a.effChange)
 
   // ── Stats (전체 2558종목 기준) ──────────────────────────────────

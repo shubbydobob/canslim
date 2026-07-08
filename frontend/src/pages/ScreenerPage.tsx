@@ -255,6 +255,8 @@ export default function ScreenerPage() {
   const navigate = useNavigate()
   const scrollRef = useRef<HTMLDivElement>(null)
   const mirrorRef = useRef<HTMLDivElement>(null)
+  const isPopRef = useRef(false)         // popstate로 인한 뷰 변경은 history push 생략
+  const histMountedRef = useRef(false)   // 최초 마운트는 replaceState로 현재 엔트리에 심음
 
   const CAP_PARAMS: Record<string, { minCap?: number; maxCap?: number }> = {
     all:   {},
@@ -266,9 +268,38 @@ export default function ScreenerPage() {
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme)
   }, [theme])
-  // 탭 상태 유지 (종목 상세 → 뒤로가기 시 복원)
+  // 탭 상태 유지 (새로고침 시 복원)
   useEffect(() => { sessionStorage.setItem('screener_viewTab', viewTab) }, [viewTab])
   useEffect(() => { sessionStorage.setItem('screener_mainTab', mainTab) }, [mainTab])
+
+  // ── 브라우저 뒤로가기 동기화 ─────────────────────────────────────
+  // 대시보드/랭킹/스크리너/관심종목 탭 전환과 종목상세 진입이 모두 `/` 단일
+  // 라우트 안에서 state로만 처리돼, history에 아무것도 안 쌓여 뒤로가기 시
+  // 앱을 아예 벗어나던 문제. 뷰가 바뀔 때마다 history 엔트리를 쌓고(pushState),
+  // popstate(뒤로/앞으로)에서 그 스냅샷으로 뷰를 복원해 앱 안에서 이동하게 한다.
+  useEffect(() => {
+    const view = { mainTab, viewTab, selectedStockId }
+    if (!histMountedRef.current) {
+      histMountedRef.current = true
+      window.history.replaceState({ __appView: view }, '')
+      return
+    }
+    if (isPopRef.current) { isPopRef.current = false; return }
+    window.history.pushState({ __appView: view }, '')
+  }, [mainTab, viewTab, selectedStockId])
+
+  useEffect(() => {
+    const onPop = (e: PopStateEvent) => {
+      const v = (e.state as { __appView?: { mainTab: MainTab; viewTab: ViewTab; selectedStockId: number | null } } | null)?.__appView
+      if (!v) return   // 앱 뷰 스냅샷이 아니면(최초 진입 이전 등) 브라우저 기본 동작
+      isPopRef.current = true
+      setMainTab(v.mainTab)
+      setViewTab(v.viewTab)
+      setSelectedStockId(v.selectedStockId ?? null)
+    }
+    window.addEventListener('popstate', onPop)
+    return () => window.removeEventListener('popstate', onPop)
+  }, [])
   useEffect(() => {
     fetch('/api/stats/visit', { method: 'POST' })
       .then(r => r.json())
@@ -1386,7 +1417,7 @@ export default function ScreenerPage() {
         <StockDetailPanel
           securityId={selectedStockId}
           onSelectStock={(id) => setSelectedStockId(id)}
-          onBack={() => setViewTab('table')}
+          onBack={() => window.history.back()}
         />
       )}
 
