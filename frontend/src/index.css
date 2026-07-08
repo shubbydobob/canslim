@@ -73,6 +73,39 @@ body {
 .flash-up   { animation: flash-up 0.9s ease-out; }
 .flash-down { animation: flash-down 0.9s ease-out; }
 
+/* ── 종목 특이사항 뱃지 (공통·테마 자동 대비) ──────────────────
+   색 3종(배경/글자/테두리)을 --badge-* 변수로 두고 심각도 클래스에서 지정.
+   다크 = :root 기본값, 라이트는 [data-theme='light'] 오버라이드로 대비 확보. */
+.badge {
+  display: inline-block;
+  font-weight: 700;
+  line-height: 1.4;
+  border-radius: 4px;
+  white-space: nowrap;
+  letter-spacing: -0.01em;
+  background: var(--badge-bg);
+  color: var(--badge-fg);
+  border: 1px solid var(--badge-bd);
+}
+.badge-sm { font-size: 9.5px; padding: 1.5px 5px; }
+.badge-xs { font-size: 8.5px; padding: 1px 4px; }
+
+.badge-halt        { --badge-bg: rgba(107,114,128,0.18); --badge-fg: #d1d5db; --badge-bd: rgba(156,163,175,0.5); }
+.badge-liquidation { --badge-bg: rgba(120,53,15,0.25);   --badge-fg: #fdba74; --badge-bd: rgba(234,88,12,0.5); }
+.badge-danger      { --badge-bg: rgba(127,29,29,0.30);   --badge-fg: #fca5a5; --badge-bd: rgba(239,68,68,0.55); }
+.badge-warn        { --badge-bg: rgba(124,45,18,0.30);   --badge-fg: #fdba74; --badge-bd: rgba(249,115,22,0.55); }
+.badge-caution     { --badge-bg: rgba(113,63,18,0.30);   --badge-fg: #fcd34d; --badge-bd: rgba(234,179,8,0.5); }
+.badge-overheat    { --badge-bg: rgba(131,24,67,0.30);   --badge-fg: #f9a8d4; --badge-bd: rgba(236,72,153,0.5); }
+.badge-manage      { --badge-bg: rgba(76,29,149,0.28);   --badge-fg: #c4b5fd; --badge-bd: rgba(139,92,246,0.5); }
+
+[data-theme='light'] .badge-halt        { --badge-bg: #eceef1; --badge-fg: #4b5563; --badge-bd: #cbd0d6; }
+[data-theme='light'] .badge-liquidation { --badge-bg: #fdead9; --badge-fg: #b45309; --badge-bd: #f4c088; }
+[data-theme='light'] .badge-danger      { --badge-bg: #fde2e2; --badge-fg: #b91c1c; --badge-bd: #f3b4b4; }
+[data-theme='light'] .badge-warn        { --badge-bg: #ffedd5; --badge-fg: #c2410c; --badge-bd: #f6c690; }
+[data-theme='light'] .badge-caution     { --badge-bg: #fef3c7; --badge-fg: #a16207; --badge-bd: #f2d888; }
+[data-theme='light'] .badge-overheat    { --badge-bg: #fce7f0; --badge-fg: #be185d; --badge-bd: #f4bcd6; }
+[data-theme='light'] .badge-manage      { --badge-bg: #ede9fe; --badge-fg: #6d28d9; --badge-bd: #cdbef5; }
+
 /* 로딩 스피너 */
 @keyframes spin { to { transform: rotate(360deg); } }
 .spinner {
