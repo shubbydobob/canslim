@@ -25,6 +25,16 @@ type SortKey = keyof Pick<ScreenerItem,
   'foreignNetBuy10d' | 'instNetBuy10d' | 'programNetBuy10d' | 'marketPercentile' | 'marketCap'
 >
 
+// 평일 09:00~18:30 KST(실시간 오버레이 창) 여부 — 브라우저 로컬 타임존과 무관하게 UTC→KST 환산.
+function isKrMarketHours(): boolean {
+  const now = new Date()
+  const kst = new Date(now.getTime() + (now.getTimezoneOffset() + 540) * 60000)
+  const day = kst.getDay()
+  if (day === 0 || day === 6) return false
+  const mins = kst.getHours() * 60 + kst.getMinutes()
+  return mins >= 540 && mins <= 1110   // 09:00 ~ 18:30
+}
+
 // ── color helpers ──────────────────────────────────────────────
 
 const scoreColor = (v: number | null) => {
@@ -1295,13 +1305,22 @@ export default function ScreenerPage() {
 
         {/* 결과 카운트 + 행수 */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          {/* 라이브 상태 배지 — 시세가 실시간으로 갱신 중인지 표시 */}
-          <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 7px', borderRadius: 999,
-            background: Object.keys(liveMap).length > 0 ? 'rgba(34,197,94,0.15)' : 'var(--bg-elevated)',
-            color: Object.keys(liveMap).length > 0 ? '#22c55e' : 'var(--text-4)', whiteSpace: 'nowrap' }}
-            title={Object.keys(liveMap).length > 0 ? '장중 실시간 시세 반영 중' : '장 마감/장외 — 종가(EOD) 기준'}>
-            {Object.keys(liveMap).length > 0 ? '● 실시간' : '종가'}
-          </span>
+          {/* 라이브 상태 배지 — 실시간 / 지연(장중 오류) / 종가(장외) 3-상태 */}
+          {(() => {
+            const live = Object.keys(liveMap).length > 0
+            const state = live ? 'live' : (isKrMarketHours() ? 'delayed' : 'batch')
+            const c = state === 'live'
+              ? { bg: 'rgba(34,197,94,0.15)', color: '#22c55e', text: '● 실시간', tip: '장중 실시간 시세 반영 중' }
+              : state === 'delayed'
+              ? { bg: 'rgba(234,179,8,0.15)', color: '#eab308', text: '● 지연', tip: '장중이나 실시간 시세 지연/오류 — 종가 기준 표시 중 (KIS 쿼터·네트워크 확인)' }
+              : { bg: 'var(--bg-elevated)', color: 'var(--text-4)', text: '종가', tip: '장 마감/장외 — 종가(EOD) 기준' }
+            return (
+              <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 7px', borderRadius: 999,
+                background: c.bg, color: c.color, whiteSpace: 'nowrap' }} title={c.tip}>
+                {c.text}
+              </span>
+            )
+          })()}
           {!loading && (
             <span style={{ fontSize: 12, color: 'var(--text-3)' }}>
               <span style={{ color: 'var(--text-3)', fontWeight: 600 }}>{total.toLocaleString()}</span>

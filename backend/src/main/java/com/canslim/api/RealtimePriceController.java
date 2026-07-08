@@ -16,10 +16,18 @@ import java.time.LocalTime;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.Semaphore;
+import java.util.concurrent.TimeUnit;
 
 /**
  * 장중 실시간 시세 (KIS 주식현재가시세 FHKST01010100).
@@ -48,11 +56,38 @@ public class RealtimePriceController {
     private static final int MAX_BATCH = 60;             // 배치 상한 (쿼터 보호)
     private static final long QUOTE_TTL_MS = 3_000;      // 시세 캐시 3초 (3~5초 폴링이 fresh 받도록)
     private static final long INVESTOR_TTL_MS = 15_000;  // 투자자 캐시 15초 (수급은 느린 폴링 + 쿼터 절약)
+    private static final int MAX_KIS_PER_SEC = 15;       // KIS 초당 호출 상한(한도 20, ETL·다중사용자 여유 5)
+    private static final int KIS_POOL = 8;               // 배치 조회 병렬도
 
     private final RestTemplate rest = new RestTemplate();
     private final KisClient kis;
 
-    public RealtimePriceController(KisClient kis) { this.kis = kis; }
+    // KIS 실호출 병렬 풀 + 전역 초당 레이트리밋(토큰버킷: 매초 permit을 상한으로 리셋).
+    // 앱키가 모든 사용자·ETL 공유라 전역 제한이 없으면 동시 접속 시 쿼터 초과.
+    private final ExecutorService kisPool = Executors.newFixedThreadPool(KIS_POOL);
+    private final Semaphore rateGate = new Semaphore(MAX_KIS_PER_SEC);
+    private final ScheduledExecutorService rateRefill = Executors.newSingleThreadScheduledExecutor(r -> {
+        Thread t = new Thread(r, "kis-rate-refill"); t.setDaemon(true); return t;
+    });
+
+    public RealtimePriceController(KisClient kis) {
+        this.kis = kis;
+        rateRefill.scheduleAtFixedRate(() -> {
+            rateGate.drainPermits();
+            rateGate.release(MAX_KIS_PER_SEC);
+        }, 1, 1, TimeUnit.SECONDS);
+    }
+
+    /** KIS 실호출 직전 레이트 토큰 획득(초과 시 다음 초까지 대기). 인터럽트 시 false. */
+    private boolean acquireRate() {
+        try {
+            rateGate.acquire();
+            return true;
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            return false;
+        }
+    }
 
     // 시세 캐시 (ticker → {data, ts})
     private final Map<String, CachedQuote> quoteCache = new ConcurrentHashMap<>();
@@ -77,31 +112,34 @@ public class RealtimePriceController {
         // 장외 시간엔 실시간 의미 없음 → 빈 배열 (프론트는 배치 EOD값 유지)
         if (!isKrMarketOpen()) return ResponseEntity.ok(List.of());
 
-        List<Map<String, Object>> result = new ArrayList<>();
-        String[] tickers = tickersCsv.split(",");
-        int count = 0;
-        for (String raw : tickers) {
-            String ticker = raw.trim();
-            if (ticker.isEmpty()) continue;
-            if (++count > MAX_BATCH) break;
-            try {
-                Map<String, Object> q = quoteFor(ticker);
-                if (q == null) continue;
-                // 시세는 빠른 폴링(3~5초). 외인·기관 수급은 별도 /investors(느린 폴링)로 분리.
-                // 프로그램은 시세 응답(programNetVol)에서 나오므로 여기서 당일 금액만 계산.
-                Map<String, Object> merged = new LinkedHashMap<>(q);
-                Object pv = merged.get("programNetVol");
-                Object px = merged.get("price");
-                if (pv instanceof Number && px instanceof Number) {
-                    merged.put("programNetBuyToday", ((Number) pv).longValue() * ((Number) px).longValue());
-                }
-                result.add(merged);
-            } catch (Exception e) {
-                log.debug("KIS 배치 시세 실패 ({}): {}", ticker, e.getMessage());
-                // 개별 실패는 무시하고 나머지 진행
-            }
-        }
+        List<String> tickerList = Arrays.stream(tickersCsv.split(","))
+                .map(String::trim).filter(s -> !s.isEmpty()).limit(MAX_BATCH).toList();
+        // 병렬 조회(레이트리밋이 초당 상한을 지킴) — 순차 동기 호출로 요청이 겹쳐 쌓이던 문제 해소.
+        List<Map<String, Object>> result = tickerList.stream()
+                .map(t -> CompletableFuture.supplyAsync(() -> buildQuoteRow(t), kisPool))
+                .toList().stream()
+                .map(CompletableFuture::join)
+                .filter(Objects::nonNull)
+                .collect(java.util.stream.Collectors.toList());
         return ResponseEntity.ok(result);
+    }
+
+    /** 시세 1종목 조회 + 당일 프로그램 금액 병합. 실패 시 null. */
+    private Map<String, Object> buildQuoteRow(String ticker) {
+        try {
+            Map<String, Object> q = quoteFor(ticker);
+            if (q == null) return null;
+            Map<String, Object> merged = new LinkedHashMap<>(q);
+            Object pv = merged.get("programNetVol");
+            Object px = merged.get("price");
+            if (pv instanceof Number && px instanceof Number) {
+                merged.put("programNetBuyToday", ((Number) pv).longValue() * ((Number) px).longValue());
+            }
+            return merged;
+        } catch (Exception e) {
+            log.debug("KIS 배치 시세 실패 ({}): {}", ticker, e.getMessage());
+            return null;
+        }
     }
 
     /**
@@ -183,6 +221,7 @@ public class RealtimePriceController {
 
     /** KIS 주식현재가시세 1콜 → 시세 맵. */
     private Map<String, Object> fetchQuote(String ticker, Map<String, Object> cfg, String token) {
+        if (!acquireRate()) return null;   // 전역 초당 레이트리밋
         HttpHeaders headers = new HttpHeaders();
         headers.set("authorization", "Bearer " + token);
         headers.set("appkey",   (String) cfg.get("app_key"));
@@ -274,27 +313,31 @@ public class RealtimePriceController {
     public ResponseEntity<List<Map<String, Object>>> getInvestors(@RequestParam("tickers") String tickersCsv) {
         if (!isKrMarketOpen()) return ResponseEntity.ok(List.of());
 
-        List<Map<String, Object>> result = new ArrayList<>();
-        String[] tickers = tickersCsv.split(",");
-        int count = 0;
-        for (String raw : tickers) {
-            String ticker = raw.trim();
-            if (ticker.isEmpty()) continue;
-            if (++count > MAX_BATCH) break;
-            try {
-                Map<String, Object> inv = investorFor(ticker);
-                if (inv != null) {
-                    Map<String, Object> row = new LinkedHashMap<>();
-                    row.put("ticker", ticker);
-                    row.put("foreignNetBuyToday", inv.get("foreignNetBuy"));
-                    row.put("instNetBuyToday", inv.get("instNetBuy"));
-                    result.add(row);
-                }
-            } catch (Exception e) {
-                log.debug("KIS 배치 투자자 실패 ({}): {}", ticker, e.getMessage());
-            }
-        }
+        List<String> tickerList = Arrays.stream(tickersCsv.split(","))
+                .map(String::trim).filter(s -> !s.isEmpty()).limit(MAX_BATCH).toList();
+        List<Map<String, Object>> result = tickerList.stream()
+                .map(t -> CompletableFuture.supplyAsync(() -> buildInvestorRow(t), kisPool))
+                .toList().stream()
+                .map(CompletableFuture::join)
+                .filter(Objects::nonNull)
+                .collect(java.util.stream.Collectors.toList());
         return ResponseEntity.ok(result);
+    }
+
+    /** 당일 외인·기관 순매수 1종목 조회. 실패 시 null. */
+    private Map<String, Object> buildInvestorRow(String ticker) {
+        try {
+            Map<String, Object> inv = investorFor(ticker);
+            if (inv == null) return null;
+            Map<String, Object> row = new LinkedHashMap<>();
+            row.put("ticker", ticker);
+            row.put("foreignNetBuyToday", inv.get("foreignNetBuy"));
+            row.put("instNetBuyToday", inv.get("instNetBuy"));
+            return row;
+        } catch (Exception e) {
+            log.debug("KIS 배치 투자자 실패 ({}): {}", ticker, e.getMessage());
+            return null;
+        }
     }
 
     /**
@@ -305,6 +348,8 @@ public class RealtimePriceController {
         CachedQuote cached = investorCache.get(ticker);
         long now = System.currentTimeMillis();
         if (cached != null && now - cached.ts() < INVESTOR_TTL_MS) return cached.data();
+
+        if (!acquireRate()) return null;   // 전역 초당 레이트리밋
 
         Map<String, Object> cfg = kis.getConfig();
         String token = kis.getToken();
