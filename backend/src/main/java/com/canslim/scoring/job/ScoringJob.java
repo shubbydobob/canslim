@@ -17,9 +17,10 @@ import java.util.List;
  *   1. DerivedMetricsJob  — 시장별 가격 파생 지표 계산 (RS%, 52W high, 거래량 비율)
  *   2. CanslimScoringService — C/A/N/S/L/I 점수 산출 + composite + 랭킹 갱신
  *
- * KR 스케줄: 평일 18:30 (KST = UTC+9 → cron UTC 09:30)
- *   - KOSPI/KOSDAQ 정규장 15:30 종료 후 충분한 여유.
- *   - pykrx ETL이 16:00~18:00 사이 price_daily 적재 완료 전제.
+ * KR 스케줄: 평일 21:30 KST (안전망 재채점)
+ *   - ETL(run_daily) 20:05 KST 실행 → 시간외 단일가 마감(20:00) 후 확정 종가/상태 적재.
+ *   - run_daily 말미에 채점을 직접 트리거하므로, 이 @Scheduled는 그 트리거가
+ *     실패했을 때를 대비한 안전망. 20:05 파이프라인 완료 후 돌도록 21:30에 배치.
  *
  * 수동 실행: runNow(date) 직접 호출 (관리자 API 또는 테스트용).
  */
@@ -40,10 +41,10 @@ public class ScoringJob {
         this.marketAdapters    = marketAdapters;
     }
 
-    /** 평일 16:40 KST (= 07:40 UTC) 자동 실행 — ETL(16:10) 직후 스코어링 */
-    @Scheduled(cron = "0 40 7 * * MON-FRI", zone = "UTC")
+    /** 평일 21:30 KST 자동 재채점(안전망) — ETL(20:05 KST) 완료 후. run_daily의 채점 트리거 실패 대비. */
+    @Scheduled(cron = "0 30 21 * * MON-FRI", zone = "Asia/Seoul")
     public void scheduledRun() {
-        runNow(LocalDate.now());
+        runNow(LocalDate.now(java.time.ZoneId.of("Asia/Seoul")));
     }
 
     /** 수동/테스트 실행 진입점 */

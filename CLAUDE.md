@@ -23,7 +23,7 @@ ETL(Python) → PostgreSQL → Scoring Engine(Spring Boot) → Screener UI(React
 
 ### ETL 스케줄 (전부 서버·평일, 사용자 PC 무관)
 - **20:05 KST 크론** → `run_daily` (가격→수급→KIS재무→정규화→파생→market_state→종목상태(뱃지)→채점트리거). 시간외 단일가 20:00 마감 후 확정 종가·상태로 채점. (과거 16:10 → 시간외 반영 위해 20:05로 이동.)
-- **18:30 KST** 백엔드 `@Scheduled ScoringJob` 재채점(안전망).
+- **21:30 KST** 백엔드 `@Scheduled ScoringJob` 재채점(안전망). run_daily(20:05) 완료 후 채점 트리거 실패 대비. (과거 16:40 KST → ETL 20:05 이동에 맞춰 뒤로 조정. `zone="Asia/Seoul"` 명시.)
 - **매월 1~7일**: `_maybe_reset_financial_ingestion`이 KIS 재무 전량 재수집 → 새 분기 공시 반영. (**DART 미사용** — 재무는 KIS로 전환됨. DART 오펀 스케줄(watcher) 제거.)
 
 ### 실시간 vs 배치 (2026-07-08 갱신)
