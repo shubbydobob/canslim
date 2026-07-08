@@ -498,14 +498,15 @@ export default function ScreenerPage() {
         <Th label="종가" sortKey="closePrice" style={{ width: 78 }} />
         <Th label="등락률" sortKey="changeRate" style={{ width: 64 }} tip="전일 종가 대비 당일 등락률" />
         <Th label="거래대금" sortKey="turnover" style={{ width: 72 }} tip="당일 누적 거래대금" />
-        <Th label="외인" sortKey="foreignNetBuy10d" style={{ width: 62 }} tip="외국인 최근 10거래일 순매수 (억원)" />
-        <Th label="기관" sortKey="instNetBuy10d" style={{ width: 62 }} tip="기관 최근 10거래일 순매수 (억원)" />
+        <Th label="외인" sortKey="foreignNetBuy10d" style={{ width: 62 }} tip="외국인 순매수 (억원) — 장중: 당일 실시간(잠정), 장외: 최근 10거래일 누적" />
+        <Th label="기관" sortKey="instNetBuy10d" style={{ width: 62 }} tip="기관 순매수 (억원) — 장중: 당일 실시간(잠정), 장외: 최근 10거래일 누적" />
+        <Th label="프로그램" sortKey="programNetBuy10d" style={{ width: 62 }} tip="프로그램 순매수 (억원) — 장중: 당일 실시간(잠정), 장외: 최근 10거래일 누적" />
         <Th label="시총" sortKey="marketCap" style={{ width: 68 }} />
       </tr>
     )
   }
 
-  // 장중 라이브 시세를 배치 아이템 위에 머지 (시세성 필드만)
+  // 장중 라이브 시세를 배치 아이템 위에 머지 (시세성 필드 + 당일 수급)
   const mergeLive = (item: ScreenerItem): ScreenerItem => {
     const q = liveMap[item.ticker]
     if (!q) return item
@@ -515,6 +516,10 @@ export default function ScreenerPage() {
       changeRate: q.changeRate ?? item.changeRate,
       volume: q.volume ?? item.volume,
       turnover: q.turnover ?? item.turnover,
+      // 당일 실시간 순매수(장중 잠정) — 없으면 undefined 유지(렌더에서 10일 누적 폴백)
+      foreignNetBuyToday: q.foreignNetBuyToday,
+      instNetBuyToday: q.instNetBuyToday,
+      programNetBuyToday: q.programNetBuyToday,
     }
   }
 
@@ -522,6 +527,11 @@ export default function ScreenerPage() {
     const hovered = hoveredId === item.securityId
     const grade = compositeGrade(item.compositeScore)
     const isWatched = watchlist.has(item.securityId)
+    // 수급: 장중이면 당일 실시간(원), 장외면 10일 누적(원). 값(억원)으로 표시.
+    const foreignVal = item.foreignNetBuyToday ?? item.foreignNetBuy10d
+    const instVal    = item.instNetBuyToday ?? item.instNetBuy10d
+    const progVal    = item.programNetBuyToday ?? item.programNetBuy10d
+    const flowLive   = item.foreignNetBuyToday != null || item.instNetBuyToday != null
 
     const watchBtn = (
       <td style={{ ...S.td, textAlign: 'center', padding: '0 2px' }}
@@ -604,13 +614,20 @@ export default function ScreenerPage() {
         <td style={{ ...S.td, textAlign: 'right', color: 'var(--text-3)' }}>
           {fmtAmt(item.turnover)}
         </td>
-        <td style={{ ...S.td, textAlign: 'right', fontFamily: 'monospace', fontWeight: 600,
-          color: item.foreignNetBuy10d === null ? 'var(--text-4)' : item.foreignNetBuy10d > 0 ? '#22d3ee' : '#f87171' }}>
-          {item.foreignNetBuy10d === null ? '—' : (item.foreignNetBuy10d > 0 ? '+' : '') + Math.round(item.foreignNetBuy10d / 1e8)}
+        <td title={flowLive ? '당일 실시간(잠정)' : undefined}
+          style={{ ...S.td, textAlign: 'right', fontFamily: 'monospace', fontWeight: 600,
+          color: foreignVal == null ? 'var(--text-4)' : foreignVal > 0 ? '#22d3ee' : '#f87171' }}>
+          {foreignVal == null ? '—' : (foreignVal > 0 ? '+' : '') + Math.round(foreignVal / 1e8)}
         </td>
-        <td style={{ ...S.td, textAlign: 'right', fontFamily: 'monospace', fontWeight: 600,
-          color: item.instNetBuy10d === null ? 'var(--text-4)' : item.instNetBuy10d > 0 ? '#a78bfa' : '#f87171' }}>
-          {item.instNetBuy10d === null ? '—' : (item.instNetBuy10d > 0 ? '+' : '') + Math.round(item.instNetBuy10d / 1e8)}
+        <td title={flowLive ? '당일 실시간(잠정)' : undefined}
+          style={{ ...S.td, textAlign: 'right', fontFamily: 'monospace', fontWeight: 600,
+          color: instVal == null ? 'var(--text-4)' : instVal > 0 ? '#a78bfa' : '#f87171' }}>
+          {instVal == null ? '—' : (instVal > 0 ? '+' : '') + Math.round(instVal / 1e8)}
+        </td>
+        <td title={item.programNetBuyToday != null ? '당일 실시간(잠정)' : undefined}
+          style={{ ...S.td, textAlign: 'right', fontFamily: 'monospace', fontWeight: 600,
+          color: progVal == null ? 'var(--text-4)' : progVal > 0 ? '#34d399' : '#f87171' }}>
+          {progVal == null ? '—' : (progVal > 0 ? '+' : '') + Math.round(progVal / 1e8)}
         </td>
         <td style={{ ...S.td, textAlign: 'right', color: 'var(--text-3)' }}>
           {fmtMarketCap(item.marketCap)}
@@ -624,6 +641,13 @@ export default function ScreenerPage() {
     const grade = compositeGrade(item.compositeScore)
     const isWatched = watchlist.has(item.securityId)
     const flash = flashMap[item.ticker]
+    // 수급: 장중 당일 실시간(원) → 장외 10일 누적(원). 억원 표시.
+    const flow: { k: string; v: number | null | undefined; c: string }[] = [
+      { k: '외인', v: item.foreignNetBuyToday ?? item.foreignNetBuy10d, c: '#22d3ee' },
+      { k: '기관', v: item.instNetBuyToday ?? item.instNetBuy10d, c: '#a78bfa' },
+      { k: '프로', v: item.programNetBuyToday ?? item.programNetBuy10d, c: '#34d399' },
+    ]
+    const flowLive = item.foreignNetBuyToday != null || item.instNetBuyToday != null
     const factors: { k: string; v: number | null }[] = [
       { k: '실적', v: item.cScore }, { k: '성장', v: item.aScore }, { k: '고가', v: item.nScore },
       { k: '수급', v: item.sScore }, { k: '선도', v: item.lScore }, { k: '기관', v: item.iScore },
@@ -686,6 +710,18 @@ export default function ScreenerPage() {
               </div>
             </div>
           ))}
+        </div>
+
+        {/* 4행: 수급 (외인·기관·프로그램) — 장중 당일 실시간, 장외 10일 누적 */}
+        <div style={{ display: 'flex', gap: 12, marginTop: 8, fontSize: 11, fontFamily: 'var(--font-mono)' }}>
+          {flow.map(f => (
+            <span key={f.k} style={{ color: 'var(--text-4)' }}>
+              {f.k} <b style={{ color: f.v == null ? 'var(--text-4)' : f.v > 0 ? f.c : '#f87171' }}>
+                {f.v == null ? '—' : (f.v > 0 ? '+' : '') + Math.round(f.v / 1e8)}
+              </b>
+            </span>
+          ))}
+          {flowLive && <span style={{ marginLeft: 'auto', color: '#22c55e', fontSize: 9 }}>● 실시간</span>}
         </div>
       </div>
     )

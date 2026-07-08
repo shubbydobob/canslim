@@ -95,8 +95,11 @@ export interface LiveQuote {
   changeRate: number | null
   volume: number | null
   turnover: number | null
-  programNetVol?: number | null   // 프로그램 순매수(주) — 3단계
-  statuses?: string[] | null      // 거래정지·주의·경고·과열 등 특이사항 뱃지 (장중 오버레이)
+  programNetVol?: number | null       // 프로그램 순매수(주) — 3단계
+  statuses?: string[] | null          // 거래정지·주의·경고·과열 등 특이사항 뱃지 (장중 오버레이)
+  foreignNetBuyToday?: number | null  // 당일 외국인 순매수(원, 장중 잠정)
+  instNetBuyToday?: number | null     // 당일 기관 순매수(원, 장중 잠정)
+  programNetBuyToday?: number | null  // 당일 프로그램 순매수(원, 장중 잠정)
 }
 
 export interface InvestorFlow {

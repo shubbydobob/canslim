@@ -30,6 +30,10 @@ export interface ScreenerItem {
   breakoutToday: boolean
   baseDays: number | null
   statuses?: string[] | null   // 거래정지·주의·경고·위험·과열·관리·정리매매 (EOD 배치 스냅샷)
+  // 장중 실시간 당일 순매수(원) — 프론트에서 라이브 오버레이 병합용 (백엔드 응답엔 없음)
+  foreignNetBuyToday?: number | null
+  instNetBuyToday?: number | null
+  programNetBuyToday?: number | null
 }
 
 export interface ScreenerPage {

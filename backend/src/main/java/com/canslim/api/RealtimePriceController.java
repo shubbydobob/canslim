@@ -85,7 +85,26 @@ public class RealtimePriceController {
             if (++count > MAX_BATCH) break;
             try {
                 Map<String, Object> q = quoteFor(ticker);
-                if (q != null) result.add(q);
+                if (q == null) continue;
+                // 캐시 원본 오염 방지 위해 복사본에 당일 수급 병합.
+                Map<String, Object> merged = new LinkedHashMap<>(q);
+                // 당일 외인·기관 순매수(원, 장중 잠정) — 종목당 투자자 1콜 추가(캐시).
+                try {
+                    Map<String, Object> inv = investorFor(ticker);
+                    if (inv != null) {
+                        merged.put("foreignNetBuyToday", inv.get("foreignNetBuy"));
+                        merged.put("instNetBuyToday",    inv.get("instNetBuy"));
+                    }
+                } catch (Exception ie) {
+                    log.debug("KIS 배치 투자자 실패 ({}): {}", ticker, ie.getMessage());
+                }
+                // 당일 프로그램 순매수 금액(원) = 프로그램 순매수 수량(주) × 현재가(원).
+                Object pv = merged.get("programNetVol");
+                Object px = merged.get("price");
+                if (pv instanceof Number && px instanceof Number) {
+                    merged.put("programNetBuyToday", ((Number) pv).longValue() * ((Number) px).longValue());
+                }
+                result.add(merged);
             } catch (Exception e) {
                 log.debug("KIS 배치 시세 실패 ({}): {}", ticker, e.getMessage());
                 // 개별 실패는 무시하고 나머지 진행
@@ -245,53 +264,60 @@ public class RealtimePriceController {
     @GetMapping("/investor")
     public ResponseEntity<Map<String, Object>> getInvestor(@RequestParam("ticker") String ticker) {
         try {
-            CachedQuote cached = investorCache.get(ticker);
-            long now = System.currentTimeMillis();
-            if (cached != null && now - cached.ts() < CACHE_TTL_MS)
-                return ResponseEntity.ok(cached.data());
-
-            Map<String, Object> cfg = kis.getConfig();
-            String token = kis.getToken();
-
-            HttpHeaders headers = new HttpHeaders();
-            headers.set("authorization", "Bearer " + token);
-            headers.set("appkey",   (String) cfg.get("app_key"));
-            headers.set("appsecret", (String) cfg.get("app_secret"));
-            headers.set("tr_id",    "FHKST01010900");
-            headers.set("custtype", "P");
-
-            String url = KIS_BASE + INVESTOR_PATH
-                    + "?FID_COND_MRKT_DIV_CODE=J&FID_INPUT_ISCD=" + ticker;
-
-            ResponseEntity<Map> resp = rest.exchange(
-                    url, HttpMethod.GET, new HttpEntity<>(headers), Map.class);
-            if (!resp.getStatusCode().is2xxSuccessful() || resp.getBody() == null)
-                return ResponseEntity.status(502).body(Map.of("error", "investor http"));
-
-            // output = 최근 일자별 배열, [0] = 당일(가장 최근)
-            @SuppressWarnings("unchecked")
-            List<Map<String, Object>> out = (List<Map<String, Object>>) resp.getBody().get("output");
-            if (out == null || out.isEmpty())
+            Map<String, Object> data = investorFor(ticker);
+            if (data == null)
                 return ResponseEntity.status(502).body(Map.of("error", "investor empty"));
-            Map<String, Object> row = out.get(0);
-
-            // 순매수 거래대금(원) 기준. 필드/단위는 서버에서 KIS 응답으로 검증 필요.
-            Map<String, Object> data = Map.of(
-                    "ticker",            ticker,
-                    "date",              row.getOrDefault("stck_bsop_date", ""),
-                    "foreignNetBuy",     parseLong((String) row.getOrDefault("frgn_ntby_tr_pbmn", "0")),
-                    "instNetBuy",        parseLong((String) row.getOrDefault("orgn_ntby_tr_pbmn", "0")),
-                    "individualNetBuy",  parseLong((String) row.getOrDefault("prsn_ntby_tr_pbmn", "0")),
-                    "foreignNetVol",     parseLong((String) row.getOrDefault("frgn_ntby_qty", "0")),
-                    "instNetVol",        parseLong((String) row.getOrDefault("orgn_ntby_qty", "0"))
-            );
-            investorCache.put(ticker, new CachedQuote(data, now));
             return ResponseEntity.ok(data);
-
         } catch (Exception e) {
             log.warn("KIS 투자자 조회 실패 ({}): {}", ticker, e.getMessage());
             return ResponseEntity.status(502).body(Map.of("error", e.getMessage()));
         }
+    }
+
+    /**
+     * KIS 주식현재가 투자자(FHKST01010900) → 당일 기관/외국인/개인 순매수 (캐시 우선).
+     * 리스트 배치(getQuotes)와 상세(getInvestor) 공용. 장중 잠정치(가집계).
+     */
+    private Map<String, Object> investorFor(String ticker) throws Exception {
+        CachedQuote cached = investorCache.get(ticker);
+        long now = System.currentTimeMillis();
+        if (cached != null && now - cached.ts() < CACHE_TTL_MS) return cached.data();
+
+        Map<String, Object> cfg = kis.getConfig();
+        String token = kis.getToken();
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.set("authorization", "Bearer " + token);
+        headers.set("appkey",   (String) cfg.get("app_key"));
+        headers.set("appsecret", (String) cfg.get("app_secret"));
+        headers.set("tr_id",    "FHKST01010900");
+        headers.set("custtype", "P");
+
+        String url = KIS_BASE + INVESTOR_PATH
+                + "?FID_COND_MRKT_DIV_CODE=J&FID_INPUT_ISCD=" + ticker;
+
+        ResponseEntity<Map> resp = rest.exchange(
+                url, HttpMethod.GET, new HttpEntity<>(headers), Map.class);
+        if (!resp.getStatusCode().is2xxSuccessful() || resp.getBody() == null) return null;
+
+        // output = 최근 일자별 배열, [0] = 당일(가장 최근)
+        @SuppressWarnings("unchecked")
+        List<Map<String, Object>> out = (List<Map<String, Object>>) resp.getBody().get("output");
+        if (out == null || out.isEmpty()) return null;
+        Map<String, Object> row = out.get(0);
+
+        // 순매수 거래대금(원) 기준.
+        Map<String, Object> data = Map.of(
+                "ticker",            ticker,
+                "date",              row.getOrDefault("stck_bsop_date", ""),
+                "foreignNetBuy",     parseLong((String) row.getOrDefault("frgn_ntby_tr_pbmn", "0")),
+                "instNetBuy",        parseLong((String) row.getOrDefault("orgn_ntby_tr_pbmn", "0")),
+                "individualNetBuy",  parseLong((String) row.getOrDefault("prsn_ntby_tr_pbmn", "0")),
+                "foreignNetVol",     parseLong((String) row.getOrDefault("frgn_ntby_qty", "0")),
+                "instNetVol",        parseLong((String) row.getOrDefault("orgn_ntby_qty", "0"))
+        );
+        investorCache.put(ticker, new CachedQuote(data, now));
+        return data;
     }
 
     /**
