@@ -74,8 +74,12 @@ jobs:
             PY
 
             echo ""
+            echo "===== price_daily 최근 7거래일 (전일종가 앵커 확인) ====="
+            docker exec canslim-postgres psql -U canslim_user -d canslim -A -t -c \
+              "SELECT p.trade_date, p.close, p.close_adj, p.volume FROM price_daily p JOIN instruments i ON i.id=p.security_id WHERE i.name LIKE '%금호에이치티%' ORDER BY p.trade_date DESC LIMIT 7;" || true
+            echo ""
             echo "===== 운영 백엔드 실제 응답 (localhost:8080/api/realtime/quotes) ====="
-            curl -s "http://localhost:8080/api/realtime/quotes?tickers=${{ inputs.ticker }}" | head -c 1000
+            curl -s "http://localhost:8080/api/realtime/quotes?tickers=214330" | head -c 1000
             echo ""
             echo "===== 백엔드 컨테이너 최근 시작 시각 (배포 반영 확인) ====="
             docker ps --format '{{.Names}} | {{.Status}}' | grep -i backend || true
