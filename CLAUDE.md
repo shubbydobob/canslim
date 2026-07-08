@@ -61,6 +61,7 @@ ETL(Python) → PostgreSQL → Scoring Engine(Spring Boot) → Screener UI(React
 - **진단**: `kis-probe.yml`(workflow_dispatch) — KIS TR 후보 실호출로 필드 확인(읽기 전용).
 
 ### 알려진 데이터 함정
+- **넥스트레이드(NXT) 통합 시세**: 2025 대체거래소 출범 후 실제 체결가는 KRX+NXT 통합. KIS 조회는 `fid_cond_mrkt_div_code` **"UN"(통합)** 우선 → 미지원/빈값 시 **"J"(KRX) 폴백**. `RealtimePriceController`의 `inquirePriceOutput`(시세)·`fetchInvestorRow`(투자자) 둘 다 적용. J만 쓰면 NXT 체결 누락돼 시세·등락률·거래량이 어긋남(진단 예: 삼성전자 UN -9.80% vs J -6.25%). 진단은 `kis-probe.yml`.
 - **거래정지 종목**: 정지 기간 종가 고정+거래량 0, 재개일 폭등. "상한가" 아님. limit-up은 최신 가격일 앵커로 자연 배제.
 - **채점 지연**: 가격은 최신일인데 canslim_scores는 이전일일 수 있음. 헤더 "매일 갱신" 날짜 = 최신 채점일.
 - **프로그램 10일 누적 불가**: KIS에 "종목별" 프로그램매매 일별 API 없음(시장별 종합만). → 배치 `program_net_buy_10d`는 null, 장중 실시간(`pgtr_ntby_qty`)만 제공. 프론트도 이 전제로 표시.
