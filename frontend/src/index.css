@@ -504,7 +504,13 @@ button {
 .filter-chip-clear { font-size: 11px; font-weight: 600; padding: 3px 10px; border-radius: 999px; background: transparent; color: var(--text-3); border: 1px solid var(--border-sub); cursor: pointer; margin-left: 2px; }
 
 /* ── 테이블 영역 + 페이지네이션 ──────────────────────── */
-.table-wrap { padding: 0 20px; }
+.table-wrap { padding: 0 20px; position: relative; }
+/* 가로 스크롤 여지가 있고 끝에 닿지 않았을 때만 우측 페이드 힌트 (데스크톱 표에서 더 볼 컬럼이 있음을 표시) */
+.table-wrap.has-more::after {
+  content: ''; position: absolute; top: 0; right: 20px; width: 40px; height: 100%;
+  background: linear-gradient(to right, transparent, var(--bg-base));
+  pointer-events: none; z-index: 5;
+}
 .scr-scroll { overflow-x: auto; }
 .scr-cards { padding: 2px 0; }
 .scr-table { width: 100%; border-collapse: collapse; table-layout: fixed; min-width: 900px; }
@@ -515,7 +521,7 @@ button {
 .scr-empty { text-align: center; padding: 60px 0; color: var(--text-4); font-size: 14px; }
 .detail-fallback { padding: 80px 0; text-align: center; color: var(--text-3); font-size: 13px; }
 .hscroll-mirror { position: sticky; bottom: 0; overflow-x: auto; overflow-y: hidden; z-index: 6; background: var(--bg-nav); border-top: 1px solid var(--border); box-shadow: 0 -4px 12px rgba(0,0,0,0.12); }
-.hscroll-mirror-inner { min-width: 900px; height: 1px; }
+.hscroll-mirror-inner { width: var(--mirror-w, 900px); min-width: 900px; height: 1px; }
 .pagination { display: flex; justify-content: space-between; align-items: center; padding: 12px 20px 32px; border-top: 1px solid var(--bg-surface); }
 .pagination-info { font-size: 12px; color: var(--text-4); }
 .pagination-nums { display: flex; gap: 3px; flex-wrap: wrap; justify-content: center; }
@@ -876,18 +882,11 @@ button {
     padding: 0 10px !important;
   }
 
-  /* Table wrapper reduce padding + 가로 스크롤 힌트(우측 페이드) */
+  /* Table wrapper reduce padding (모바일은 카드 리스트라 가로 스크롤 없음 → 페이드는 has-more로만) */
   .table-wrap {
     padding: 0 6px !important;
-    position: relative;
   }
-  .table-wrap::after {
-    content: '';
-    position: absolute;
-    top: 0; right: 6px; width: 22px; height: 100%;
-    background: linear-gradient(to right, transparent, var(--bg-base));
-    pointer-events: none; z-index: 5;
-  }
+  .table-wrap.has-more::after { right: 6px; width: 22px; }
   /* 셀 패딩 축소 → 더 많은 컬럼 노출 */
   .table-wrap td, .table-wrap th {
     padding-left: 4px !important;

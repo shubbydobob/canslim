@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState, useMemo, lazy, Suspense } from 'react'
+import React, { useEffect, useRef, useState, useMemo, useCallback, lazy, Suspense } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { fetchScreener, fetchSectors, fetchLiveQuotes } from '../api/client'
 import type { LiveQuote } from '../api/client'
@@ -189,6 +189,8 @@ export default function ScreenerPage() {
   const navigate = useNavigate()
   const scrollRef = useRef<HTMLDivElement>(null)
   const mirrorRef = useRef<HTMLDivElement>(null)
+  // 가로 스크롤 힌트: 실제 스크롤 폭 + 오버플로우/끝 도달 여부 (데스크톱 sticky 스크롤바·우측 페이드용)
+  const [hScroll, setHScroll] = useState({ w: 900, over: false, end: true })
   const isPopRef = useRef(false)         // popstate로 인한 뷰 변경은 history push 생략
   const histMountedRef = useRef(false)   // 최초 마운트는 replaceState로 현재 엔트리에 심음
 
@@ -363,9 +365,22 @@ export default function ScreenerPage() {
   const handleSize = (v: number) => { setSize(v); setPage(0) }
   const totalPages = Math.ceil(total / size)
 
+  // 실제 스크롤 폭·끝 도달 여부 측정 → sticky 스크롤바 폭 동기화 + 우측 페이드 토글
+  const measureHScroll = useCallback(() => {
+    const el = scrollRef.current
+    if (!el) return
+    const over = el.scrollWidth > el.clientWidth + 1
+    const end = el.scrollLeft >= el.scrollWidth - el.clientWidth - 1
+    setHScroll(prev =>
+      prev.w === el.scrollWidth && prev.over === over && prev.end === end
+        ? prev
+        : { w: el.scrollWidth, over, end })
+  }, [])
+
   const onTableScroll = () => {
     if (mirrorRef.current && scrollRef.current)
       mirrorRef.current.scrollLeft = scrollRef.current.scrollLeft
+    measureHScroll()
   }
   const onMirrorScroll = () => {
     if (scrollRef.current && mirrorRef.current)
@@ -592,6 +607,14 @@ export default function ScreenerPage() {
     })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [items, showWatchOnly, showBreakoutOnly, watchlist, sortKey, sortDir, liveMap])
+
+  // 표 내용·뷰포트 변경 시 가로 스크롤 상태 재측정 (데스크톱 표에서만 의미)
+  useEffect(() => {
+    measureHScroll()
+    window.addEventListener('resize', measureHScroll)
+    return () => window.removeEventListener('resize', measureHScroll)
+  }, [measureHScroll, displayItems, isMobile, loading, viewTab])
+
   const hasActiveFilter = sector !== '' || capRange !== 'all' || query !== '' || minScore > 0 || showWatchOnly || showBreakoutOnly
   const activeFilterCount = [sector !== '', capRange !== 'all', query !== '', minScore > 0, showWatchOnly, showBreakoutOnly].filter(Boolean).length
 
@@ -982,7 +1005,7 @@ export default function ScreenerPage() {
       )}
 
       {/* ── Table area ───────────────────────────────────────── */}
-      {viewTab !== 'detail' && <><div className="table-wrap">
+      {viewTab !== 'detail' && <><div className={`table-wrap${hScroll.over && !hScroll.end ? ' has-more' : ''}`}>
         <div ref={scrollRef} onScroll={onTableScroll} className="hide-scrollbar scr-scroll">
           {loading ? (
             <div className="loading-box">
@@ -1015,9 +1038,9 @@ export default function ScreenerPage() {
 
         {/* 하단 고정 가로 스크롤바 — 세로 스크롤 중에도 뷰포트 하단에 붙어 항상 조작 가능
             (넓은 테이블 전용 — 모바일 카드 뷰에선 숨김) */}
-        {!isMobile && (
+        {!isMobile && hScroll.over && (
           <div ref={mirrorRef} onScroll={onMirrorScroll} className="sticky-hscroll hscroll-mirror">
-            <div className="hscroll-mirror-inner" />
+            <div className="hscroll-mirror-inner" style={{ ['--mirror-w' as string]: `${hScroll.w}px` }} />
           </div>
         )}
       </div>
