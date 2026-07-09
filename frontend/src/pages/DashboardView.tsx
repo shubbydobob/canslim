@@ -5,6 +5,17 @@ import type { ScreenerStats, LimitUpStock, LiveQuote, SectorIndex } from '../api
 import { useIsMobile } from '../hooks/useIsMobile'
 import { scoreFg, changeColor } from '../utils/factors'
 
+// 장중(평일 08:00~20:00 KST) 여부 — ScreenerPage와 동일 창. 장중엔 배치 시세가
+// '전일 종가 기준'이라 실시간이 붙기 전 전일 등락률·상한가를 노출하지 않기 위함.
+function isKrMarketHours(): boolean {
+  const now = new Date()
+  const kst = new Date(now.getTime() + (now.getTimezoneOffset() + 540) * 60000)
+  const day = kst.getDay()
+  if (day === 0 || day === 6) return false
+  const mins = kst.getHours() * 60 + kst.getMinutes()
+  return mins >= 480 && mins <= 1200
+}
+
 interface Props {
   items: ScreenerItem[]
   loading: boolean
@@ -50,6 +61,7 @@ export default function DashboardView({
   const [stats, setStats] = useState<ScreenerStats | null>(null)
   const [limitUp, setLimitUp] = useState<LimitUpStock[]>([])
   const [liveMap, setLiveMap] = useState<Record<string, LiveQuote>>({})
+  const [liveLoaded, setLiveLoaded] = useState(false)   // 첫 실시간 폴링 완료 여부(시세 보류 게이트)
   const [sectorIdx, setSectorIdx] = useState<SectorIndex[]>([])
   const isMobile = useIsMobile()
 
@@ -61,17 +73,19 @@ export default function DashboardView({
       const cands = await fetchLimitUp('KR', 10).catch(() => [])
       setLimitUp(cands)
       const top15 = [...items].sort((a, b) => b.compositeScore - a.compositeScore).slice(0, 15)
-      // 상한가 후보 우선 + TOP 종목, 중복 제거, 배치 상한 60개.
-      // (후보를 앞에 둬야 급등주가 많은 날에도 slice(60)에서 잘려 실시간 조회가
-      //  누락되는 일이 없음 — 누락되면 stale 배치 상한가가 그대로 노출됨.)
-      const tickers = Array.from(new Set([...cands.map(c => c.ticker), ...top15.map(t => t.ticker)])).slice(0, 60)
+      // 상한가 후보 우선(≥29% 실상한가는 상위에 몰림) 45개 + TOP15 예약 15슬롯 = 60.
+      // 후보만 60개 채워 top15가 잘리면 랭킹 등락률이 실시간을 못 받아 전일값으로 남으므로,
+      // top15 는 항상 실시간 조회에 포함되도록 슬롯을 확보한다.
+      const tickers = Array.from(new Set([...cands.slice(0, 45).map(c => c.ticker), ...top15.map(t => t.ticker)])).slice(0, 60)
       if (tickers.length) {
         const lq = await fetchLiveQuotes(tickers).catch(() => ({}))
         setLiveMap(lq)
       } else {
         setLiveMap({})
       }
+      setLiveLoaded(true)   // 첫 응답 도착 → 보류 해제(미포함 종목은 배치값 폴백)
     }
+    setLiveLoaded(false)    // 새 목록: 첫 실시간 폴링 완료 전까지 시세 보류
     loadLive()
     fetchSectorIndices().then(setSectorIdx).catch(() => {})
     const timer = setInterval(() => {
@@ -88,13 +102,17 @@ export default function DashboardView({
   // liveMap이 완전히 빈 '실시간 비활성'(장외/주말) 구간에는 배치 종가가 곧 당일
   // 종가이므로 배치 등락률을 그대로 사용한다.
   const LIMIT_MIN = 29
-  const liveActive = Object.keys(liveMap).length > 0
+  const marketOpen = isKrMarketHours()
+  // 실시간을 신뢰해야 하는 구간: 장중 + '마감했지만 아직 liveMap이 남은'(20:00~20:05 배치 전) 구간.
+  // 이 구간엔 실시간 확인된 종목만 노출(hasLive) → 첫 폴링 전·실시간 실패 시 전일 상한가 오노출 방지.
+  // 완전 장외/주말(liveMap 빔)엔 배치 종가=당일 종가이므로 배치 등락률을 그대로 사용.
+  const trustLiveOnly = marketOpen || Object.keys(liveMap).length > 0
   const limitUpLive = limitUp
     .map(s => {
       const live = liveMap[s.ticker]?.changeRate
       return { ...s, effChange: live != null ? live : s.changeRate, hasLive: live != null }
     })
-    .filter(s => (liveActive ? s.hasLive : true) && s.effChange >= LIMIT_MIN)
+    .filter(s => s.effChange >= LIMIT_MIN && (trustLiveOnly ? s.hasLive : true))
     .sort((a, b) => b.effChange - a.effChange)
 
   // ── Stats (전체 2558종목 기준) ──────────────────────────────────
@@ -175,6 +193,7 @@ export default function DashboardView({
               const sc = scoreFg(item.compositeScore)
               const liveCh = liveMap[item.ticker]?.changeRate
               const dispChange = liveCh != null ? liveCh : item.changeRate
+              const chgPending = marketOpen && !liveLoaded   // 장중 첫 실시간 폴링 전 전일 등락률 노출 방지
               const barPct = maxScore > 0 ? Math.min(100, (item.compositeScore / maxScore) * 100) : 0
               return (
                 <div key={item.securityId} className="dash-rank-row" onClick={() => onStockClick(item.securityId)}>
@@ -185,8 +204,10 @@ export default function DashboardView({
                   </div>
                   <div className="dash-hbar"><div className="dash-hbar-fill" style={{ ['--hb' as string]: `${barPct}%`, ['--hbc' as string]: sc }} /></div>
                   <span className="dash-rank-score" style={{ ['--rc' as string]: sc }}>{Math.round(item.compositeScore)}</span>
-                  <span className="dash-rank-chg" style={{ ['--sc-rate' as string]: changeColor(dispChange) }}>
-                    {dispChange !== null ? (dispChange >= 0 ? '+' : '') + dispChange.toFixed(2) + '%' : '—'}
+                  <span className="dash-rank-chg" style={chgPending ? undefined : { ['--sc-rate' as string]: changeColor(dispChange) }}>
+                    {chgPending
+                      ? <span className="cell-skel" />
+                      : dispChange !== null ? (dispChange >= 0 ? '+' : '') + dispChange.toFixed(2) + '%' : '—'}
                   </span>
                 </div>
               )
