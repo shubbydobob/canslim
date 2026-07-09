@@ -22,7 +22,8 @@ ETL(Python) → PostgreSQL → Scoring Engine(Spring Boot) → Screener UI(React
 ### 배포·인프라
 - **운영 서버**: EC2 `13.209.47.193` (ubuntu, `/home/ubuntu/nextpick`). Docker: `nextpick-postgres` + `nextpick-backend`(8080). 프론트=Vercel(자동배포).
 - **이 샌드박스는 EC2에 직접 접속 불가**(아웃바운드 allowlist). 서버 작업은 **GitHub Actions로만** 가능:
-  - `.github/workflows/deploy.yml` — master의 `backend/**` 변경 시 SSH→`git pull`+`docker compose up --build backend`.
+  - `.github/workflows/deploy.yml` — master의 `backend/**`·`etl/**` 변경 시 SSH→`git fetch`+`git reset --hard origin/master`+`docker compose up --build -d --force-recreate backend`. (구 `git pull`+`up --build`는 옛 jar 잔존해 배포 미반영되던 것 → reset+force-recreate로 하드닝.)
+  - `.github/workflows/force-redeploy.yml`(workflow_dispatch) — 배포 미반영 강제 해소용 `--no-cache` 재빌드.
   - **운영 ops 워크플로우(workflow_dispatch, EC2_HOST/EC2_SSH_KEY 시크릿 사용)**:
     - `db-status.yml` — 운영 DB 상태 읽기 진단(테이블/점수/가격/프로세스). **서버 확인은 이걸로.**
     - `recover.yml` — 가격→수급→정규화→파생→채점 지정일 복구.
@@ -41,7 +42,7 @@ ETL(Python) → PostgreSQL → Scoring Engine(Spring Boot) → Screener UI(React
 - **수급(외인·기관 당일순매수) = KIS 15초 폴링** (`/api/realtime/investors`, 시세와 분리해 쿼터 절약).
   스크리너 리스트 외인·기관 컬럼은 장중=당일 실시간(잠정)/장외=10일 누적 배치.
 - **KIS 전역 레이트리밋**: 앱키가 모든 사용자·ETL 공유 → `RealtimePriceController`에 토큰버킷(초당 15) + 병렬 풀(8). 배치 조회는 병렬.
-- **캐시 TTL**: 시세 3초 / 투자자 15초. 오버레이 창 `isKrMarketOpen` 09:00~18:30.
+- **캐시 TTL**: 시세 3초 / 투자자 15초. 오버레이 창 `isKrMarketOpen`(백엔드)·`isKrMarketHours`(프론트) **08:00~20:00** — NXT 프리마켓(08:00~)·애프터마켓(~20:00)까지 실시간 커버.
 - 실시간 3-상태 배지: 실시간(초록)/지연(주황, 장중인데 KIS 실패)/종가(장외).
 - **뱃지(거래정지·주의·경고·과열 등)**: 장중=KIS 실시간, 장외/주말=EOD 스냅샷(`security_status_daily`, kis_status_loader가 20:05 배치).
 - 대시보드: 상한가섹션(실시간 미조회 종목 배제)·TOP랭킹 등락률 실시간 오버레이. **업종 히트맵 = KIS 업종지수(FHPUP02100000) 실시간**.
@@ -53,7 +54,7 @@ ETL(Python) → PostgreSQL → Scoring Engine(Spring Boot) → Screener UI(React
 - `finance-datareader` requirements 누락 추가.
 - `/stats`·`/limit-up`: 가격을 score_date 정확일치→**최신 2거래일(cur/prev)** & limit-up은 **최신 가격일 앵커**(채점 지연 시 stale 상한가 방지).
 - **가격 지연 근본 픽스**: `loadPriceAndFlow`(스크리너 리스트·상세 공용)와 `/stats`가 score_date로 가격 윈도우를 자르던 것 → **price_daily의 max(trade_date) 앵커**로 교체. 채점이 밀려도 리스트·상승종목수·섹터 등락이 항상 최신 종가 반영. 수급(derived_metrics)만 score_date 유지.
-- **실시간 오버레이 창 확장**: `isKrMarketOpen` 09:00~15:30 → **09:00~18:00**. 마감(15:30)~EOD배치(16:10~) 공백에도 KIS가 오늘 종가/등락을 주므로 오버레이로 브리지.
+- **실시간 오버레이 창 확장**: `isKrMarketOpen` 09:00~15:30 → **08:00~20:00**(최종). 정규장 마감~EOD 공백 + NXT 프리/애프터마켓까지 KIS 오늘 종가/등락으로 브리지. 창 밖(20:00 이후)엔 배치값 표시.
 - 프론트: 모바일 카드/하단탭바 반응형(토스풍), 스크리너 하단 가로스크롤바 sticky, 상한가 섹션.
 
 ### 2026-07-08 세션 픽스 (모두 master 반영·배포)
