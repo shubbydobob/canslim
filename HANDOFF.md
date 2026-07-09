@@ -24,21 +24,13 @@ cd ../backend && ./gradlew compileJava
   - 공통 클래스는 `frontend/src/index.css`에: `.scr-*`, `.scard-*`, `.metric-*`, `.det-*`, `.chip-btn`, `.pg-btn`, `.badge*`.
 - 기타: 상세 'C/A/N/S/I' 헤더 → 한글 팩터명(CANSLI 철자 제거), 스크리너 티커 컬럼 제거·가로스크롤 완화, 상세 배지 상시화.
 
-## 2. 남은 일 — 인라인 CSS 제거 (최우선, 사용자 강조)
-**규칙(반드시 준수)**: 인라인 `style` 금지. `frontend/src/index.css` 공통 클래스 사용. **동적 런타임 값만** `style={{ ['--x' as string]: value }}` → CSS `var(--x)`. 색은 하드코딩 대신 `var(--text-1)` 등 토큰. (CLAUDE.md '🎨 프론트엔드 스타일 규칙' 참고.)
+## 2. 인라인 CSS 제거 — ✅ 완료 (2026-07-09)
+**규칙(계속 준수)**: 인라인 `style` 금지. `frontend/src/index.css` 공통 클래스 사용. **동적 런타임 값만** `style={{ ['--x' as string]: value }}` → CSS `var(--x)`. 색은 하드코딩 대신 `var(--text-1)` 등 토큰. (CLAUDE.md '🎨 프론트엔드 스타일 규칙' 참고.)
 
-남은 정적 인라인 위치 (grep `style={{`):
-- `frontend/src/pages/ScreenerPage.tsx` (~104곳, 단 상당수는 CSS변수 할당=허용):
-  - **nav 헤더**(로고/검색창/우측 컨트롤/테마토글/가챠/방문자/플래너/모바일) L~772–913
-  - 프리미엄 게이팅 모달 L~731–765, GuidePopup L~98–170, FACTORS 팝업
-  - M배너 L~974–985, 이번주상승 하이라이트 L~1133–1159
-  - 결과바(뷰탭/라이브배지/카운트/행수 select) L~1164–1235, 필터칩 L~1250–1275
-  - 페이지네이션 wrapper L~1353–1370, 에러/폴백 div
-- `frontend/src/components/StockDetailPanel.tsx` (~62곳):
-  - **변환 대상**: 프리미엄 모달 L~289–308, 팩터카드 컨테이너, `Card`의 style prop(width/flex — Card에 className 지원 추가 후 이관 권장), SectionTitle 관련.
-  - **변환 대상 아님(그대로 둘 것)**: recharts 설정 객체 — `tick={{...}}`, `margin={{...}}`, `contentStyle`, `labelStyle`, `wrapperStyle`, `formatter={v=><span style=...>}`, `<stop>` 그라디언트. SVG 차트 config이지 DOM CSS 아님.
-
-작업 팁: 컨테이너 중 `detail-hero`/`detail-price-bar`/`detail-factors`/`detail-radar-flow`는 `@media(max-width:768px)` 반응형 규칙(+ `> div` 자식 선택자)이 있으니 **클래스명 유지**하고 base 스타일만 그 클래스에 추가.
+`ScreenerPage.tsx` + `StockDetailPanel.tsx` 정적 인라인 전량 이관 완료(빌드·타입체크 통과, master 반영). 남은 인라인은 전부 `--var` 할당(허용) + recharts config(formatter/tick/margin/contentStyle 등, 규칙상 유지).
+- 신규 공통 클래스: 모달(`.modal-overlay`/`.modal-card`/`.guide-*`/`.premium-*`/`.btn-fill`/`.btn-ghost`), nav(`.nav-*`/`.theme-toggle`—data-theme CSS구동), 필터/결과바/칩/테이블/페이지네이션, 상세(`.factor-*`/`.chart-tooltip*`/`.section-title`/`.card`+`.mb/.grow/.side`/`.detail-topbar*`).
+- 부수효과 정리: `hoveredId` state 제거(→CSS `nth-child`/`:hover`), 테마토글 JS인라인 제거(→`[data-theme]`), `Card`는 `style` prop→`className`.
+- **다른 파일 수정 시에도 이 규칙 유지**. 컨테이너 중 `detail-hero`/`detail-price-bar`/`detail-factors`/`detail-radar-flow`/`nav-bar`/`filter-grid` 등은 `@media(max-width:768px)` 반응형 규칙 있으니 클래스명 유지하고 base만 추가.
 
 ## 3. 남은 일 — KIS 재무 EOD 스냅샷 (선택, "필요하면 DB")
 현재 KIS per/pbr는 **장중(09:00~18:00)만** 실측(realtime 엔드포인트가 장외엔 `[]`). 장외에도 항상 실측을 원하면:
