@@ -125,12 +125,14 @@ export async function fetchLiveInvestors(tickers: string[]): Promise<Record<stri
 
 export interface InvestorFlow {
   ticker: string
-  date: string
-  foreignNetBuy: number | null   // 외국인 순매수 거래대금(원)
+  date?: string
+  foreignNetBuy: number | null   // 외국인 순매수 거래대금(원) — 확정 EOD만; 추정(장중)은 null
   instNetBuy: number | null      // 기관 순매수 거래대금(원)
   individualNetBuy: number | null
-  foreignNetVol: number | null   // 외국인 순매수(주)
+  foreignNetVol: number | null   // 외국인 순매수(주) — 추정/확정 공통
   instNetVol: number | null
+  source?: 'estimate' | 'confirmed'   // estimate=장중 추정(잠정), confirmed=확정 EOD
+  estimateStage?: number | null       // 추정 차수(키움 1·2·3차). estimate일 때만
 }
 
 /** 종목 상세 전용 — 당일 기관/외국인 순매수 (KIS FHKST01010900). 장중 잠정치. */

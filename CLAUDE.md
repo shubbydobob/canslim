@@ -39,8 +39,10 @@ ETL(Python) → PostgreSQL → Scoring Engine(Spring Boot) → Screener UI(React
 ### 실시간 vs 배치 (2026-07-08 갱신)
 - **스코어(종합·C/A/N/S/L/I) = 일 1회 배치**(장중 고정). 팩터 특성상 정상.
 - **시세(현재가·등락률·거래량·거래대금·프로그램 당일순매수) = KIS 4초 폴링** (`/api/realtime/quotes`).
-- **수급(외인·기관 당일순매수) = KIS 15초 폴링** (`/api/realtime/investors`, 시세와 분리해 쿼터 절약).
-  스크리너 리스트 외인·기관 컬럼은 장중=당일 실시간(잠정)/장외=10일 누적 배치.
+- **수급(외인·기관 당일순매수) = KIS 15초 폴링** (상세 `/api/realtime/investor`, 시세와 분리해 쿼터 절약).
+  - **장중 잠정치**: `investor-trend-estimate`(TR HHPTJ04160200, 종목별 외인/기관 **추정가집계**) — 키움 '잠정 1·2·3차'와 동일 소스. output2 배열(차수별, `bsop_hour_gb`=차수, `frgn_fake_ntby_qty`/`orgn_fake_ntby_qty`=추정 순매수 **수량(주)**). 최신 차수(output2[0]) 사용. **금액(원)은 이 TR에 없어 프론트가 현재가×수량 환산.**
+  - **폴백(장외)**: 확정 TR `inquire-investor`(FHKST01010900). ⚠️ 이건 **당일 행이 장중엔 공란**(EOD 확정)이라 장중 외인/기관이 0으로 보이던 근본원인 → 추정 TR로 교체(2026-07-09). 상세 배지 '● 잠정 N차'(추정)/'● 실시간'(확정)/'10일 누적'(배치).
+  - `/api/realtime/investors`(배치)는 현재 UI 미소비(추정 TR 동일 적용).
 - **KIS 전역 레이트리밋**: 앱키가 모든 사용자·ETL 공유 → `RealtimePriceController`에 토큰버킷(초당 15) + 병렬 풀(8). 배치 조회는 병렬.
 - **캐시 TTL**: 시세 3초 / 투자자 15초. 오버레이 창 `isKrMarketOpen`(백엔드)·`isKrMarketHours`(프론트) **08:00~20:00** — NXT 프리마켓(08:00~)·애프터마켓(~20:00)까지 실시간 커버.
 - 실시간 3-상태 배지: 실시간(초록)/지연(주황, 장중인데 KIS 실패)/종가(장외).

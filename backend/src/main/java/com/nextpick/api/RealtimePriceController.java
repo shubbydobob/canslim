@@ -52,6 +52,8 @@ public class RealtimePriceController {
     private static final String KIS_BASE = "https://openapi.koreainvestment.com:9443";
     private static final String PRICE_PATH = "/uapi/domestic-stock/v1/quotations/inquire-price";
     private static final String INVESTOR_PATH = "/uapi/domestic-stock/v1/quotations/inquire-investor";
+    // 종목별 외국인/기관 추정가집계 — 장중 추정 순매수(키움 '잠정 1·2·3차'). output2 배열=차수별.
+    private static final String INVESTOR_EST_PATH = "/uapi/domestic-stock/v1/quotations/investor-trend-estimate";
     private static final ZoneId KST = ZoneId.of("Asia/Seoul");
     private static final int MAX_BATCH = 60;             // 배치 상한 (쿼터 보호)
     private static final long QUOTE_TTL_MS = 3_000;      // 시세 캐시 3초 (3~5초 폴링이 fresh 받도록)
@@ -373,11 +375,63 @@ public class RealtimePriceController {
 
         Map<String, Object> cfg = kis.getConfig();
         String token = kis.getToken();
-        // 넥스트레이드 통합(UN) 우선, 미지원/빈값이면 KRX(J) 폴백.
-        Map<String, Object> data = fetchInvestorRow(ticker, cfg, token, "UN");
+        // 장중: 추정가집계(잠정 순매수)를 우선 — 확정 TR(inquire-investor)은 당일 행이 장중 공란이라
+        //       외인/기관이 0으로 보이던 문제. 추정 TR은 KRX 장중 추정치(차수별)를 준다.
+        Map<String, Object> data = null;
+        if (isKrMarketOpen()) data = fetchInvestorEstimate(ticker, cfg, token);
+        // 폴백(장외/추정없음): 확정 EOD 투자자매매동향. 넥스트레이드 통합(UN)→KRX(J).
+        if (data == null) data = fetchInvestorRow(ticker, cfg, token, "UN");
         if (data == null) data = fetchInvestorRow(ticker, cfg, token, "J");
         if (data != null) investorCache.put(ticker, new CachedQuote(data, now));
         return data;
+    }
+
+    /**
+     * 종목별 외국인/기관 추정 순매수(장중 잠정치) — TR HHPTJ04160200 / investor-trend-estimate.
+     * output2 = 차수별 배열(bsop_hour_gb=차수), [0]이 최신 차수. 값은 추정 순매수 '수량(주)'.
+     * (금액(원)은 이 TR에 없음 → 프론트가 현재가×수량으로 환산해 표시.)
+     * 실패/빈 배열이면 null(확정 TR로 폴백 유도).
+     */
+    private Map<String, Object> fetchInvestorEstimate(String ticker, Map<String, Object> cfg, String token) {
+        if (!acquireRate()) return null;
+        HttpHeaders headers = new HttpHeaders();
+        headers.set("authorization", "Bearer " + token);
+        headers.set("appkey",   (String) cfg.get("app_key"));
+        headers.set("appsecret", (String) cfg.get("app_secret"));
+        headers.set("tr_id",    "HHPTJ04160200");
+        headers.set("custtype", "P");
+
+        String url = KIS_BASE + INVESTOR_EST_PATH + "?MKSC_SHRN_ISCD=" + ticker;
+        try {
+            ResponseEntity<Map> resp = rest.exchange(url, HttpMethod.GET, new HttpEntity<>(headers), Map.class);
+            if (!resp.getStatusCode().is2xxSuccessful() || resp.getBody() == null) return null;
+            Object rt = resp.getBody().get("rt_cd");
+            if (rt != null && !"0".equals(String.valueOf(rt))) return null;
+            @SuppressWarnings("unchecked")
+            List<Map<String, Object>> out2 = (List<Map<String, Object>>) resp.getBody().get("output2");
+            if (out2 == null || out2.isEmpty()) return null;
+            Map<String, Object> latest = out2.get(0);   // 최신 차수
+
+            long fvol  = parseLong((String) latest.getOrDefault("frgn_fake_ntby_qty", "0"));
+            long ovol  = parseLong((String) latest.getOrDefault("orgn_fake_ntby_qty", "0"));
+            long stage = parseLong((String) latest.getOrDefault("bsop_hour_gb", "0"));
+            // 개장 직후 추정 전(전 차수 0·값 0)이면 확정 폴백 유도.
+            if (stage == 0 && fvol == 0 && ovol == 0) return null;
+
+            Map<String, Object> m = new java.util.HashMap<>();
+            m.put("ticker", ticker);
+            m.put("source", "estimate");
+            m.put("estimateStage", stage);
+            m.put("foreignNetVol", fvol);
+            m.put("instNetVol", ovol);
+            m.put("foreignNetBuy", null);   // 금액(원)은 추정 TR에 없음 → 프론트 환산
+            m.put("instNetBuy", null);
+            m.put("individualNetBuy", null);
+            return m;
+        } catch (Exception e) {
+            log.debug("KIS 투자자 추정 조회 실패 ({}): {}", ticker, e.getMessage());
+            return null;
+        }
     }
 
     /** 투자자 동향 1콜(시장구분 mktDiv) → 당일 순매수 맵. 실패/빈값이면 null(폴백 유도). */
@@ -408,6 +462,7 @@ public class RealtimePriceController {
             return Map.of(
                     "ticker",            ticker,
                     "date",              row.getOrDefault("stck_bsop_date", ""),
+                    "source",            "confirmed",
                     "foreignNetBuy",     parseLong((String) row.getOrDefault("frgn_ntby_tr_pbmn", "0")) * MW,
                     "instNetBuy",        parseLong((String) row.getOrDefault("orgn_ntby_tr_pbmn", "0")) * MW,
                     "individualNetBuy",  parseLong((String) row.getOrDefault("prsn_ntby_tr_pbmn", "0")) * MW,

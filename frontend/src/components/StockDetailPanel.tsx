@@ -486,18 +486,30 @@ export default function StockDetailPanel({ securityId, onSelectStock, onBack }: 
           </ResponsiveContainer>
         </Card>
         <Card className="side">
+          {(() => {
+          // 외인/기관 당일 순매수(원): 확정이면 원값, 장중 추정이면 수량(주)×현재가 환산.
+          // (KIS 추정가집계 TR은 수량만 주므로 프론트에서 금액 환산 — 키움 '잠정 N차'와 동일 소스.)
+          const flowPx = live?.price ?? stock.closePrice ?? null
+          const estStage = investor?.source === 'estimate' ? (investor?.estimateStage ?? null) : null
+          const invWon = (won?: number | null, vol?: number | null) =>
+            (won != null && won !== 0) ? won
+              : (vol != null && vol !== 0 && flowPx != null) ? vol * flowPx : null
+          const foreignToday = invWon(investor?.foreignNetBuy, investor?.foreignNetVol)
+          const instToday = invWon(investor?.instNetBuy, investor?.instNetVol)
+          const hasLiveFlow = foreignToday != null || instToday != null || live?.programNetBuyToday != null
+          return <>
           <SectionTitle>
             수급
-            {investor && (investor.foreignNetBuy != null || investor.instNetBuy != null || live?.programNetBuyToday != null)
-              ? <span className="det-live-tag">● 실시간</span>
+            {hasLiveFlow
+              ? <span className="det-live-tag">● {estStage ? `잠정 ${estStage}차` : '실시간'}</span>
               : <span className="det-live-tag batch">10일 누적</span>}
           </SectionTitle>
           <div className="det-flow-list">
             {[
-              { label: '외국인', today: investor?.foreignNetBuy, batch: stock.foreignNetBuy10d, color: '#76e4f7' },
-              { label: '기관',   today: investor?.instNetBuy,    batch: stock.instNetBuy10d,    color: '#f6ad55' },
-              { label: '프로그램', today: live?.programNetBuyToday, batch: null as number | null, color: '#34d399' },
-            ].map(({ label, today, batch, color }) => {
+              { label: '외국인', today: foreignToday, batch: stock.foreignNetBuy10d, color: '#76e4f7', est: estStage },
+              { label: '기관',   today: instToday,    batch: stock.instNetBuy10d,    color: '#f6ad55', est: estStage },
+              { label: '프로그램', today: live?.programNetBuyToday, batch: null as number | null, color: '#34d399', est: null as number | null },
+            ].map(({ label, today, batch, color, est }) => {
               const isLive = today != null
               const value = (isLive ? today : batch) ?? null
               const amt = fmtFlow(value)
@@ -508,7 +520,7 @@ export default function StockDetailPanel({ securityId, onSelectStock, onBack }: 
                 <div key={label}>
                   <div className="det-flow-head">
                     <span className="det-flow-label">{label}</span>
-                    <span className="det-flow-tag">{isLive ? '당일' : batch != null ? '10일' : ''}</span>
+                    <span className="det-flow-tag">{isLive ? (est ? `잠정${est}차` : '당일') : batch != null ? '10일' : ''}</span>
                   </div>
                   <div className="det-flow-val" style={{ ['--fv' as string]: isPos ? '#4ade80' : isNeg ? '#f87171' : color }}>{amt}</div>
                   <div className="det-flow-track">
@@ -528,6 +540,8 @@ export default function StockDetailPanel({ securityId, onSelectStock, onBack }: 
               <div className="det-flow-tag">상위 {(100 - stock.marketPercentile * 100).toFixed(1)}%</div>
             </div>
           </div>
+          </>
+          })()}
         </Card>
       </div>
 
