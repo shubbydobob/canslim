@@ -131,6 +131,7 @@ export default function ScreenerPage() {
   const isMobile = useIsMobile()
   const [items, setItems] = useState<ScreenerItem[]>([])
   const [liveMap, setLiveMap] = useState<Record<string, LiveQuote>>({})
+  const [liveLoaded, setLiveLoaded] = useState(false)   // 첫 실시간 폴링 완료 여부(시세 보류 게이트)
   const [flashMap, setFlashMap] = useState<Record<string, 'up' | 'down'>>({})
   const prevPriceRef = useRef<Record<string, number>>({})
   const [total, setTotal] = useState(0)
@@ -309,9 +310,10 @@ export default function ScreenerPage() {
   // 장외 시간엔 백엔드가 빈 결과 → 배치(EOD)값 유지.
   // 대시보드 탭은 자체 폴링(DashboardView)이 있어 여기선 스킵(KIS 이중 호출 방지).
   useEffect(() => {
-    if (!items.length || mainTab === 'dashboard') { setLiveMap({}); return }
+    if (!items.length || mainTab === 'dashboard') { setLiveMap({}); setLiveLoaded(false); return }
     const tickers = items.map(i => i.ticker)
     let cancelled = false
+    setLiveLoaded(false)   // 새 목록: 첫 실시간 폴링 완료 전까지 시세 보류
     const load = () => fetchLiveQuotes(tickers).then(m => {
       if (cancelled) return
       // 가격 변동 감지 → 플래시 (상승=up / 하락=down)
@@ -323,11 +325,12 @@ export default function ScreenerPage() {
         if (np != null) prevPriceRef.current[t] = np
       }
       setLiveMap(m)
+      setLiveLoaded(true)   // 첫 응답 도착 → 보류 해제(이후 미포함 종목은 배치값으로 폴백)
       if (Object.keys(flashes).length) {
         setFlashMap(flashes)
         setTimeout(() => { if (!cancelled) setFlashMap({}) }, 900)
       }
-    })
+    }).catch(() => { if (!cancelled) setLiveLoaded(true) })   // 실패해도 무한 스켈레톤 방지
     load()
     const id = setInterval(load, 4_000)   // 시세 4초 폴링 (등락률·가격·거래대금·프로그램)
     return () => { cancelled = true; clearInterval(id) }
@@ -429,9 +432,15 @@ export default function ScreenerPage() {
     }
   }
 
+  // 장중엔 배치 시세가 '전일 종가 기준'이라 실시간이 붙기 전 전일 등락률·가격이 잠깐 노출됨.
+  // 실시간 시세가 아직 없는 종목은 값을 보류(스켈레톤)해 전일값 플래시를 방지. (장 마감 후엔 배치=정답이라 그대로 표시)
+  const marketOpen = isKrMarketHours()
+  const livePending = (_ticker: string) => marketOpen && !liveLoaded
+
   const renderRow = (item: ScreenerItem, _idx: number) => {
     const grade = scoreGrade(item.compositeScore)
     const isWatched = watchlist.has(item.securityId)
+    const pending = livePending(item.ticker)
 
     const watchBtn = (
       <td className="scr-td scr-star" onClick={e => toggleWatch(item.securityId, e)}>
@@ -490,11 +499,11 @@ export default function ScreenerPage() {
         <ScoreCell value={item.lScore} />
         <ScoreCell value={item.iScore} />
         <td className={'scr-td scr-num' + (flash ? ` flash-${flash}` : '')}>
-          {fmtPrice(item.closePrice)}
+          {pending ? <span className="cell-skel" /> : fmtPrice(item.closePrice)}
         </td>
         <td className={'scr-td scr-rate' + (flash ? ` flash-${flash}` : '')}
-          style={{ ['--sc-rate' as string]: changeColor(item.changeRate) }}>
-          <span>{fmtRate(item.changeRate)}</span>
+          style={pending ? undefined : { ['--sc-rate' as string]: changeColor(item.changeRate) }}>
+          {pending ? <span className="cell-skel" /> : <span>{fmtRate(item.changeRate)}</span>}
         </td>
         <td className="scr-td scr-muted mono">{fmtVolume(item.volume)}</td>
         <td className="scr-td scr-muted">{fmtAmt(item.turnover)}</td>
@@ -508,6 +517,7 @@ export default function ScreenerPage() {
     const grade = scoreGrade(item.compositeScore)
     const isWatched = watchlist.has(item.securityId)
     const flash = flashMap[item.ticker]
+    const pending = livePending(item.ticker)
     const factors: { k: string; v: number | null }[] = [
       { k: '실적', v: item.cScore }, { k: '성장', v: item.aScore }, { k: '고가', v: item.nScore },
       { k: '수급', v: item.sScore }, { k: '선도', v: item.lScore }, { k: '기관', v: item.iScore },
@@ -546,8 +556,10 @@ export default function ScreenerPage() {
 
         {/* 2행: 종가 · 등락률 · 시총 */}
         <div className={'scard-price' + (flash ? ` flash-${flash}` : '')}>
-          <span className="scard-close">{fmtPrice(item.closePrice)}</span>
-          <span className="scard-rate" style={{ ['--sc-rate' as string]: changeColor(item.changeRate) }}>{fmtRate(item.changeRate)}</span>
+          <span className="scard-close">{pending ? <span className="cell-skel" /> : fmtPrice(item.closePrice)}</span>
+          {pending
+            ? <span className="scard-rate"><span className="cell-skel" /></span>
+            : <span className="scard-rate" style={{ ['--sc-rate' as string]: changeColor(item.changeRate) }}>{fmtRate(item.changeRate)}</span>}
           <span className="scard-vol">거래량 {fmtVolume(item.volume)}</span>
           <span className="scard-cap">시총 {fmtMarketCap(item.marketCap)}</span>
         </div>
