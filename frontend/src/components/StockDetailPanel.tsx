@@ -513,10 +513,10 @@ export default function StockDetailPanel({ securityId, onSelectStock, onBack }: 
           <SectionTitle>
             수급
             {investor && (investor.foreignNetBuy != null || investor.instNetBuy != null || live?.programNetBuyToday != null)
-              ? <span style={{ marginLeft: 6, fontSize: 9, fontWeight: 700, color: '#22c55e' }}>● 실시간</span>
-              : <span style={{ marginLeft: 6, fontSize: 9, color: 'var(--text-3)' }}>10일 누적</span>}
+              ? <span className="det-live-tag">● 실시간</span>
+              : <span className="det-live-tag batch">10일 누적</span>}
           </SectionTitle>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 14, marginTop: 6 }}>
+          <div className="det-flow-list">
             {[
               { label: '외국인', today: investor?.foreignNetBuy, batch: stock.foreignNetBuy10d, color: '#76e4f7' },
               { label: '기관',   today: investor?.instNetBuy,    batch: stock.instNetBuy10d,    color: '#f6ad55' },
@@ -530,23 +530,26 @@ export default function StockDetailPanel({ securityId, onSelectStock, onBack }: 
               const scale = isLive ? 3e10 : 5e9   // 당일(원) vs 10일 누적(원) 바 스케일
               return (
                 <div key={label}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 4 }}>
-                    <span style={{ fontSize: 9, color: 'var(--text-4)', fontWeight: 600 }}>{label}</span>
-                    <span style={{ fontSize: 8, color: 'var(--text-4)' }}>{isLive ? '당일' : batch != null ? '10일' : ''}</span>
+                  <div className="det-flow-head">
+                    <span className="det-flow-label">{label}</span>
+                    <span className="det-flow-tag">{isLive ? '당일' : batch != null ? '10일' : ''}</span>
                   </div>
-                  <div style={{ fontSize: 20, fontWeight: 800, color: isPos ? '#4ade80' : isNeg ? '#f87171' : color }}>{amt}</div>
-                  <div style={{ marginTop: 4, height: 3, background: 'var(--border)', borderRadius: 2 }}>
+                  <div className="det-flow-val" style={{ ['--fv' as string]: isPos ? '#4ade80' : isNeg ? '#f87171' : color }}>{amt}</div>
+                  <div className="det-flow-track">
                     {value != null && (
-                      <div style={{ height: 3, borderRadius: 2, width: `${Math.min(100, Math.abs(value) / scale * 100)}%`, background: isPos ? '#4ade80' : '#f87171' }} />
+                      <div className="det-flow-fill" style={{
+                        ['--fw' as string]: `${Math.min(100, Math.abs(value) / scale * 100)}%`,
+                        ['--ff' as string]: isPos ? '#4ade80' : '#f87171',
+                      }} />
                     )}
                   </div>
                 </div>
               )
             })}
-            <div style={{ borderTop: '1px solid var(--border)', paddingTop: 10, marginTop: 2 }}>
-              <div style={{ fontSize: 9, color: 'var(--text-4)', fontWeight: 600, marginBottom: 3 }}>RS 백분위</div>
-              <div style={{ fontSize: 18, fontWeight: 800, color: 'var(--text-1)' }}>{(stock.marketPercentile * 100).toFixed(1)}%</div>
-              <div style={{ fontSize: 9, color: 'var(--text-4)', marginTop: 2 }}>상위 {(100 - stock.marketPercentile * 100).toFixed(1)}%</div>
+            <div className="det-flow-rs">
+              <div className="det-flow-label">RS 백분위</div>
+              <div className="det-flow-rs-val">{(stock.marketPercentile * 100).toFixed(1)}%</div>
+              <div className="det-flow-tag">상위 {(100 - stock.marketPercentile * 100).toFixed(1)}%</div>
             </div>
           </div>
         </Card>
@@ -561,15 +564,12 @@ export default function StockDetailPanel({ securityId, onSelectStock, onBack }: 
       {/* ── 실적 ── */}
       {hasFinancials && (
         <Card style={{ marginBottom: 20 }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+          <div className="det-fin-head">
             <SectionTitle>실적</SectionTitle>
-            <div style={{ display: 'flex', border: '1px solid var(--border)', borderRadius: 6, overflow: 'hidden' }}>
+            <div className="det-fin-tabs">
               {([['annual', '연간'], ['quarter', '분기']] as const).map(([key, label]) => (
-                <button key={key} onClick={() => setFinTab(key)} style={{
-                  padding: '3px 12px', fontSize: 11, fontWeight: 600, border: 'none', cursor: 'pointer',
-                  background: finTab === key ? '#1f6feb' : 'var(--bg-nav)',
-                  color: finTab === key ? '#fff' : 'var(--text-3)',
-                }}>{label}</button>
+                <button key={key} onClick={() => setFinTab(key)}
+                  className={finTab === key ? 'det-fin-tab on' : 'det-fin-tab'}>{label}</button>
               ))}
             </div>
           </div>
@@ -615,7 +615,7 @@ export default function StockDetailPanel({ securityId, onSelectStock, onBack }: 
             </ResponsiveContainer>
           )}
           {finTab === 'quarter' && quarterFin.length === 0 && (
-            <div style={{ height: 80, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-4)', fontSize: 12 }}>분기 데이터 없음</div>
+            <div className="det-empty">분기 데이터 없음</div>
           )}
         </Card>
       )}
@@ -717,11 +717,11 @@ export default function StockDetailPanel({ securityId, onSelectStock, onBack }: 
         return (
           <Card style={{ marginBottom: 20 }}>
             <SectionTitle>기술적 분석</SectionTitle>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            <div className="det-bullets">
               {bullets.map((b, i) => (
-                <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 7, fontSize: 11 }}>
-                  <span style={{ color: b.color, flexShrink: 0, marginTop: 1 }}>›</span>
-                  <span style={{ color: 'var(--text-1)', lineHeight: 1.6 }}>{b.text}</span>
+                <div key={i} className="det-bullet">
+                  <span className="mark" style={{ ['--sg' as string]: b.color }}>›</span>
+                  <span className="txt">{b.text}</span>
                 </div>
               ))}
             </div>
@@ -733,15 +733,12 @@ export default function StockDetailPanel({ securityId, onSelectStock, onBack }: 
       {news.length > 0 && (
         <Card style={{ marginBottom: 20 }}>
           <SectionTitle>관련 뉴스</SectionTitle>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
+          <div className="det-news-list">
             {news.map((item, i) => (
-              <a key={i} href={item.url} target="_blank" rel="noopener noreferrer"
-                style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12,
-                  padding: '8px 0', borderBottom: i < news.length - 1 ? '1px solid var(--border)' : 'none',
-                  textDecoration: 'none', color: 'inherit' }}>
-                <span style={{ fontSize: 12, color: 'var(--text-1)', lineHeight: 1.5, flex: 1 }}>{item.title}</span>
-                <span style={{ fontSize: 10, color: 'var(--text-4)', whiteSpace: 'nowrap', marginTop: 2 }}>
-                  {item.source && <span style={{ color: 'var(--text-3)', marginRight: 6 }}>{item.source}</span>}
+              <a key={i} href={item.url} target="_blank" rel="noopener noreferrer" className="det-news-item">
+                <span className="det-news-title">{item.title}</span>
+                <span className="det-news-meta">
+                  {item.source && <span className="det-news-src">{item.source}</span>}
                   {item.date}
                 </span>
               </a>

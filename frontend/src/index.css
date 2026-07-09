@@ -242,7 +242,35 @@ body {
 .det-table td.name.self { color: #58a6ff; font-weight: 700; }
 .det-table td.score { color: var(--text-1); font-weight: 600; }
 .det-table td.f { color: var(--fc, var(--text-3)); }
-.det-table td.ticker { color: #58a6ff; font-family: monospace; }
+.det-table td.ticker { color: #58a6ff; font-family: monospace; text-align: left; }
+/* 상세 수급 바 (레이더 옆 카드) */
+.det-live-tag { margin-left: 6px; font-size: 9px; font-weight: 700; color: #22c55e; }
+.det-live-tag.batch { color: var(--text-3); font-weight: 400; }
+.det-flow-list { display: flex; flex-direction: column; gap: 14px; margin-top: 6px; }
+.det-flow-head { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 4px; }
+.det-flow-label { font-size: 9px; color: var(--text-4); font-weight: 600; }
+.det-flow-tag { font-size: 8px; color: var(--text-4); }
+.det-flow-val { font-size: 20px; font-weight: 800; color: var(--fv, var(--text-1)); }
+.det-flow-track { margin-top: 4px; height: 3px; background: var(--border); border-radius: 2px; }
+.det-flow-fill { height: 3px; border-radius: 2px; background: var(--ff, #4ade80); width: var(--fw, 0%); }
+.det-flow-rs { border-top: 1px solid var(--border); padding-top: 10px; margin-top: 2px; }
+.det-flow-rs-val { font-size: 18px; font-weight: 800; color: var(--text-1); }
+/* 상세 실적 탭 / 기술분석 / 뉴스 */
+.det-fin-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+.det-fin-tabs { display: flex; border: 1px solid var(--border); border-radius: 6px; overflow: hidden; }
+.det-fin-tab { padding: 3px 12px; font-size: 11px; font-weight: 600; border: none; cursor: pointer; background: var(--bg-nav); color: var(--text-3); }
+.det-fin-tab.on { background: #1f6feb; color: #fff; }
+.det-empty { height: 80px; display: flex; align-items: center; justify-content: center; color: var(--text-4); font-size: 12px; }
+.det-bullets { display: flex; flex-direction: column; gap: 6px; }
+.det-bullet { display: flex; align-items: flex-start; gap: 7px; font-size: 11px; }
+.det-bullet .mark { color: var(--sg, var(--text-3)); flex-shrink: 0; margin-top: 1px; }
+.det-bullet .txt { color: var(--text-1); line-height: 1.6; }
+.det-news-list { display: flex; flex-direction: column; }
+.det-news-item { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; padding: 8px 0; border-bottom: 1px solid var(--border); text-decoration: none; color: inherit; }
+.det-news-item:last-child { border-bottom: none; }
+.det-news-title { font-size: 12px; color: var(--text-1); line-height: 1.5; flex: 1; }
+.det-news-meta { font-size: 10px; color: var(--text-4); white-space: nowrap; margin-top: 2px; }
+.det-news-src { color: var(--text-3); margin-right: 6px; }
 
 /* 로딩 스피너 */
 @keyframes spin { to { transform: rotate(360deg); } }
