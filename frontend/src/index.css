@@ -478,6 +478,50 @@ button {
 .pg-spacer { width: 120px; }
 .screener-error { display: flex; justify-content: center; align-items: center; height: 100vh; color: #f87171; }
 
+/* ── 종목 상세: 팩터카드 · 차트툴팁 · 카드 · 섹션타이틀 ────────
+   팩터 색은 런타임(FACTORS[].color)이라 --fc-* 변수로 주입. */
+.factor-card { background: var(--bg-nav); border-radius: 10px; padding: 14px 16px; border: 1px solid var(--border); flex: 1; min-width: 0; }
+.factor-card-head { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px; }
+.factor-badge { display: inline-block; width: 24px; height: 24px; border-radius: 6px; background: var(--fc-tint); border: 1px solid var(--fc-bd); text-align: center; line-height: 24px; font-size: 11px; font-weight: 800; color: var(--fc-color); }
+.factor-desc { font-size: 9px; color: var(--text-3); margin-top: 3px; }
+.factor-val-wrap { text-align: right; }
+.factor-val { font-size: 20px; font-weight: 800; color: var(--fc-val, var(--text-1)); line-height: 1; }
+.factor-grade { font-size: 10px; color: var(--fc-grade, var(--text-3)); font-weight: 600; margin-top: 2px; }
+.factor-track { height: 3px; background: var(--border); border-radius: 2px; }
+.factor-fill { height: 3px; border-radius: 2px; width: var(--fc-pct, 0%); background: var(--fc-fill, transparent); transition: width 0.5s; }
+
+.chart-tooltip { background: var(--bg-nav); border: 1px solid var(--border); border-radius: 8px; padding: 10px 14px; font-size: 12px; }
+.chart-tooltip-label { color: var(--text-3); margin-bottom: 6px; }
+.chart-tooltip-row { display: flex; justify-content: space-between; gap: 16px; color: var(--tt-color); }
+.chart-tooltip-val { font-weight: 600; }
+
+.section-title { font-size: 11px; font-weight: 600; color: var(--text-3); letter-spacing: 0.08em; margin-bottom: 14px; }
+.card { background: var(--bg-nav); border-radius: 10px; padding: 18px 20px; border: 1px solid var(--border); }
+.card.mb { margin-bottom: 20px; }
+.card.grow { flex: 1; }
+.card.side { width: 200px; flex-shrink: 0; }
+
+/* 상세 로딩/에러 · 상단바 */
+.detail-loading { display: flex; justify-content: center; align-items: center; height: 400px; color: var(--text-4); }
+.detail-error { display: flex; justify-content: center; align-items: center; height: 400px; flex-direction: column; gap: 12px; }
+.detail-error-msg { color: #fc8181; }
+.detail-error-back { color: #58a6ff; cursor: pointer; background: none; border: none; font-size: 13px; }
+.detail-panel { padding: 20px; max-width: 1100px; margin: 0 auto; }
+.detail-topbar { display: flex; align-items: center; gap: 10px; margin-bottom: 16px; padding: 8px 14px; background: var(--bg-nav); border-radius: 8px; border: 1px solid var(--border); }
+.detail-topbar-back { color: var(--text-3); font-size: 12px; cursor: pointer; background: none; border: none; display: flex; align-items: center; gap: 4px; }
+.detail-topbar-sep { color: var(--border); }
+.detail-topbar-ticker { font-family: monospace; font-weight: 700; color: #58a6ff; font-size: 13px; }
+.detail-topbar-name { color: var(--text-1); font-size: 13px; font-weight: 600; }
+.detail-topbar-actions { margin-left: auto; display: flex; gap: 8px; align-items: center; }
+.detail-pdf-btn { background: none; border: 1px solid var(--border); border-radius: 6px; padding: 3px 10px; cursor: pointer; color: var(--text-4); font-size: 11px; font-weight: 600; }
+.detail-pdf-btn.on { background: rgba(31,111,235,0.1); border-color: rgba(31,111,235,0.3); color: #58a6ff; }
+.detail-watch-btn { background: none; border: 1px solid var(--border); border-radius: 6px; padding: 3px 10px; cursor: pointer; color: var(--text-4); font-size: 12px; font-weight: 600; }
+.detail-watch-btn.on { border-color: #f6ad55; color: #f6ad55; }
+/* 팩터카드 행 · 레이더+수급 행 (컨테이너 반응형 미디어쿼리는 기존 클래스명 유지) */
+.detail-factors { display: flex; gap: 8px; margin-bottom: 20px; }
+.detail-radar-flow { display: flex; gap: 14px; margin-bottom: 20px; }
+.detail-block { margin-bottom: 20px; }
+
 /* ── Mobile responsive ─────────────────────────────────── */
 @media (max-width: 768px) {
   /* Navbar: stack brand + nav, hide stats */

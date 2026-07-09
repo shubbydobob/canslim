@@ -32,28 +32,29 @@ function FactorCard({ label, desc, value, color }: {
   const pct = value ?? 0
   const { label: grade, color: gc } = scoreGrade(value)
   return (
-    <div style={{
-      background: 'var(--bg-nav)', borderRadius: 10, padding: '14px 16px',
-      border: '1px solid var(--border)', flex: 1, minWidth: 0,
+    <div className="factor-card" style={{
+      ['--fc-color' as string]: color,
+      ['--fc-tint' as string]: color + '22',
+      ['--fc-bd' as string]: color + '44',
+      ['--fc-val' as string]: value !== null ? color : '#484f58',
+      ['--fc-grade' as string]: gc,
+      ['--fc-pct' as string]: `${pct}%`,
+      ['--fc-fill' as string]: value !== null ? color : 'transparent',
     }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
+      <div className="factor-card-head">
         <div>
-          <span style={{
-            display: 'inline-block', width: 24, height: 24, borderRadius: 6,
-            background: color + '22', border: `1px solid ${color}44`,
-            textAlign: 'center', lineHeight: '24px', fontSize: 11, fontWeight: 800, color,
-          }}>{label}</span>
-          <div style={{ fontSize: 9, color: 'var(--text-3)', marginTop: 3 }}>{desc}</div>
+          <span className="factor-badge">{label}</span>
+          <div className="factor-desc">{desc}</div>
         </div>
-        <div style={{ textAlign: 'right' }}>
-          <div style={{ fontSize: 20, fontWeight: 800, color: value !== null ? color : '#484f58', lineHeight: 1 }}>
+        <div className="factor-val-wrap">
+          <div className="factor-val">
             {value !== null ? value.toFixed(1) : '—'}
           </div>
-          <div style={{ fontSize: 10, color: gc, fontWeight: 600, marginTop: 2 }}>{grade}</div>
+          <div className="factor-grade">{grade}</div>
         </div>
       </div>
-      <div style={{ height: 3, background: 'var(--border)', borderRadius: 2 }}>
-        <div style={{ height: 3, borderRadius: 2, width: `${pct}%`, background: value !== null ? color : 'transparent', transition: 'width 0.5s' }} />
+      <div className="factor-track">
+        <div className="factor-fill" />
       </div>
     </div>
   )
@@ -62,12 +63,12 @@ function FactorCard({ label, desc, value, color }: {
 const ScoreTooltip = ({ active, payload, label }: any) => {
   if (!active || !payload?.length) return null
   return (
-    <div style={{ background: 'var(--bg-nav)', border: '1px solid var(--border)', borderRadius: 8, padding: '10px 14px', fontSize: 12 }}>
-      <div style={{ color: 'var(--text-3)', marginBottom: 6 }}>{label}</div>
+    <div className="chart-tooltip">
+      <div className="chart-tooltip-label">{label}</div>
       {payload.map((p: any) => (
-        <div key={String(p.dataKey)} style={{ display: 'flex', justifyContent: 'space-between', gap: 16, color: p.stroke || p.fill }}>
+        <div key={String(p.dataKey)} className="chart-tooltip-row" style={{ ['--tt-color' as string]: p.stroke || p.fill }}>
           <span>{p.name}</span>
-          <span style={{ fontWeight: 600 }}>{typeof p.value === 'number' ? p.value.toFixed(1) : p.value ?? '—'}</span>
+          <span className="chart-tooltip-val">{typeof p.value === 'number' ? p.value.toFixed(1) : p.value ?? '—'}</span>
         </div>
       ))}
     </div>
@@ -77,12 +78,12 @@ const ScoreTooltip = ({ active, payload, label }: any) => {
 const FinTooltip = ({ active, payload, label }: any) => {
   if (!active || !payload?.length) return null
   return (
-    <div style={{ background: 'var(--bg-nav)', border: '1px solid var(--border)', borderRadius: 8, padding: '10px 14px', fontSize: 12 }}>
-      <div style={{ color: 'var(--text-3)', marginBottom: 6 }}>{label}</div>
+    <div className="chart-tooltip">
+      <div className="chart-tooltip-label">{label}</div>
       {payload.map((p: any) => (
-        <div key={String(p.dataKey)} style={{ display: 'flex', justifyContent: 'space-between', gap: 16, color: p.fill }}>
+        <div key={String(p.dataKey)} className="chart-tooltip-row" style={{ ['--tt-color' as string]: p.fill }}>
           <span>{p.name}</span>
-          <span style={{ fontWeight: 600 }}>{p.value != null ? p.value.toLocaleString() + '억' : '—'}</span>
+          <span className="chart-tooltip-val">{p.value != null ? p.value.toLocaleString() + '억' : '—'}</span>
         </div>
       ))}
     </div>
@@ -91,15 +92,15 @@ const FinTooltip = ({ active, payload, label }: any) => {
 
 function SectionTitle({ children }: { children: React.ReactNode }) {
   return (
-    <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-3)', letterSpacing: '0.08em', marginBottom: 14 }}>
+    <div className="section-title">
       {children}
     </div>
   )
 }
 
-function Card({ children, style }: { children: React.ReactNode; style?: React.CSSProperties }) {
+function Card({ children, className }: { children: React.ReactNode; className?: string }) {
   return (
-    <div style={{ background: 'var(--bg-nav)', borderRadius: 10, padding: '18px 20px', border: '1px solid var(--border)', ...style }}>
+    <div className={className ? `card ${className}` : 'card'}>
       {children}
     </div>
   )
@@ -185,14 +186,14 @@ export default function StockDetailPanel({ securityId, onSelectStock, onBack }: 
   }, [stock?.ticker])
 
   if (loading) return (
-    <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: 400, color: 'var(--text-4)' }}>
+    <div className="detail-loading">
       로딩 중...
     </div>
   )
   if (error || !stock) return (
-    <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: 400, flexDirection: 'column', gap: 12 }}>
-      <div style={{ color: '#fc8181' }}>{error ?? '데이터 없음'}</div>
-      {onBack && <button onClick={onBack} style={{ color: '#58a6ff', cursor: 'pointer', background: 'none', border: 'none', fontSize: 13 }}>← 목록으로</button>}
+    <div className="detail-error">
+      <div className="detail-error-msg">{error ?? '데이터 없음'}</div>
+      {onBack && <button onClick={onBack} className="detail-error-back">← 목록으로</button>}
     </div>
   )
 
@@ -235,35 +236,23 @@ export default function StockDetailPanel({ securityId, onSelectStock, onBack }: 
   }
 
   return (
-    <div style={{ padding: '20px', maxWidth: 1100, margin: '0 auto' }}>
+    <div className="detail-panel">
       {/* ── Top info bar ── */}
-      <div style={{
-        display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16,
-        padding: '8px 14px', background: 'var(--bg-nav)', borderRadius: 8,
-        border: '1px solid var(--border)',
-      }}>
+      <div className="detail-topbar">
         {onBack && (
-          <button onClick={onBack} style={{
-            color: 'var(--text-3)', fontSize: 12, cursor: 'pointer',
-            background: 'none', border: 'none', display: 'flex', alignItems: 'center', gap: 4,
-          }}>← 목록</button>
+          <button onClick={onBack} className="detail-topbar-back">← 목록</button>
         )}
-        {onBack && <span style={{ color: 'var(--border)' }}>|</span>}
-        <span style={{ fontFamily: 'monospace', fontWeight: 700, color: '#58a6ff', fontSize: 13 }}>{stock.ticker}</span>
-        <span style={{ color: 'var(--text-1)', fontSize: 13, fontWeight: 600 }}>{stock.name}</span>
-        <div style={{ marginLeft: 'auto', display: 'flex', gap: 8, alignItems: 'center' }}>
+        {onBack && <span className="detail-topbar-sep">|</span>}
+        <span className="detail-topbar-ticker">{stock.ticker}</span>
+        <span className="detail-topbar-name">{stock.name}</span>
+        <div className="detail-topbar-actions">
           <button
             onClick={() => {
               if (!userIsLoggedIn || !userIsPremium) { setShowPremiumModal(true) }
               else { window.print() }
             }}
-            style={{
-              background: userIsPremium ? 'rgba(31,111,235,0.1)' : 'none',
-              border: `1px solid ${userIsPremium ? 'rgba(31,111,235,0.3)' : 'var(--border)'}`,
-              borderRadius: 6, padding: '3px 10px', cursor: 'pointer',
-              color: userIsPremium ? '#58a6ff' : 'var(--text-4)', fontSize: 11, fontWeight: 600,
-            }}
-          >{userIsPremium ? 'PDF' : 'PDF'}</button>
+            className={userIsPremium ? 'detail-pdf-btn on' : 'detail-pdf-btn'}
+          >PDF</button>
           <button
             onClick={() => {
               const next = !watched
@@ -275,36 +264,22 @@ export default function StockDetailPanel({ securityId, onSelectStock, onBack }: 
                 localStorage.setItem('screener_watchlist', JSON.stringify(updated))
               } catch {}
             }}
-            style={{
-              background: 'none', border: `1px solid ${watched ? '#f6ad55' : 'var(--border)'}`,
-              borderRadius: 6, padding: '3px 10px', cursor: 'pointer',
-              color: watched ? '#f6ad55' : 'var(--text-4)', fontSize: 12, fontWeight: 600,
-            }}
+            className={watched ? 'detail-watch-btn on' : 'detail-watch-btn'}
           >{watched ? '★' : '☆'}</button>
         </div>
       </div>
 
       {/* Premium modal */}
       {showPremiumModal && (
-        <div style={{
-          position: 'fixed', inset: 0, zIndex: 2000, background: 'rgba(0,0,0,0.75)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-        }} onClick={() => setShowPremiumModal(false)}>
-          <div style={{
-            background: 'var(--bg-surface)', border: '1px solid var(--border)', borderRadius: 10,
-            padding: '28px 32px', maxWidth: 380, width: '90%',
-          }} onClick={e => e.stopPropagation()}>
-            <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-1)', marginBottom: 8 }}>PDF 리포트는 프리미엄 전용</div>
-            <div style={{ fontSize: 12, color: 'var(--text-3)', lineHeight: 1.7, marginBottom: 20 }}>
+        <div className="modal-overlay z-top" onClick={() => setShowPremiumModal(false)}>
+          <div className="modal-card premium-card" onClick={e => e.stopPropagation()}>
+            <div className="premium-title">PDF 리포트는 프리미엄 전용</div>
+            <div className="premium-desc">
               프리미엄으로 업그레이드하면 모든 종목의 상세 분석 리포트를 다운로드할 수 있습니다.
             </div>
-            <div style={{ display: 'flex', gap: 8 }}>
-              <button onClick={() => setShowPremiumModal(false)}
-                style={{ flex: 1, padding: '8px 0', fontSize: 12, background: 'none',
-                  border: '1px solid var(--border)', borderRadius: 6, color: 'var(--text-3)', cursor: 'pointer' }}>닫기</button>
-              <button onClick={() => { setShowPremiumModal(false); window.location.href = '/premium' }}
-                style={{ flex: 1, padding: '8px 0', fontSize: 12, fontWeight: 700,
-                  background: '#1f6feb', border: 'none', borderRadius: 6, color: '#fff', cursor: 'pointer' }}>프리미엄 알아보기</button>
+            <div className="premium-actions">
+              <button onClick={() => setShowPremiumModal(false)} className="btn-ghost">닫기</button>
+              <button onClick={() => { setShowPremiumModal(false); window.location.href = '/premium' }} className="btn-fill">프리미엄 알아보기</button>
             </div>
           </div>
         </div>
@@ -491,15 +466,15 @@ export default function StockDetailPanel({ securityId, onSelectStock, onBack }: 
       })()}
 
       {/* ── 팩터 카드 ── */}
-      <div className="detail-factors hide-scrollbar" style={{ display: 'flex', gap: 8, marginBottom: 20 }}>
+      <div className="detail-factors hide-scrollbar">
         {FACTORS.map(f => (
           <FactorCard key={f.key} label={f.label} desc={f.desc} value={stock[f.key]} color={f.color} />
         ))}
       </div>
 
       {/* ── 레이더 + 수급 ── */}
-      <div className="detail-radar-flow" style={{ display: 'flex', gap: 14, marginBottom: 20 }}>
-        <Card style={{ flex: 1 }}>
+      <div className="detail-radar-flow">
+        <Card className="grow">
           <SectionTitle>지표 레이더</SectionTitle>
           <ResponsiveContainer width="100%" height={200}>
             <RadarChart data={FACTORS.map(f => ({ factor: f.desc, score: stock[f.key] ?? 0 }))}>
@@ -509,7 +484,7 @@ export default function StockDetailPanel({ securityId, onSelectStock, onBack }: 
             </RadarChart>
           </ResponsiveContainer>
         </Card>
-        <Card style={{ width: 200, flexShrink: 0 }}>
+        <Card className="side">
           <SectionTitle>
             수급
             {investor && (investor.foreignNetBuy != null || investor.instNetBuy != null || live?.programNetBuyToday != null)
@@ -556,14 +531,14 @@ export default function StockDetailPanel({ securityId, onSelectStock, onBack }: 
       </div>
 
       {/* ── 주가 차트 ── */}
-      <div style={{ marginBottom: 20 }}>
+      <div className="detail-block">
         <SectionTitle>주가 차트</SectionTitle>
         <PriceChart securityId={id} height={400} />
       </div>
 
       {/* ── 실적 ── */}
       {hasFinancials && (
-        <Card style={{ marginBottom: 20 }}>
+        <Card className="mb">
           <div className="det-fin-head">
             <SectionTitle>실적</SectionTitle>
             <div className="det-fin-tabs">
@@ -622,7 +597,7 @@ export default function StockDetailPanel({ securityId, onSelectStock, onBack }: 
 
       {/* ── 섹터 내 비교 ── */}
       {peers.length > 0 && (
-        <Card style={{ marginBottom: 20 }}>
+        <Card className="mb">
           <SectionTitle>섹터 내 비교 ({stock?.sector})</SectionTitle>
           <div className="det-table-wrap">
             <table className="det-table">
@@ -658,7 +633,7 @@ export default function StockDetailPanel({ securityId, onSelectStock, onBack }: 
 
       {/* ── 유사 종목 ── */}
       {correlations.length > 0 && (
-        <Card style={{ marginBottom: 20 }}>
+        <Card className="mb">
           <SectionTitle>유사 종목</SectionTitle>
           <div className="det-table-wrap">
             <table className="det-table">
@@ -715,7 +690,7 @@ export default function StockDetailPanel({ securityId, onSelectStock, onBack }: 
         }
         if (bullets.length === 0) return null
         return (
-          <Card style={{ marginBottom: 20 }}>
+          <Card className="mb">
             <SectionTitle>기술적 분석</SectionTitle>
             <div className="det-bullets">
               {bullets.map((b, i) => (
@@ -731,7 +706,7 @@ export default function StockDetailPanel({ securityId, onSelectStock, onBack }: 
 
       {/* ── 관련 뉴스 ── */}
       {news.length > 0 && (
-        <Card style={{ marginBottom: 20 }}>
+        <Card className="mb">
           <SectionTitle>관련 뉴스</SectionTitle>
           <div className="det-news-list">
             {news.map((item, i) => (
