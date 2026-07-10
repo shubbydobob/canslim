@@ -237,20 +237,20 @@ body {
 .chip-btn.on { background: #1f3a5f; color: #58a6ff; border-color: var(--accent-strong); }
 .chip-btn.on.purple { background: #2d1a4a; color: #c084fc; border-color: #7c3aed; }
 .chip-btn.on.green { background: #052e16; color: #4ade80; border-color: #16a34a; }
-/* ── 스코어 히스토리 히트맵 (팩터 × 시간) ── */
-.heat-title-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
-.heat-legend { display: inline-flex; align-items: center; gap: 6px; font-size: 11px; color: var(--text-3); white-space: nowrap; }
-.heat-legend-bar { width: 56px; height: 8px; border-radius: 999px;
+/* ── 스코어 히스토리 히트맵 (팩터 × 시간) · 대시보드 .heatmap과 이름 충돌 방지 위해 .sh- 프리픽스 ── */
+.sh-title-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.sh-legend { display: inline-flex; align-items: center; gap: 6px; font-size: 11px; color: var(--text-3); white-space: nowrap; }
+.sh-legend-bar { width: 56px; height: 8px; border-radius: 999px;
   background: linear-gradient(90deg, color-mix(in srgb, var(--accent) 12%, transparent), var(--accent)); }
-.heatmap { display: flex; flex-direction: column; gap: 4px; margin-top: 4px; }
-.heat-row { display: grid; grid-template-columns: 64px 1fr; align-items: center; gap: 10px; --c: var(--accent); }
-.heat-label { font-size: 12px; font-weight: 600; color: var(--text-2); white-space: nowrap; }
-.heat-cells { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 3px; }
-.heat-cell { height: 20px; border-radius: 4px; box-shadow: inset 0 0 0 1px var(--border);
-  background: color-mix(in srgb, var(--c) calc(var(--a, 0) * 1%), transparent); }
-.heat-cell.na { background: transparent; opacity: 0.35; }
-.heat-axis { margin-top: 2px; }
-.heat-dates { display: flex; justify-content: space-between; font-size: 10px; color: var(--text-4); }
+.sh-map { display: flex; flex-direction: column; gap: 4px; margin-top: 4px; }
+.sh-row { display: grid; grid-template-columns: 64px 1fr; align-items: center; gap: 10px; --c: var(--accent); }
+.sh-label { font-size: 12px; font-weight: 600; color: var(--text-2); white-space: nowrap; }
+.sh-cells { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 3px; }
+.sh-cell { height: 20px; border-radius: 4px; box-shadow: inset 0 0 0 1px var(--border);
+  background: color-mix(in srgb, var(--c) var(--a, 0%), transparent); }
+.sh-cell.na { background: transparent; opacity: 0.35; }
+.sh-axis { margin-top: 2px; }
+.sh-dates { display: flex; justify-content: space-between; font-size: 10px; color: var(--text-4); }
 
 /* ── 기술적 분석 ── */
 .tech-block { padding: 12px 0; border-top: 1px solid var(--border); }
@@ -287,6 +287,21 @@ body {
 .tech-signal .dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; background: var(--text-4); }
 .tech-signal.good .dot { background: var(--good); }
 .tech-signal.warn .dot { background: var(--premium); }
+.tech-chart-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 14px; }
+.tech-chart-head .section-title { margin-bottom: 0; }
+
+/* ── 주가 차트 (PriceChart) ── */
+.pchart { background: var(--bg-surface); border-radius: 12px; border: 1px solid var(--border); overflow: hidden; }
+.pchart-bar { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; padding: 8px 12px; border-bottom: 1px solid var(--border); }
+.pchart-ranges { display: flex; gap: 4px; }
+.pchart-range { padding: 3px 11px; font-size: 12px; font-weight: 600; border-radius: 8px; background: transparent; color: var(--text-2); border: 1px solid var(--border-sub); cursor: pointer; }
+.pchart-range.on { background: var(--accent); color: var(--accent-contrast); border-color: var(--accent); }
+.pchart-ma-legend { display: flex; align-items: center; gap: 10px; }
+.pchart-ma-item { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 600; color: var(--text-3); }
+.pchart-ma-item::before { content: ''; width: 12px; height: 2.5px; border-radius: 2px; background: var(--ma); }
+.pchart-live-tag { font-size: 11px; font-weight: 700; color: var(--good); }
+.pchart-state { display: flex; flex-direction: column; gap: 10px; align-items: center; justify-content: center; height: var(--ph, 360px); background: var(--bg-surface); border-radius: 12px; border: 1px solid var(--border); color: var(--text-3); font-size: 13px; }
+
 .filter-cell-label { background: var(--bg-nav); padding: 8px 12px; display: flex; align-items: center; border-right: 1px solid var(--border); }
 .filter-cell-label > span { font-size: 11px; font-weight: 700; color: var(--text-4); letter-spacing: 0.06em; white-space: nowrap; }
 .filter-cell-body { background: var(--bg-base); padding: 8px 12px; display: flex; align-items: center; border-right: 1px solid var(--border); }
@@ -734,7 +749,11 @@ button {
 .dash-panel-count { margin-left: auto; font-size: 12px; font-weight: 700; color: var(--up); font-family: var(--font-num); }
 .dash-empty { padding: 22px; text-align: center; color: var(--text-4); font-size: 12px; }
 .dash-empty.big { padding: 32px 0; grid-column: 1 / -1; }
-.limitup-row { display: flex; gap: 8px; padding: 12px; overflow-x: auto; }
+.limitup-row { display: flex; gap: 8px; padding: 12px; overflow-x: auto; scrollbar-width: thin; scrollbar-color: var(--border-sub) transparent; scroll-snap-type: x proximity; }
+.limitup-row::-webkit-scrollbar { height: 8px; }
+.limitup-row::-webkit-scrollbar-thumb { background: var(--border-sub); border-radius: 999px; }
+.limitup-row::-webkit-scrollbar-track { background: transparent; }
+.limitup-card { scroll-snap-align: start; }
 .limitup-card { flex-shrink: 0; min-width: 128px; text-align: left; cursor: pointer; background: var(--up-soft); border: 1px solid color-mix(in srgb, var(--up) 30%, transparent); border-radius: 12px; padding: 10px 12px; }
 .limitup-name { font-size: 12px; font-weight: 700; color: var(--text-1); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .limitup-ticker { font-size: 10px; color: var(--accent); font-family: var(--font-mono); font-weight: 700; margin-top: 2px; }

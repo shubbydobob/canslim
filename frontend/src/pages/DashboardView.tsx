@@ -141,14 +141,13 @@ export default function DashboardView({
       {/* ── 상한가·급등 섹션 (당일 +29%↑) ──────────────────────── */}
       <div className="dash-panel">
         <div className="dash-panel-head">
-          <span className="dash-panel-title">🚀 상한가·급등</span>
-          <span className="dash-panel-sub">실시간 +29% 이상</span>
+          <span className="dash-panel-title">🚀 상한가</span>
           {liveLoaded && limitUpLive.length > 0 && <span className="dash-panel-count">{limitUpLive.length}종목</span>}
         </div>
         {!liveLoaded ? (
           /* 첫 실시간 폴링 완료 전엔 배치(전일) 상한가로 리스트를 확정하지 않음 → 스켈레톤 보류
              (전일 상한가 6종목이 떴다가 실시간 확인분으로 줄어드는 플래시 방지) */
-          <div className="hide-scrollbar limitup-row">
+          <div className="limitup-row">
             {Array.from({ length: 4 }).map((_, i) => (
               <div key={i} className="limitup-card skel">
                 <span className="cell-skel sk-name" />
@@ -161,7 +160,7 @@ export default function DashboardView({
         ) : limitUpLive.length === 0 ? (
           <div className="dash-empty">오늘 상한가·급등 종목 없음</div>
         ) : (
-          <div className="hide-scrollbar limitup-row">
+          <div className="limitup-row">
             {limitUpLive.map(s => (
               <button key={s.securityId} onClick={() => onStockClick(s.securityId)} className="limitup-card">
                 <div className="limitup-name">{s.name}</div>

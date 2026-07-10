@@ -547,11 +547,106 @@ export default function StockDetailPanel({ securityId, onSelectStock, onBack }: 
         </Card>
       </div>
 
-      {/* ── 주가 차트 ── */}
-      <div className="detail-block">
-        <SectionTitle>주가 차트</SectionTitle>
-        <PriceChart securityId={id} height={400} />
-      </div>
+      {/* ── 주가 · 기술적 분석 (통합) ── */}
+      {(() => {
+        const px = tech?.px ?? stock.closePrice ?? null
+        const maRows: [string, number | null][] = tech
+          ? [['20', tech.ma20], ['60', tech.ma60], ['120', tech.ma120]] : []
+        const alignMeta = tech?.align === 'up'
+          ? { label: '정배열 ↑', cls: 'up', desc: '현재가 > 20 > 60 > 120일선 — 강세 추세 지속' }
+          : tech?.align === 'down'
+          ? { label: '역배열 ↓', cls: 'down', desc: '현재가 < 20 < 60 < 120일선 — 약세 추세' }
+          : tech?.align === 'mixed'
+          ? { label: '혼조', cls: 'mixed', desc: '이동평균선 정렬 혼조 — 방향성 모호' } : null
+
+        const signals: { text: string; cls: 'good' | 'warn' | 'muted' }[] = []
+        if (stock.breakoutToday) signals.push({ text: '오늘 52주 신고가 돌파 — 매수 진입 신호', cls: 'good' })
+        if (tech?.volRatio != null && tech.volRatio >= 2)
+          signals.push({ text: `거래량 급증 — 20일 평균의 ${tech.volRatio.toFixed(1)}배`, cls: 'good' })
+        if (stock.baseDays != null && stock.baseDays >= 15)
+          signals.push({ text: `베이스 ${stock.baseDays}일 구축 — 돌파 대기`, cls: 'warn' })
+        if (tech?.pos52 != null && tech.pos52 >= 90 && !stock.breakoutToday)
+          signals.push({ text: '52주 고점 근접 — 돌파 임박', cls: 'warn' })
+        if (stock.lScore != null && stock.lScore >= 80)
+          signals.push({ text: `상대강도 상위권 (RS ${stock.lScore.toFixed(0)}) — 시장 주도주`, cls: 'good' })
+
+        return (
+          <Card className="mb">
+            <div className="tech-chart-head">
+              <SectionTitle>주가 · 기술적 분석</SectionTitle>
+              {alignMeta && <span className={`tech-align ${alignMeta.cls}`}>{alignMeta.label}</span>}
+            </div>
+            <PriceChart securityId={id} height={360} bars={prices} live={live} />
+
+            {tech && (
+              <div className="tech-block">
+                <div className="tech-head">
+                  <span className="tech-head-label">이동평균 (현재가 대비)</span>
+                </div>
+                <div className="tech-ma-grid">
+                  {maRows.map(([lab, val]) => {
+                    const diff = val != null && px != null ? (px - val) / val * 100 : null
+                    const up = diff != null && diff >= 0
+                    return (
+                      <div key={lab} className="tech-ma-cell">
+                        <span className="tech-ma-lab">{lab}일선</span>
+                        <span className="tech-ma-val num">{val != null ? fmtPrice(Math.round(val)) : '—'}</span>
+                        <span className={`tech-ma-diff num${diff == null ? '' : up ? ' up' : ' down'}`}>
+                          {diff == null ? '—' : (up ? '▲ ' : '▼ ') + Math.abs(diff).toFixed(1) + '%'}
+                        </span>
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+            )}
+
+            {tech?.pos52 != null && tech.lo52 != null && tech.hi52 != null && (
+              <div className="tech-block">
+                <div className="tech-head">
+                  <span className="tech-head-label">52주 레인지 위치</span>
+                  <span className="tech-head-val num">{tech.pos52.toFixed(0)}%</span>
+                </div>
+                <div className="tech-range" style={{ ['--pos' as string]: `${Math.max(0, Math.min(100, tech.pos52))}%` }}>
+                  <div className="tech-range-fill" />
+                  <div className="tech-range-marker" />
+                </div>
+                <div className="tech-range-ends num">
+                  <span>저 {fmtPrice(Math.round(tech.lo52))}</span>
+                  <span>고 {fmtPrice(Math.round(tech.hi52))}</span>
+                </div>
+              </div>
+            )}
+
+            {tech?.volRatio != null && (
+              <div className="tech-block">
+                <div className="tech-head">
+                  <span className="tech-head-label">거래량 (20일 평균 대비)</span>
+                  <span className={`tech-head-val num${tech.volRatio >= 1.5 ? ' up' : ''}`}>{tech.volRatio.toFixed(2)}×</span>
+                </div>
+                <div className="tech-volbar">
+                  <div className="tech-volbar-fill" style={{ ['--w' as string]: `${Math.min(100, tech.volRatio / 3 * 100)}%` }} />
+                  <span className="tech-volbar-ref" />
+                </div>
+                <div className="tech-sub num">
+                  오늘 {tech.volLast != null ? fmtVol(tech.volLast) : '—'} · 평균 {tech.volAvg20 != null ? fmtVol(Math.round(tech.volAvg20)) : '—'}
+                </div>
+              </div>
+            )}
+
+            {signals.length > 0 && (
+              <div className="tech-signals">
+                {signals.map((s, i) => (
+                  <div key={i} className={`tech-signal ${s.cls}`}>
+                    <span className="dot" />
+                    <span className="txt">{s.text}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </Card>
+        )
+      })()}
 
       {/* ── 실적 ── */}
       {hasFinancials && (
@@ -679,106 +774,6 @@ export default function StockDetailPanel({ securityId, onSelectStock, onBack }: 
         </Card>
       )}
 
-      {/* ── 기술적 분석 ── */}
-      {(() => {
-        const px = tech?.px ?? stock.closePrice ?? null
-        const maRows: [string, number | null][] = tech
-          ? [['20', tech.ma20], ['60', tech.ma60], ['120', tech.ma120]] : []
-        const alignMeta = tech?.align === 'up'
-          ? { label: '정배열 ↑', cls: 'up', desc: '현재가 > 20 > 60 > 120일선 — 강세 추세 지속' }
-          : tech?.align === 'down'
-          ? { label: '역배열 ↓', cls: 'down', desc: '현재가 < 20 < 60 < 120일선 — 약세 추세' }
-          : tech?.align === 'mixed'
-          ? { label: '혼조', cls: 'mixed', desc: '이동평균선 정렬 혼조 — 방향성 모호' } : null
-
-        const signals: { text: string; cls: 'good' | 'warn' | 'muted' }[] = []
-        if (stock.breakoutToday) signals.push({ text: '오늘 52주 신고가 돌파 — 매수 진입 신호', cls: 'good' })
-        if (tech?.volRatio != null && tech.volRatio >= 2)
-          signals.push({ text: `거래량 급증 — 20일 평균의 ${tech.volRatio.toFixed(1)}배`, cls: 'good' })
-        if (stock.baseDays != null && stock.baseDays >= 15)
-          signals.push({ text: `베이스 ${stock.baseDays}일 구축 — 돌파 대기`, cls: 'warn' })
-        if (tech?.pos52 != null && tech.pos52 >= 90 && !stock.breakoutToday)
-          signals.push({ text: '52주 고점 근접 — 돌파 임박', cls: 'warn' })
-        if (stock.lScore != null && stock.lScore >= 80)
-          signals.push({ text: `상대강도 상위권 (RS ${stock.lScore.toFixed(0)}) — 시장 주도주`, cls: 'good' })
-
-        if (!tech && stock.baseDays == null && signals.length === 0) return null
-        return (
-          <Card className="mb">
-            <SectionTitle>기술적 분석</SectionTitle>
-
-            {tech && (
-              <div className="tech-block">
-                <div className="tech-head">
-                  <span className="tech-head-label">이동평균 배열</span>
-                  {alignMeta && <span className={`tech-align ${alignMeta.cls}`}>{alignMeta.label}</span>}
-                </div>
-                {alignMeta && <div className="tech-align-desc">{alignMeta.desc}</div>}
-                <div className="tech-ma-grid">
-                  {maRows.map(([lab, val]) => {
-                    const diff = val != null && px != null ? (px - val) / val * 100 : null
-                    const up = diff != null && diff >= 0
-                    return (
-                      <div key={lab} className="tech-ma-cell">
-                        <span className="tech-ma-lab">{lab}일선</span>
-                        <span className="tech-ma-val num">{val != null ? fmtPrice(Math.round(val)) : '—'}</span>
-                        <span className={`tech-ma-diff num${diff == null ? '' : up ? ' up' : ' down'}`}>
-                          {diff == null ? '—' : (up ? '▲ ' : '▼ ') + Math.abs(diff).toFixed(1) + '%'}
-                        </span>
-                      </div>
-                    )
-                  })}
-                </div>
-              </div>
-            )}
-
-            {tech?.pos52 != null && tech.lo52 != null && tech.hi52 != null && (
-              <div className="tech-block">
-                <div className="tech-head">
-                  <span className="tech-head-label">52주 레인지 위치</span>
-                  <span className="tech-head-val num">{tech.pos52.toFixed(0)}%</span>
-                </div>
-                <div className="tech-range" style={{ ['--pos' as string]: `${Math.max(0, Math.min(100, tech.pos52))}%` }}>
-                  <div className="tech-range-fill" />
-                  <div className="tech-range-marker" />
-                </div>
-                <div className="tech-range-ends num">
-                  <span>저 {fmtPrice(Math.round(tech.lo52))}</span>
-                  <span>고 {fmtPrice(Math.round(tech.hi52))}</span>
-                </div>
-              </div>
-            )}
-
-            {tech?.volRatio != null && (
-              <div className="tech-block">
-                <div className="tech-head">
-                  <span className="tech-head-label">거래량 (20일 평균 대비)</span>
-                  <span className={`tech-head-val num${tech.volRatio >= 1.5 ? ' up' : ''}`}>{tech.volRatio.toFixed(2)}×</span>
-                </div>
-                <div className="tech-volbar">
-                  <div className="tech-volbar-fill" style={{ ['--w' as string]: `${Math.min(100, tech.volRatio / 3 * 100)}%` }} />
-                  <span className="tech-volbar-ref" />
-                </div>
-                <div className="tech-sub num">
-                  오늘 {tech.volLast != null ? fmtVol(tech.volLast) : '—'} · 평균 {tech.volAvg20 != null ? fmtVol(Math.round(tech.volAvg20)) : '—'}
-                </div>
-              </div>
-            )}
-
-            {signals.length > 0 && (
-              <div className="tech-signals">
-                {signals.map((s, i) => (
-                  <div key={i} className={`tech-signal ${s.cls}`}>
-                    <span className="dot" />
-                    <span className="txt">{s.text}</span>
-                  </div>
-                ))}
-              </div>
-            )}
-          </Card>
-        )
-      })()}
-
       {/* ── 관련 뉴스 ── */}
       {news.length > 0 && (
         <Card className="mb">
@@ -800,30 +795,30 @@ export default function StockDetailPanel({ securityId, onSelectStock, onBack }: 
       {/* ── 스코어 히스토리 (팩터 × 시간 히트맵) ── */}
       {heat && (
         <Card>
-          <div className="heat-title-row">
+          <div className="sh-title-row">
             <SectionTitle>스코어 히스토리</SectionTitle>
-            <span className="heat-legend">낮음<i className="heat-legend-bar" />높음</span>
+            <span className="sh-legend">낮음<i className="sh-legend-bar" />높음</span>
           </div>
-          <div className="heatmap">
+          <div className="sh-map">
             {FACTORS.map(f => (
-              <div key={f.key} className="heat-row" style={{ ['--c' as string]: f.color }}>
-                <span className="heat-label">{f.desc}</span>
-                <div className="heat-cells">
+              <div key={f.key} className="sh-row" style={{ ['--c' as string]: f.color }}>
+                <span className="sh-label">{f.desc}</span>
+                <div className="sh-cells">
                   {heat.map((h, i) => {
                     const v = h[f.key]
                     return (
                       <span key={i}
-                        className={`heat-cell${v == null ? ' na' : ''}`}
-                        style={v == null ? undefined : { ['--a' as string]: v }}
+                        className={`sh-cell${v == null ? ' na' : ''}`}
+                        style={v == null ? undefined : { ['--a' as string]: `${v}%` }}
                         title={`${h.scoreDate} · ${f.desc} ${v == null ? '—' : v.toFixed(0)}`} />
                     )
                   })}
                 </div>
               </div>
             ))}
-            <div className="heat-row heat-axis">
-              <span className="heat-label" />
-              <div className="heat-dates num">
+            <div className="sh-row sh-axis">
+              <span className="sh-label" />
+              <div className="sh-dates num">
                 <span>{heat[0].scoreDate.slice(2, 7).replace('-', '.')}</span>
                 <span>{heat[Math.floor((heat.length - 1) / 2)].scoreDate.slice(2, 7).replace('-', '.')}</span>
                 <span>{heat[heat.length - 1].scoreDate.slice(2, 7).replace('-', '.')}</span>
