@@ -15,6 +15,7 @@ interface Props {
   topSector: SectorSummary | null
   totalStocks: number
   collapsed?: boolean
+  onToggleCollapse?: () => void
 }
 
 const NAV_ITEMS: { id: MainTab; label: string; icon: React.ReactNode }[] = [
@@ -62,7 +63,7 @@ const NAV_ITEMS: { id: MainTab; label: string; icon: React.ReactNode }[] = [
   },
 ]
 
-export default function AppSidebar({ activeTab, onTabChange, watchlistCount, totalStocks }: Props) {
+export default function AppSidebar({ activeTab, onTabChange, watchlistCount, totalStocks, collapsed, onToggleCollapse }: Props) {
   const isMobile = useIsMobile()
 
   // 모바일/앱: 좌측 사이드바 대신 하단 고정 탭바 (앱 관례)
@@ -87,18 +88,26 @@ export default function AppSidebar({ activeTab, onTabChange, watchlistCount, tot
   }
 
   return (
-    <aside className="sidebar">
-      <div className="sb-label">메뉴</div>
+    <aside className={collapsed ? 'sidebar collapsed' : 'sidebar'}>
+      <div className="sb-head">
+        <span className="sb-label">메뉴</span>
+        <button className="sb-collapse-btn" onClick={onToggleCollapse}
+          title={collapsed ? '메뉴 펼치기' : '메뉴 접기'} aria-label={collapsed ? '메뉴 펼치기' : '메뉴 접기'}>
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
+            <path d="M10 3L5 8l5 5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
+          </svg>
+        </button>
+      </div>
 
       <nav className="sb-nav">
         {NAV_ITEMS.map(item => {
           const active = activeTab === item.id
           return (
             <button key={item.id} onClick={() => onTabChange(item.id)}
-              className={active ? 'sb-item on' : 'sb-item'}>
+              className={active ? 'sb-item on' : 'sb-item'} title={collapsed ? item.label : undefined}>
               {active && <span className="sb-item-bar" />}
               <span className="sb-item-icon">{item.icon}</span>
-              <span>{item.label}</span>
+              <span className="sb-item-label">{item.label}</span>
               {item.id === 'watchlist' && watchlistCount > 0 && (
                 <span className="sb-count">{watchlistCount}</span>
               )}

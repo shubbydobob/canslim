@@ -120,6 +120,14 @@ function GuidePopup({ onClose }: { onClose: (hide24h: boolean) => void }) {
 // ── main component ─────────────────────────────────────────────
 export default function ScreenerPage() {
   const isMobile = useIsMobile()
+  const [sbCollapsed, setSbCollapsed] = useState(() => {
+    try { return localStorage.getItem('sb_collapsed') === '1' } catch { return false }
+  })
+  const toggleSidebar = () => setSbCollapsed(v => {
+    const next = !v
+    try { localStorage.setItem('sb_collapsed', next ? '1' : '0') } catch { /* noop */ }
+    return next
+  })
   const [items, setItems] = useState<ScreenerItem[]>([])
   const [liveMap, setLiveMap] = useState<Record<string, LiveQuote>>({})
   const [liveLoaded, setLiveLoaded] = useState(false)   // 첫 실시간 폴링 완료 여부(시세 보류 게이트)
@@ -754,6 +762,8 @@ export default function ScreenerPage() {
           watchlistCount={watchlist.size}
           topSector={topSector ? { name: topSector.sector, change: topSector.avgChange } : null}
           totalStocks={total}
+          collapsed={sbCollapsed}
+          onToggleCollapse={toggleSidebar}
         />
 
         {/* Main content area */}
