@@ -402,7 +402,7 @@ export default function ScreenerPage() {
         <Th label="선도" sortKey="lScore" align="c" width={46} tip="선도성: 시장 내 상대강도 순위 (상위일수록 높음)" />
         <Th label="기관" sortKey="iScore" align="c" width={46} tip="기관투자: 외인+기관 10일 순매수 강도" />
         <Th label="종가" sortKey="closePrice" width={78} />
-        <Th label="등락률" sortKey="changeRate" width={64} tip="전일 종가 대비 당일 등락률" />
+        <Th label="등락률" sortKey="changeRate" width={74} tip="전일 종가 대비 당일 등락률" />
         <Th label="거래량" sortKey="volume" width={64} tip="당일 누적 거래량 (만·천만주)" />
         <Th label="거래대금" sortKey="turnover" width={72} tip="당일 누적 거래대금 (억·천억원)" />
         <Th label="시총" sortKey="marketCap" width={68} />
@@ -803,7 +803,7 @@ export default function ScreenerPage() {
         return (
           <div className="m-banner" style={{ ['--mb-bg' as string]: bg, ['--mb-bd' as string]: border }}>
             <span className="m-banner-title">
-              {dot} 시장 M 지수: {Math.round(avgM)} · {label}
+              {dot} 시장 신호 · {label}
             </span>
             <span className="m-banner-desc">{desc}</span>
           </div>

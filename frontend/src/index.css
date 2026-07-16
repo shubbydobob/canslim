@@ -195,7 +195,8 @@ body {
 /* 등락률 = 부호색 틴트 칩(증권사 앱 톤). 색은 JS의 --sc-rate 그대로, 배경은 color-mix로 파생. */
 .scr-rate { text-align: right; }
 .scr-rate > span, .scr-rate-chip {
-  display: inline-block; font-family: var(--font-num); font-weight: 700; font-size: 12px;
+  display: inline-block; min-width: 64px; text-align: center; box-sizing: border-box;
+  font-family: var(--font-num); font-weight: 700; font-size: 12px;
   padding: 3px 7px; border-radius: 7px; color: var(--sc-rate, var(--text-3));
   background: color-mix(in srgb, var(--sc-rate, var(--text-4)) 13%, transparent);
 }
