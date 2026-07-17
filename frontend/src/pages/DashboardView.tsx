@@ -4,7 +4,8 @@ import { fetchScreenerStats, fetchLimitUp, fetchLiveQuotes, fetchSectorIndices }
 import type { ScreenerStats, LimitUpStock, LiveQuote, SectorIndex } from '../api/client'
 import { useIsMobile } from '../hooks/useIsMobile'
 import { scoreFg, changeColor } from '../utils/factors'
-import { isKrMarketHours } from '../utils/format'
+import { isLiveOverlayHours, fmtPrice } from '../utils/format'
+import { MARKET, IS_US } from '../config/market'
 
 interface Props {
   items: ScreenerItem[]
@@ -35,11 +36,17 @@ export default function DashboardView({
   const isMobile = useIsMobile()
 
   useEffect(() => {
-    fetchScreenerStats('KR').then(setStats).catch(() => {})
+    fetchScreenerStats(MARKET).then(setStats).catch(() => {})
+
+    // US: 실시간 시세·상한가·업종지수(KRX 전용) 미지원 → 배치값만 사용.
+    if (IS_US) {
+      setLiveLoaded(true)
+      return
+    }
 
     // 상한가 후보(배치 ≥10%) + TOP 랭킹 종목의 KIS 실시간 등락률을 받아 오버레이.
     const loadLive = async () => {
-      const cands = await fetchLimitUp('KR', 10).catch(() => [])
+      const cands = await fetchLimitUp(MARKET, 10).catch(() => [])
       setLimitUp(cands)
       const top15 = [...items].sort((a, b) => b.compositeScore - a.compositeScore).slice(0, 15)
       // 상한가 후보 우선(≥29% 실상한가는 상위에 몰림) 45개 + TOP15 예약 15슬롯 = 60.
@@ -71,7 +78,7 @@ export default function DashboardView({
   // liveMap이 완전히 빈 '실시간 비활성'(장외/주말) 구간에는 배치 종가가 곧 당일
   // 종가이므로 배치 등락률을 그대로 사용한다.
   const LIMIT_MIN = 29
-  const marketOpen = isKrMarketHours()
+  const marketOpen = isLiveOverlayHours()
   // 실시간을 신뢰해야 하는 구간: 장중 + '마감했지만 아직 liveMap이 남은'(20:00~20:05 배치 전) 구간.
   // 이 구간엔 실시간 확인된 종목만 노출(hasLive) → 첫 폴링 전·실시간 실패 시 전일 상한가 오노출 방지.
   // 완전 장외/주말(liveMap 빔)엔 배치 종가=당일 종가이므로 배치 등락률을 그대로 사용.
@@ -109,7 +116,8 @@ export default function DashboardView({
           subtext={total > 0 ? `${Math.round((upCount / total) * 100)}% 상승` : ''} accent="var(--up)" valueColor="var(--up)" />
       </div>
 
-      {/* ── 상한가·급등 섹션 (당일 +29%↑) ──────────────────────── */}
+      {/* ── 상한가·급등 섹션 (당일 +29%↑) — KR 전용(US는 가격제한 없음) ── */}
+      {!IS_US && (
       <div className="dash-panel">
         <div className="dash-panel-head">
           <span className="dash-panel-title">🚀 상한가</span>
@@ -138,13 +146,14 @@ export default function DashboardView({
                 <div className="limitup-ticker">{s.ticker}</div>
                 <div className="limitup-chg">+{s.effChange.toFixed(2)}%</div>
                 <div className="limitup-meta">
-                  {Math.round(s.closePrice).toLocaleString()}원{s.compositeScore != null ? ` · ${Math.round(s.compositeScore)}점` : ''}
+                  {fmtPrice(s.closePrice)}{s.compositeScore != null ? ` · ${Math.round(s.compositeScore)}점` : ''}
                 </div>
               </button>
             ))}
           </div>
         )}
       </div>
+      )}
 
       {/* ── Bottom: Ranking + Sector Heatmap ── */}
       <div className="dash-grid">
@@ -188,7 +197,8 @@ export default function DashboardView({
           </div>
         </div>
 
-        {/* RIGHT: Sector Heatmap */}
+        {/* RIGHT: Sector Heatmap — KRX 업종지수 전용(US 미지원) */}
+        {!IS_US && (
         <div className="dash-panel">
           <div className="dash-panel-head">
             <span className="dash-panel-title">업종 히트맵</span>
@@ -218,6 +228,7 @@ export default function DashboardView({
             )}
           </div>
         </div>
+        )}
       </div>
     </div>
   )

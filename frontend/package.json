@@ -6,7 +6,9 @@
   "scripts": {
     "dev": "vite",
     "serve:prd": "vite --mode prd",
+    "serve:us": "vite --mode us",
     "build": "tsc -b && vite build",
+    "build:us": "tsc -b && vite build --mode us",
     "lint": "eslint .",
     "preview": "vite preview"
   },

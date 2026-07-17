@@ -13,7 +13,8 @@ import RankingView from './RankingView'
 import StatusBadges from '../components/StatusBadges'
 import { useIsMobile } from '../hooks/useIsMobile'
 import type { ScreenerItem } from '../types'
-import { fmtPrice, fmtRate, fmtMarketCap, fmtAmt, fmtVolume, isKrMarketHours } from '../utils/format'
+import { fmtPrice, fmtRate, fmtMarketCap, fmtAmt, fmtVolume, isLiveOverlayHours } from '../utils/format'
+import { MARKET, IS_US } from '../config/market'
 import { scoreBg, scoreFg, scoreGrade, changeColor } from '../utils/factors'
 
 
@@ -263,7 +264,7 @@ export default function ScreenerPage() {
     const { minCap, maxCap } = CAP_PARAMS[capRange]
     const seq = ++reqSeqRef.current   // 최신 요청만 반영 (응답 레이스 방지)
     const fetchSize = mainTab === 'ranking' ? Math.max(size, 50) : size
-    fetchScreener('KR', page, fetchSize, debouncedQuery.trim(), sector, minCap, maxCap, sortKey, sortDir, minScore)
+    fetchScreener(MARKET, page, fetchSize, debouncedQuery.trim(), sector, minCap, maxCap, sortKey, sortDir, minScore)
       .then(d => {
         if (seq !== reqSeqRef.current) return   // 늦게 도착한 옛 응답 무시
         setItems(d.items)
@@ -433,7 +434,7 @@ export default function ScreenerPage() {
 
   // 장중엔 배치 시세가 '전일 종가 기준'이라 실시간이 붙기 전 전일 등락률·가격이 잠깐 노출됨.
   // 실시간 시세가 아직 없는 종목은 값을 보류(스켈레톤)해 전일값 플래시를 방지. (장 마감 후엔 배치=정답이라 그대로 표시)
-  const marketOpen = isKrMarketHours()
+  const marketOpen = isLiveOverlayHours()
   const livePending = (_ticker: string) => marketOpen && !liveLoaded
 
   const renderRow = (item: ScreenerItem, _idx: number) => {
@@ -455,6 +456,7 @@ export default function ScreenerPage() {
         <td className="scr-td scr-name">
           <div className="scr-name-inner">
             <span className="scr-name-text">{item.name}</span>
+            {IS_US && <span className="scr-name-ticker">{item.ticker}</span>}
             {item.breakoutToday === true && <span className="scr-badge-new">NEW</span>}
             <StatusBadges statuses={pending ? null : (liveMap[item.ticker]?.statuses ?? item.statuses)} size="sm" />
           </div>
@@ -955,7 +957,7 @@ export default function ScreenerPage() {
           {/* 라이브 상태 배지 — 실시간 / 지연(장중 오류) / 종가(장외) 3-상태 */}
           {(() => {
             const live = Object.keys(liveMap).length > 0
-            const state = live ? 'live' : (isKrMarketHours() ? 'delayed' : 'batch')
+            const state = live ? 'live' : (isLiveOverlayHours() ? 'delayed' : 'batch')
             const c = state === 'live'
               ? { text: '● 실시간', tip: '장중 실시간 시세 반영 중' }
               : state === 'delayed'

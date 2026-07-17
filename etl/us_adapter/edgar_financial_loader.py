@@ -53,6 +53,10 @@ _EQ_TAGS  = ["StockholdersEquity"]
 
 _FP_TO_Q = {"Q1": 1, "Q2": 2, "Q3": 3}
 
+# EPS 상식 상한(주당). US 분기 최고 EPS도 ~$900(SEB), 연간 ~$3000 수준.
+# 초과값은 다중 주식클래스(BRK-A)·오스케일 XBRL 오염으로 간주하고 제외.
+_EPS_SANITY_MAX = 2000.0
+
 
 def fetch_cik_map() -> dict[str, int]:
     """ticker(대문자, dash) → CIK(int) 매핑."""
@@ -99,11 +103,14 @@ def _duration_days(entry: dict) -> int | None:
         return None
 
 
-def _collect_duration(units: list[dict]) -> tuple[dict, dict]:
+def _collect_duration(units: list[dict], val_abs_max: float | None = None) -> tuple[dict, dict]:
     """
     기간(duration) 개념 → (quarterly, annual).
     quarterly[(fy, fq)] = {'val', 'end'}, annual[fy] = {'val', 'end'}.
     같은 키 중복 시 end 최신값 채택(재작성 반영).
+
+    val_abs_max: 설정 시 |val| 초과 항목 제외. EPS 상식범위 밖(다중 주식클래스
+      BRK-A값·오스케일 XBRL: HAL ×1e6, ICE ×1e8 등) 오염 방지 + NUMERIC 오버플로우 예방.
     """
     quarterly, annual = {}, {}
     for e in units:
@@ -111,6 +118,8 @@ def _collect_duration(units: list[dict]) -> tuple[dict, dict]:
         val, end = e.get("val"), e.get("end")
         if fy is None or val is None or end is None:
             continue
+        if val_abs_max is not None and abs(float(val)) > val_abs_max:
+            continue   # EPS 상식범위 밖 → 스킵
         days = _duration_days(e)
         if days is None:
             continue
@@ -142,7 +151,8 @@ def _collect_annual_instant(units: list[dict]) -> dict:
 
 def _build_rows(security_id: int, facts: dict) -> list[dict]:
     """companyfacts → financials 행 리스트."""
-    eps_q, eps_a = _collect_duration(_concept_units(facts, _EPS_TAGS, ["USD/shares"]))
+    eps_q, eps_a = _collect_duration(_concept_units(facts, _EPS_TAGS, ["USD/shares"]),
+                                     val_abs_max=_EPS_SANITY_MAX)
     ni_q,  ni_a  = _collect_duration(_concept_units(facts, _NI_TAGS,  ["USD"]))
     rev_q, rev_a = _collect_duration(_concept_units(facts, _REV_TAGS, ["USD"]))
     eq_a         = _collect_annual_instant(_concept_units(facts, _EQ_TAGS, ["USD"]))

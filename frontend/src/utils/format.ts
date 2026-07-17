@@ -1,5 +1,10 @@
+import { IS_US } from '../config/market'
+
 export function fmtPrice(v: number | null): string {
-  return v === null ? '—' : v.toLocaleString('ko-KR', { maximumFractionDigits: 0 })
+  if (v === null) return '—'
+  // US: 달러 2자리($334.77). KR: 원 정수.
+  if (IS_US) return '$' + v.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+  return v.toLocaleString('ko-KR', { maximumFractionDigits: 0 })
 }
 
 /** 한국 실시간 오버레이 창(평일 08:00~20:00 KST). 이 창에선 배치 시세가 전일 종가 기준이라
@@ -13,30 +18,52 @@ export function isKrMarketHours(): boolean {
   return mins >= 480 && mins <= 1200   // 08:00 ~ 20:00
 }
 
+/** 실시간 오버레이 활성 창. US는 실시간 시세 미구현(다음 단계 KIS 해외주식) → 항상 false(배치/EOD 표시). */
+export function isLiveOverlayHours(): boolean {
+  if (IS_US) return false
+  return isKrMarketHours()
+}
+
 export function fmtRate(v: number | null): string {
   return v === null ? '—' : (v > 0 ? '+' : '') + v.toFixed(2) + '%'
 }
 
-/** 시가총액: 조 / 천억 / 억 단위 (정수 반올림) */
+/** USD 대금: $1.2T / $45.2B / $820M / $1,234 */
+function fmtUsd(v: number): string {
+  const a = Math.abs(v)
+  if (a >= 1e12) return '$' + (v / 1e12).toFixed(1) + 'T'
+  if (a >= 1e9)  return '$' + (v / 1e9).toFixed(1) + 'B'
+  if (a >= 1e6)  return '$' + (v / 1e6).toFixed(0) + 'M'
+  return '$' + Math.round(v).toLocaleString('en-US')
+}
+
+/** 시가총액: US=$T/$B/$M, KR=조/천억/억 */
 export function fmtMarketCap(v: number | null): string {
   if (v === null) return '—'
+  if (IS_US) return fmtUsd(v)
   const b = v / 1e8
   if (b >= 10000) return Math.round(b / 10000) + '조'
   if (b >= 1000) return Math.round(b / 1000) + '천억'
   return Math.round(b) + '억'
 }
 
-/** 거래대금 등 금액: 천억 / 억 단위 (정수 반올림) */
+/** 거래대금 등 금액: US=$B/$M, KR=천억/억 */
 export function fmtAmt(v: number | null): string {
   if (v === null) return '—'
+  if (IS_US) return fmtUsd(v)
   const b = v / 1e8
   if (b >= 1000) return Math.round(b / 1000) + '천억'
   return Math.round(b) + '억'
 }
 
-/** 거래량: 천만 / 만 단위 (정수 반올림) */
+/** 거래량: US=M/K, KR=천만/만 */
 export function fmtVolume(v: number | null): string {
   if (v === null) return '—'
+  if (IS_US) {
+    if (v >= 1e6) return (v / 1e6).toFixed(1) + 'M'
+    if (v >= 1e3) return Math.round(v / 1e3) + 'K'
+    return v.toLocaleString('en-US')
+  }
   if (v >= 1e7) return Math.round(v / 1e7) + '천만'
   if (v >= 1e4) return Math.round(v / 1e4) + '만'
   return v.toLocaleString()
@@ -47,9 +74,14 @@ export function fmtFinAmt(v: number | null): number | null {
   return v === null ? null : Math.round(v / 1e8)
 }
 
-/** 거래량: 천만주 / 만주 단위 (상세용, '주' 접미) */
+/** 거래량: 상세용. US=M/K sh, KR=천만주/만주 */
 export function fmtVol(v: number | null): string {
   if (v === null) return '—'
+  if (IS_US) {
+    if (v >= 1e6) return (v / 1e6).toFixed(1) + 'M sh'
+    if (v >= 1e3) return Math.round(v / 1e3) + 'K sh'
+    return v.toLocaleString('en-US') + ' sh'
+  }
   if (v >= 1e7) return Math.round(v / 1e7) + '천만주'
   return Math.round(v / 1e4) + '만주'
 }

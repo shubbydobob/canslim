@@ -1,4 +1,12 @@
 import type { ScreenerItem, ScreenerPage, ScoreHistory, FinancialRecord, PriceBar, MacroQuote } from '../types'
+import { MARKET, IS_US } from '../config/market'
+import { usDisplayName } from '../config/usNames'
+
+// US: 종목명을 한글 표기로 오버라이드(티커는 유지). KR은 그대로.
+function koName<T extends { ticker?: string; name: string }>(x: T): T {
+  if (!IS_US || !x) return x
+  return { ...x, name: usDisplayName(x.ticker, x.name) }
+}
 
 const API_ORIGIN = import.meta.env.VITE_API_URL ?? ''
 const BASE = `${API_ORIGIN}/api`
@@ -23,7 +31,9 @@ export async function fetchScreener(
   if (minScore != null && minScore > 0) params.set('minScore', String(minScore))
   const res = await fetch(`${BASE}/screener?${params}`)
   if (!res.ok) throw new Error('screener fetch failed')
-  return res.json()
+  const data: ScreenerPage = await res.json()
+  if (IS_US && Array.isArray(data.items)) data.items = data.items.map(koName)
+  return data
 }
 
 export interface ScreenerStats {
@@ -55,7 +65,8 @@ export async function fetchLimitUp(market = 'KR', threshold = 29): Promise<Limit
   try {
     const res = await fetch(`${BASE}/screener/limit-up?market=${market}&threshold=${threshold}`)
     if (!res.ok) return []
-    return res.json()
+    const list: LimitUpStock[] = await res.json()
+    return IS_US ? list.map(koName) : list
   } catch { return [] }
 }
 
@@ -159,17 +170,18 @@ export async function fetchLiveQuotes(tickers: string[]): Promise<Record<string,
 
 export async function searchStocks(query: string): Promise<ScreenerItem[]> {
   if (!query.trim()) return []
-  const params = new URLSearchParams({ market: 'KR', page: '0', size: '8', q: query.trim() })
+  const params = new URLSearchParams({ market: MARKET, page: '0', size: '8', q: query.trim() })
   const res = await fetch(`${BASE}/screener?${params}`)
   if (!res.ok) return []
   const data = await res.json()
-  return data.items ?? []
+  const items: ScreenerItem[] = data.items ?? []
+  return IS_US ? items.map(koName) : items
 }
 
 export async function fetchStockScore(securityId: number): Promise<ScreenerItem> {
   const res = await fetch(`${BASE}/screener/${securityId}`)
   if (!res.ok) throw new Error('score fetch failed')
-  return res.json()
+  return koName(await res.json())
 }
 
 export async function fetchStockHistory(securityId: number): Promise<ScoreHistory[]> {
@@ -206,7 +218,8 @@ export interface SectorPeer {
 export async function fetchSectorPeers(securityId: number): Promise<SectorPeer[]> {
   const res = await fetch(`${BASE}/screener/${securityId}/sector-peers`)
   if (!res.ok) return []
-  return res.json()
+  const list: SectorPeer[] = await res.json()
+  return IS_US ? list.map(koName) : list
 }
 
 export async function fetchMacroQuotes(): Promise<MacroQuote[]> {
@@ -225,5 +238,6 @@ export interface CorrelationStock {
 export async function fetchCorrelations(securityId: number): Promise<CorrelationStock[]> {
   const res = await fetch(`${BASE}/screener/${securityId}/correlations`)
   if (!res.ok) return []
-  return res.json()
+  const list: CorrelationStock[] = await res.json()
+  return IS_US ? list.map(koName) : list
 }

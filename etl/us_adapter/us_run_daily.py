@@ -37,6 +37,23 @@ logger = logging.getLogger(__name__)
 SCORING_URL = os.environ.get("SCORING_URL", "http://localhost:8080/api/admin/scoring/run")
 
 
+def _latest_us_trade_date(fallback: date) -> date:
+    """price_daily의 최신 US 거래일. 채점일(=최신 가격일)과 정규화 as_of_date를 정렬해
+    주말/휴일 배치가 캘린더 today에 EPS를 적재해 채점일과 어긋나는 것을 방지."""
+    from ..shared.db_writer import get_session
+    from sqlalchemy import text
+    try:
+        with get_session() as sess:
+            row = sess.execute(text("""
+                SELECT MAX(p.trade_date)
+                FROM price_daily p JOIN instruments i ON i.id = p.security_id
+                WHERE i.market = 'US'
+            """)).fetchone()
+        return row[0] if row and row[0] else fallback
+    except Exception:
+        return fallback
+
+
 def _maybe_reset_us_financials(target_date: date) -> None:
     """매월 첫 주(1~7일 평일)에 EDGAR 재무 ingestion_meta 리셋 → 신규 공시 재수집."""
     if target_date.day > 7 or target_date.weekday() >= 5:
@@ -92,6 +109,11 @@ def _run_pipeline(target_date: date, *, backfill: bool, refresh_universe: bool,
     except Exception as e:
         logger.warning("[2/8] 가격 수집 실패(비치명적): %s", e)
 
+    # 정규화/파생/채점 정렬용 as_of = 최신 US 거래일(캘린더 today 아님).
+    as_of = _latest_us_trade_date(target_date)
+    if as_of != target_date:
+        logger.info("as_of 정렬: 최신 US 거래일 %s (target_date=%s)", as_of, target_date)
+
     # ── 3. 수급: US MVP 미지원(스킵) ─────────────────────────
     logger.info("[3/8] 수급 수집 스킵(US MVP)")
 
@@ -109,7 +131,7 @@ def _run_pipeline(target_date: date, *, backfill: bool, refresh_universe: bool,
     logger.info("[5/8] financial_normalizer 시작")
     try:
         from ..kr_adapter.financial_normalizer import normalize_all
-        normalize_all(target_date)
+        normalize_all(as_of)
         logger.info("[5/8] financial_normalizer 완료")
     except Exception as e:
         logger.warning("[5/8] financial_normalizer 실패(비치명적): %s", e)
@@ -118,7 +140,7 @@ def _run_pipeline(target_date: date, *, backfill: bool, refresh_universe: bool,
     logger.info("[6/8] derived_metrics 계산 시작")
     try:
         from ..kr_adapter.derived_metrics_calculator import calculate as calc_derived
-        updated = calc_derived(target_date)
+        updated = calc_derived(as_of)
         logger.info("[6/8] derived_metrics 계산 완료: %d 행", updated)
     except Exception as e:
         logger.warning("[6/8] derived_metrics 계산 실패(비치명적): %s", e)
@@ -126,8 +148,8 @@ def _run_pipeline(target_date: date, *, backfill: bool, refresh_universe: bool,
     # ── 7. market_state (SPX/NDX) ────────────────────────────
     logger.info("[7/8] market_state 갱신 시작")
     try:
-        start_str = (target_date - _td(days=400 if backfill else 300)).strftime("%Y%m%d")
-        end_str   = target_date.strftime("%Y%m%d")
+        start_str = (as_of - _td(days=400 if backfill else 300)).strftime("%Y%m%d")
+        end_str   = as_of.strftime("%Y%m%d")
         from .us_market_state import seed as seed_state
         seed_state("SPX", start_date=start_str, end_date=end_str)
         seed_state("NDX", start_date=start_str, end_date=end_str)
