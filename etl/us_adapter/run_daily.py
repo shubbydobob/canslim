@@ -1,15 +1,8 @@
 """
-US 일별 ETL 진입점 — Phase 5 구현 예정
-현재: 스텁만 존재, 실행 시 경고만 출력
+US 일별 ETL 진입점 (하위호환 shim).
+실제 구현은 us_run_daily.py로 이관됨 → 위임.
 """
-import logging
-logger = logging.getLogger(__name__)
-
-
-def main():
-    logger.warning("US ETL은 Phase 5에서 구현됩니다. 현재 미지원.")
-
+from .us_run_daily import main
 
 if __name__ == "__main__":
-    logging.basicConfig(level=logging.INFO)
     main()

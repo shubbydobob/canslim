@@ -59,6 +59,34 @@ def _load_quarterly(session, security_id: int) -> list[dict]:
     return result
 
 
+def _load_quarterly_standalone(session, security_id: int) -> list[dict]:
+    """단독분기(is_cumulative=FALSE) 분기 재무 로드 — US(EDGAR) 전용.
+    US 10-Q EPS는 이미 3개월 단독분기 → 누적→단독 변환 불필요.
+    KR은 이 경로에 데이터가 없어(누적으로 적재) 자동 빈 리스트."""
+    sql = text("""
+        SELECT fiscal_year, fiscal_quarter, eps, is_consolidated, period_end_date
+        FROM   financials
+        WHERE  security_id   = :sid
+          AND  period_type   = 'QUARTER'
+          AND  is_cumulative = FALSE
+          AND  eps IS NOT NULL
+        ORDER  BY fiscal_year, fiscal_quarter, is_consolidated DESC
+    """)
+    rows = session.execute(sql, {"sid": security_id}).fetchall()
+    seen, result = set(), []
+    for r in rows:
+        key = (r.fiscal_year, r.fiscal_quarter)
+        if key not in seen:
+            seen.add(key)
+            result.append({
+                "year":            r.fiscal_year,
+                "quarter":         r.fiscal_quarter,
+                "eps_sa":          float(r.eps) if r.eps is not None else None,
+                "period_end_date": r.period_end_date,
+            })
+    return result
+
+
 def _load_annual(session, security_id: int) -> list[dict]:
     """연간 재무 데이터 로드 (CFS 우선)."""
     sql = text("""
@@ -253,15 +281,24 @@ def normalize_security(security_id: int, as_of_date: date) -> bool:
     returns: True if data available, False if skipped
     """
     with get_session() as session:
-        quarterly = _load_quarterly(session, security_id)
-        annual    = _load_annual(session, security_id)
+        quarterly    = _load_quarterly(session, security_id)             # 누적(KR)
+        quarterly_sa = _load_quarterly_standalone(session, security_id)  # 단독(US)
+        annual       = _load_annual(session, security_id)
 
-    if not quarterly and not annual:
+    if not quarterly and not quarterly_sa and not annual:
         return False
 
-    standalone   = _to_standalone(quarterly)
-    period_ends  = {(r["year"], r["quarter"]): r["period_end_date"] for r in quarterly}
-    metrics      = _compute_metrics(standalone, annual, as_of_date, period_ends)
+    if quarterly:
+        # KR: 누적 → 단독분기 변환
+        standalone  = _to_standalone(quarterly)
+        period_ends = {(r["year"], r["quarter"]): r["period_end_date"] for r in quarterly}
+    else:
+        # US(EDGAR): 이미 단독분기 → 그대로 사용
+        standalone  = {(r["year"], r["quarter"]): r["eps_sa"]
+                       for r in quarterly_sa if r["eps_sa"] is not None}
+        period_ends = {(r["year"], r["quarter"]): r["period_end_date"] for r in quarterly_sa}
+
+    metrics = _compute_metrics(standalone, annual, as_of_date, period_ends)
 
     if not metrics:
         return False

@@ -59,5 +59,15 @@ public interface PriceDailyRepository extends JpaRepository<PriceDaily, PriceDai
             @Param("from") LocalDate from,
             @Param("to") LocalDate to);
 
+    @Query(value = """
+        SELECT DISTINCT p.trade_date FROM price_daily p
+        JOIN instruments i ON i.id = p.security_id
+        WHERE i.market = 'US' AND p.trade_date BETWEEN :from AND :to
+        ORDER BY p.trade_date ASC
+        """, nativeQuery = true)
+    List<LocalDate> findUsTradingDates(
+            @Param("from") LocalDate from,
+            @Param("to") LocalDate to);
+
     boolean existsBySecurityIdAndTradeDate(Long securityId, LocalDate tradeDate);
 }
