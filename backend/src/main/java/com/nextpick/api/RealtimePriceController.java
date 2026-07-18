@@ -568,7 +568,9 @@ public class RealtimePriceController {
         headers.set("tr_id",    "HHDFS00000300");
         headers.set("custtype", "P");
 
-        String url = KIS_BASE + OVERSEAS_PRICE_PATH + "?AUTH=&EXCD=" + excd + "&SYMB=" + symb;
+        // KIS 해외는 주식클래스 티커를 슬래시로 받음(BRK-B→BRK/B, 실측 확인). 우리 저장은 하이픈.
+        String symbParam = symb.replace("-", "/");
+        String url = KIS_BASE + OVERSEAS_PRICE_PATH + "?AUTH=&EXCD=" + excd + "&SYMB=" + symbParam;
         try {
             ResponseEntity<Map> resp = rest.exchange(url, HttpMethod.GET, new HttpEntity<>(headers), Map.class);
             if (!resp.getStatusCode().is2xxSuccessful() || resp.getBody() == null) return null;
@@ -654,7 +656,7 @@ public class RealtimePriceController {
             headers.set("appsecret", (String) cfg.get("app_secret"));
             headers.set("tr_id",    "HHDFS00000300");
             headers.set("custtype", "P");
-            String url = KIS_BASE + OVERSEAS_PRICE_PATH + "?AUTH=&EXCD=" + useExcd + "&SYMB=" + ticker;
+            String url = KIS_BASE + OVERSEAS_PRICE_PATH + "?AUTH=&EXCD=" + useExcd + "&SYMB=" + ticker.replace("-", "/");
             ResponseEntity<Map> resp = rest.exchange(url, HttpMethod.GET, new HttpEntity<>(headers), Map.class);
             r.put("httpStatus", resp.getStatusCode().value());
             Map<?, ?> body = resp.getBody();
