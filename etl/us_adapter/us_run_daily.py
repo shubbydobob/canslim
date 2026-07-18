@@ -96,6 +96,15 @@ def _run_pipeline(target_date: date, *, backfill: bool, refresh_universe: bool,
     else:
         logger.info("[1/8] 종목 목록 갱신 생략")
 
+    # ── 1b. 시총/거래소 보강(yfinance) — 종목 갱신 시에만 ─────
+    if refresh_universe:
+        logger.info("[1b/8] shares/exchange 보강(yfinance)")
+        try:
+            from .us_shares_loader import load as load_shares
+            load_shares()
+        except Exception as e:
+            logger.error("[1b/8] shares/exchange 보강 실패(비치명적): %s", e)
+
     # ── 2. 가격 ──────────────────────────────────────────────
     logger.info("[2/8] 가격 수집 시작")
     try:

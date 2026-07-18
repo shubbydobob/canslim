@@ -114,6 +114,35 @@ def upsert_price_daily(rows: list[dict]) -> tuple[int, int]:
     return len(rows), 0
 
 
+def update_instrument_market_data(rows: list[dict]) -> int:
+    """
+    instruments의 시장 메타데이터(total_shares, float_shares, exchange)만 UPDATE.
+    rows: [{'id': ..., 'total_shares': ..., 'float_shares': ..., 'exchange': ...}]
+    NULL 값은 COALESCE로 기존 값 보존(부분 갱신 안전).
+    upsert_instruments가 name/sector 등 전체 컬럼을 요구하는 것과 달리, 이 헬퍼는
+    yfinance enrichment처럼 일부 컬럼만 채울 때 사용(기존 값 덮어쓰기 위험 없음).
+    """
+    if not rows:
+        return 0
+    sql = text("""
+        UPDATE instruments SET
+            total_shares = COALESCE(:total_shares, total_shares),
+            float_shares = COALESCE(:float_shares, float_shares),
+            exchange     = COALESCE(:exchange, exchange),
+            updated_at   = NOW()
+        WHERE id = :id
+    """)
+    with get_session() as session:
+        for row in rows:
+            session.execute(sql, {
+                "id": row["id"],
+                "total_shares": row.get("total_shares"),
+                "float_shares": row.get("float_shares"),
+                "exchange": row.get("exchange"),
+            })
+    return len(rows)
+
+
 def get_security_id(ticker: str, market: str) -> int | None:
     """ticker + market으로 instruments.id 조회"""
     sql = text("SELECT id FROM instruments WHERE ticker = :ticker AND market = :market")
