@@ -18,10 +18,24 @@ export function isKrMarketHours(): boolean {
   return mins >= 480 && mins <= 1200   // 08:00 ~ 20:00
 }
 
-/** 실시간 오버레이 활성 창. US는 실시간 시세 미구현(다음 단계 KIS 해외주식) → 항상 false(배치/EOD 표시). */
+/** 미장 실시간 오버레이 창(평일 09:30~16:30 ET). DST 안전하게 Intl(America/New_York)로 계산.
+ *  백엔드 isUsMarketOpen과 동일 창. KIS 해외주식 시세(HHDFS00000300)로 오버레이. */
+export function isUsMarketHours(): boolean {
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'America/New_York', weekday: 'short', hour: '2-digit', minute: '2-digit', hour12: false,
+  }).formatToParts(new Date())
+  const get = (t: string) => parts.find(p => p.type === t)?.value ?? ''
+  const wd = get('weekday')
+  if (wd === 'Sat' || wd === 'Sun') return false
+  let h = parseInt(get('hour'), 10)
+  if (h === 24) h = 0
+  const mins = h * 60 + parseInt(get('minute'), 10)
+  return mins >= 570 && mins <= 990   // 09:30 ~ 16:30 ET
+}
+
+/** 실시간 오버레이 활성 창. US=ET 장중(KIS 해외주식), KR=KST 08:00~20:00. */
 export function isLiveOverlayHours(): boolean {
-  if (IS_US) return false
-  return isKrMarketHours()
+  return IS_US ? isUsMarketHours() : isKrMarketHours()
 }
 
 export function fmtRate(v: number | null): string {

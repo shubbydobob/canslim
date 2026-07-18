@@ -54,7 +54,10 @@ public class RealtimePriceController {
     private static final String INVESTOR_PATH = "/uapi/domestic-stock/v1/quotations/inquire-investor";
     // 종목별 외국인/기관 추정가집계 — 장중 추정 순매수(키움 '잠정 1·2·3차'). output2 배열=차수별.
     private static final String INVESTOR_EST_PATH = "/uapi/domestic-stock/v1/quotations/investor-trend-estimate";
+    // US 해외주식 현재가 (KIS HHDFS00000300). EXCD(NAS/NYS/AMS)+SYMB로 조회.
+    private static final String OVERSEAS_PRICE_PATH = "/uapi/overseas-price/v1/quotations/price";
     private static final ZoneId KST = ZoneId.of("Asia/Seoul");
+    private static final ZoneId ET = ZoneId.of("America/New_York");
     private static final int MAX_BATCH = 60;             // 배치 상한 (쿼터 보호)
     private static final long QUOTE_TTL_MS = 3_000;      // 시세 캐시 3초 (3~5초 폴링이 fresh 받도록)
     private static final long INVESTOR_TTL_MS = 15_000;  // 투자자 캐시 15초 (수급은 느린 폴링 + 쿼터 절약)
@@ -63,6 +66,7 @@ public class RealtimePriceController {
 
     private final RestTemplate rest = new RestTemplate();
     private final KisClient kis;
+    private final com.nextpick.repository.InstrumentRepository instrumentRepo;
 
     // KIS 실호출 병렬 풀 + 전역 초당 레이트리밋(토큰버킷: 매초 permit을 상한으로 리셋).
     // 앱키가 모든 사용자·ETL 공유라 전역 제한이 없으면 동시 접속 시 쿼터 초과.
@@ -72,8 +76,9 @@ public class RealtimePriceController {
         Thread t = new Thread(r, "kis-rate-refill"); t.setDaemon(true); return t;
     });
 
-    public RealtimePriceController(KisClient kis) {
+    public RealtimePriceController(KisClient kis, com.nextpick.repository.InstrumentRepository instrumentRepo) {
         this.kis = kis;
+        this.instrumentRepo = instrumentRepo;
         rateRefill.scheduleAtFixedRate(() -> {
             rateGate.drainPermits();
             rateGate.release(MAX_KIS_PER_SEC);
@@ -98,9 +103,11 @@ public class RealtimePriceController {
     private record CachedQuote(Map<String, Object> data, long ts) {}
 
     @GetMapping("/price")
-    public ResponseEntity<Map<String, Object>> getPrice(@RequestParam("ticker") String ticker) {
+    public ResponseEntity<Map<String, Object>> getPrice(
+            @RequestParam("ticker") String ticker,
+            @RequestParam(value = "market", defaultValue = "KR") String market) {
         try {
-            Map<String, Object> q = quoteFor(ticker);
+            Map<String, Object> q = "US".equalsIgnoreCase(market) ? quoteForUs(ticker) : quoteFor(ticker);
             if (q == null) return ResponseEntity.status(502).body(Map.of("error", "quote null"));
             return ResponseEntity.ok(q);
         } catch (Exception e) {
@@ -110,20 +117,33 @@ public class RealtimePriceController {
     }
 
     @GetMapping("/quotes")
-    public ResponseEntity<List<Map<String, Object>>> getQuotes(@RequestParam("tickers") String tickersCsv) {
+    public ResponseEntity<List<Map<String, Object>>> getQuotes(
+            @RequestParam("tickers") String tickersCsv,
+            @RequestParam(value = "market", defaultValue = "KR") String market) {
+        boolean us = "US".equalsIgnoreCase(market);
         // 장외 시간엔 실시간 의미 없음 → 빈 배열 (프론트는 배치 EOD값 유지)
-        if (!isKrMarketOpen()) return ResponseEntity.ok(List.of());
+        if (us ? !isUsMarketOpen() : !isKrMarketOpen()) return ResponseEntity.ok(List.of());
 
         List<String> tickerList = Arrays.stream(tickersCsv.split(","))
                 .map(String::trim).filter(s -> !s.isEmpty()).limit(MAX_BATCH).toList();
         // 병렬 조회(레이트리밋이 초당 상한을 지킴) — 순차 동기 호출로 요청이 겹쳐 쌓이던 문제 해소.
         List<Map<String, Object>> result = tickerList.stream()
-                .map(t -> CompletableFuture.supplyAsync(() -> buildQuoteRow(t), kisPool))
+                .map(t -> CompletableFuture.supplyAsync(() -> us ? buildUsQuoteRow(t) : buildQuoteRow(t), kisPool))
                 .toList().stream()
                 .map(CompletableFuture::join)
                 .filter(Objects::nonNull)
                 .collect(java.util.stream.Collectors.toList());
         return ResponseEntity.ok(result);
+    }
+
+    /** US 시세 1종목(배치용). 실패 시 null. */
+    private Map<String, Object> buildUsQuoteRow(String ticker) {
+        try {
+            return quoteForUs(ticker);
+        } catch (Exception e) {
+            log.debug("KIS 배치 해외시세 실패 ({}): {}", ticker, e.getMessage());
+            return null;
+        }
     }
 
     /** 시세 1종목 조회 + 당일 프로그램 금액 병합. 실패 시 null. */
@@ -495,6 +515,170 @@ public class RealtimePriceController {
         if (d == DayOfWeek.SATURDAY || d == DayOfWeek.SUNDAY) return false;
         LocalTime t = now.toLocalTime();
         return !t.isBefore(LocalTime.of(8, 0)) && !t.isAfter(LocalTime.of(20, 0));
+    }
+
+    // ───────────────────────── US 해외주식 실시간 ─────────────────────────
+
+    // ticker → EXCD(NAS/NYS/AMS) 캐시. instruments.exchange를 1시간마다 갱신.
+    private volatile Map<String, String> usExcdCache = null;
+    private volatile long usExcdCacheTs = 0;
+    private static final long EXCD_TTL_MS = 3_600_000;  // 1시간
+
+    private String usExcd(String ticker) {
+        long now = System.currentTimeMillis();
+        Map<String, String> cache = usExcdCache;
+        if (cache == null || now - usExcdCacheTs > EXCD_TTL_MS) {
+            Map<String, String> fresh = new ConcurrentHashMap<>();
+            try {
+                for (var inst : instrumentRepo.findByMarketAndActiveTrue("US")) {
+                    if (inst.getExchange() != null && !inst.getExchange().isBlank()) {
+                        fresh.put(inst.getTicker(), inst.getExchange().trim().toUpperCase());
+                    }
+                }
+                usExcdCache = fresh;
+                usExcdCacheTs = now;
+                cache = fresh;
+            } catch (Exception e) {
+                log.warn("US EXCD 캐시 갱신 실패: {}", e.getMessage());
+                cache = (cache != null) ? cache : Map.of();
+            }
+        }
+        return cache.getOrDefault(ticker.toUpperCase(), "NAS");  // 미매핑 시 나스닥 기본
+    }
+
+    /**
+     * US 정규장 게이트: ET 평일 09:30~16:00 + 마감 후 배치 따라잡기까지 버퍼(~16:30).
+     * KR과 달리 프리/애프터는 KIS 해외 기본시세 커버가 불확실해 정규장 중심으로 제한.
+     */
+    private boolean isUsMarketOpen() {
+        ZonedDateTime now = ZonedDateTime.now(ET);
+        DayOfWeek d = now.getDayOfWeek();
+        if (d == DayOfWeek.SATURDAY || d == DayOfWeek.SUNDAY) return false;
+        LocalTime t = now.toLocalTime();
+        return !t.isBefore(LocalTime.of(9, 30)) && !t.isAfter(LocalTime.of(16, 30));
+    }
+
+    /** KIS 해외주식 현재가 1콜 → output. 유효 현재가 없으면 null(폴백 유도). */
+    private Map<String, Object> inquireOverseasOutput(String symb, String excd, Map<String, Object> cfg, String token) {
+        if (!acquireRate()) return null;
+        HttpHeaders headers = new HttpHeaders();
+        headers.set("authorization", "Bearer " + token);
+        headers.set("appkey",   (String) cfg.get("app_key"));
+        headers.set("appsecret", (String) cfg.get("app_secret"));
+        headers.set("tr_id",    "HHDFS00000300");
+        headers.set("custtype", "P");
+
+        String url = KIS_BASE + OVERSEAS_PRICE_PATH + "?AUTH=&EXCD=" + excd + "&SYMB=" + symb;
+        try {
+            ResponseEntity<Map> resp = rest.exchange(url, HttpMethod.GET, new HttpEntity<>(headers), Map.class);
+            if (!resp.getStatusCode().is2xxSuccessful() || resp.getBody() == null) return null;
+            Object rt = resp.getBody().get("rt_cd");
+            if (rt != null && !"0".equals(String.valueOf(rt))) return null;
+            @SuppressWarnings("unchecked")
+            Map<String, Object> output = (Map<String, Object>) resp.getBody().get("output");
+            if (output == null) return null;
+            if (parseDouble((String) output.getOrDefault("last", "0")) <= 0) return null;  // 유효 현재가 없으면 폴백
+            return output;
+        } catch (Exception e) {
+            log.debug("KIS 해외시세 조회 실패 ({}, excd={}): {}", symb, excd, e.getMessage());
+            return null;
+        }
+    }
+
+    /** 해외주식 시세 맵. 매핑 EXCD 우선, 실패 시 다른 거래소(NYS/NAS/AMS) 폴백. */
+    private Map<String, Object> fetchOverseasQuote(String ticker, Map<String, Object> cfg, String token) {
+        String primary = usExcd(ticker);
+        Map<String, Object> output = inquireOverseasOutput(ticker, primary, cfg, token);
+        if (output == null) {
+            for (String excd : List.of("NAS", "NYS", "AMS")) {
+                if (excd.equals(primary)) continue;
+                output = inquireOverseasOutput(ticker, excd, cfg, token);
+                if (output != null) break;
+            }
+        }
+        if (output == null) return null;
+
+        // KIS 해외 output(실측): last(현재가) rate(등락률%, 이미 부호포함 "+0.14"/"-1.03")
+        //   diff(대비, 부호없는 절대값) sign(2상승3보합5하락) tvol(거래량) tamt(거래대금USD)
+        double last = parseDouble((String) output.getOrDefault("last", "0"));
+        double rate = parseDouble((String) output.getOrDefault("rate", "0"));  // 이미 부호 포함
+        double diff = Math.abs(parseDouble((String) output.getOrDefault("diff", "0")));
+        String sign = String.valueOf(output.getOrDefault("sign", "3")).trim();
+        if ("4".equals(sign) || "5".equals(sign)) diff = -diff;  // 하한/하락 → 대비 음수화(rate는 이미 부호)
+
+        Map<String, Object> q = new LinkedHashMap<>();
+        q.put("ticker",     ticker);
+        q.put("name",       output.getOrDefault("rsym", ""));  // 프론트가 usDisplayName으로 한글 오버라이드
+        q.put("price",      last);
+        q.put("change",     diff);
+        q.put("changeRate", rate);
+        q.put("volume",     parseLong((String) output.getOrDefault("tvol", "0")));
+        q.put("turnover",   parseLong((String) output.getOrDefault("tamt", "0")));  // USD
+        return q;
+    }
+
+    /** US 캐시 우선 조회 → 미스 시 KIS 해외 호출. KR과 캐시키 분리(US: 접두). */
+    private Map<String, Object> quoteForUs(String ticker) throws Exception {
+        String key = "US:" + ticker;
+        CachedQuote cached = quoteCache.get(key);
+        long now = System.currentTimeMillis();
+        if (cached != null && now - cached.ts() < QUOTE_TTL_MS) return cached.data();
+
+        Map<String, Object> cfg = kis.getConfig();
+        String token = kis.getToken();
+        Map<String, Object> q = fetchOverseasQuote(ticker, cfg, token);
+        if (q != null) quoteCache.put(key, new CachedQuote(q, now));
+        return q;
+    }
+
+    /**
+     * GET /api/realtime/debug-us?ticker=AAPL&excd=NAS
+     * KIS 해외주식 실시간이 되는지(구독/지연 여부) 단계별 진단. 원본 필드 노출.
+     */
+    @GetMapping("/debug-us")
+    public ResponseEntity<Map<String, Object>> debugUs(
+            @RequestParam(value = "ticker", defaultValue = "AAPL") String ticker,
+            @RequestParam(value = "excd", required = false) String excd) {
+        Map<String, Object> r = new LinkedHashMap<>();
+        r.put("etTime", ZonedDateTime.now(ET).toString());
+        r.put("usMarketOpen", isUsMarketOpen());
+        r.put("resolvedExcd", excd != null ? excd : usExcd(ticker));
+        try {
+            Map<String, Object> cfg = kis.getConfig();
+            String token = kis.getToken();
+            String useExcd = excd != null ? excd : usExcd(ticker);
+            if (!acquireRate()) { r.put("error", "rate gate"); return ResponseEntity.ok(r); }
+            HttpHeaders headers = new HttpHeaders();
+            headers.set("authorization", "Bearer " + token);
+            headers.set("appkey",   (String) cfg.get("app_key"));
+            headers.set("appsecret", (String) cfg.get("app_secret"));
+            headers.set("tr_id",    "HHDFS00000300");
+            headers.set("custtype", "P");
+            String url = KIS_BASE + OVERSEAS_PRICE_PATH + "?AUTH=&EXCD=" + useExcd + "&SYMB=" + ticker;
+            ResponseEntity<Map> resp = rest.exchange(url, HttpMethod.GET, new HttpEntity<>(headers), Map.class);
+            r.put("httpStatus", resp.getStatusCode().value());
+            Map<?, ?> body = resp.getBody();
+            if (body != null) {
+                r.put("rt_cd", body.get("rt_cd"));
+                r.put("msg_cd", body.get("msg_cd"));
+                r.put("msg1", body.get("msg1"));
+                Object out = body.get("output");
+                if (out instanceof Map<?, ?> m) {
+                    r.put("last", m.get("last"));
+                    r.put("diff", m.get("diff"));
+                    r.put("rate", m.get("rate"));
+                    r.put("sign", m.get("sign"));
+                    r.put("tvol", m.get("tvol"));
+                    r.put("base", m.get("base"));
+                }
+            }
+        } catch (org.springframework.web.client.HttpStatusCodeException he) {
+            r.put("httpStatus", he.getStatusCode().value());
+            r.put("body", he.getResponseBodyAsString());
+        } catch (Exception e) {
+            r.put("error", String.valueOf(e));
+        }
+        return ResponseEntity.ok(r);
     }
 
     private long parseLong(String s) {

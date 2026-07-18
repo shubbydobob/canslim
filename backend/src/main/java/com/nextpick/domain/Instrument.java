@@ -30,6 +30,10 @@ public class Instrument {
     @Column(name = "total_shares")
     private Long totalShares;
 
+    /** US 실시간(KIS 해외주식) 조회용 거래소코드 EXCD: NAS/NYS/AMS. KR은 null. */
+    @Column(length = 8)
+    private String exchange;
+
 /** COMMON / PREFERRED / REIT / SPAC / ETF / ETN / OTHER */
     @Column(name = "security_type", nullable = false, length = 20)
     private String securityType;
@@ -56,6 +60,7 @@ public class Instrument {
     public LocalDate getListingDate() { return listingDate; }
     public Long getFloatShares() { return floatShares; }
     public Long getTotalShares() { return totalShares; }
+    public String getExchange() { return exchange; }
 public String getSecurityType() { return securityType; }
     public String getSector() { return sector; }
     public String getCurrency() { return currency; }

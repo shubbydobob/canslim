@@ -93,7 +93,7 @@ export async function fetchSectors(): Promise<string[]> {
 
 export async function fetchRealtimePrice(ticker: string): Promise<{ price: number; change: number; changeRate: number; volume?: number; turnover?: number } | null> {
   try {
-    const res = await fetch(`${BASE}/realtime/price?ticker=${encodeURIComponent(ticker)}`)
+    const res = await fetch(`${BASE}/realtime/price?ticker=${encodeURIComponent(ticker)}&market=${MARKET}`)
     if (!res.ok) return null
     return res.json()
   } catch { return null }
@@ -159,7 +159,7 @@ export async function fetchInvestorFlow(ticker: string): Promise<InvestorFlow | 
 export async function fetchLiveQuotes(tickers: string[]): Promise<Record<string, LiveQuote>> {
   if (!tickers.length) return {}
   try {
-    const res = await fetch(`${BASE}/realtime/quotes?tickers=${encodeURIComponent(tickers.join(','))}`)
+    const res = await fetch(`${BASE}/realtime/quotes?tickers=${encodeURIComponent(tickers.join(','))}&market=${MARKET}`)
     if (!res.ok) return {}
     const list: LiveQuote[] = await res.json()
     const map: Record<string, LiveQuote> = {}
