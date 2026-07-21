@@ -552,6 +552,7 @@ button {
 .m-banner-desc { font-size: 11px; color: var(--text-3); }
 .m-banner-info, .rising-info { font-size: 10px; opacity: 0.55; margin-left: 3px; font-weight: 400; }
 .sh-desc { font-size: 11px; color: var(--text-4); line-height: 1.5; margin: 2px 0 12px; padding: 0 2px; }
+.sh-label-tip { cursor: help; text-decoration: underline dotted; text-underline-offset: 3px; text-decoration-color: var(--border-sub); }
 
 /* ── 필터 패널 ───────────────────────────────────────── */
 .screener-filter-wrap { background: var(--bg-nav); border-bottom: 2px solid var(--border); padding: 12px 20px; }

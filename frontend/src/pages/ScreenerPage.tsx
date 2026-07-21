@@ -713,7 +713,6 @@ export default function ScreenerPage() {
             <span className="nav-brand-dot" />
             NEXT<span className="brand-pick">PICK</span>
           </span>
-          <span className="nav-tagline">주도주 스코어</span>
         </div>
 
         {/* Center: Search */}

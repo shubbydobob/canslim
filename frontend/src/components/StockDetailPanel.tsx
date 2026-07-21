@@ -17,14 +17,14 @@ import type { ScreenerItem, ScoreHistory, FinancialRecord, PriceBar } from '../t
 
 type ScoreKey = 'cScore' | 'aScore' | 'nScore' | 'sScore' | 'lScore' | 'iScore' | 'mScore'
 
-const FACTORS: { key: ScoreKey; label: string; desc: string; color: string }[] = [
-  { key: 'cScore', label: '1', desc: '분기실적',  color: '#f6ad55' },
-  { key: 'aScore', label: '2', desc: '연간성장',  color: '#68d391' },
-  { key: 'nScore', label: '3', desc: '신고가',    color: '#76e4f7' },
-  { key: 'sScore', label: '4', desc: '수급강도',  color: '#b794f4' },
-  { key: 'lScore', label: '5', desc: '상대강도',  color: '#fc8181' },
-  { key: 'iScore', label: '6', desc: '기관수급',  color: '#63b3ed' },
-  { key: 'mScore', label: '7', desc: '시장방향',  color: '#d6bcfa' },
+const FACTORS: { key: ScoreKey; label: string; desc: string; color: string; tip: string }[] = [
+  { key: 'cScore', label: '1', desc: '분기실적',  color: '#f6ad55', tip: '분기실적 — 최근 분기 EPS(주당순이익)가 전년 대비 얼마나 성장했나. 높을수록 실적 개선.' },
+  { key: 'aScore', label: '2', desc: '연간성장',  color: '#68d391', tip: '연간성장 — 최근 3개년 연간 이익의 복리 성장 추세. 꾸준히 성장할수록 높음.' },
+  { key: 'nScore', label: '3', desc: '신고가',    color: '#76e4f7', tip: '신고가 — 52주 신고가에 얼마나 근접했나. 신고가 돌파력이 클수록 높음.' },
+  { key: 'sScore', label: '4', desc: '수급강도',  color: '#b794f4', tip: '수급강도 — 상승 시 거래량이 늘고 하락 시 줄어드는 등 매수세의 힘. 강할수록 높음.' },
+  { key: 'lScore', label: '5', desc: '상대강도',  color: '#fc8181', tip: '상대강도(RS) — 시장·업종 대비 주가가 얼마나 앞서 오르나. 주도주일수록 높음.' },
+  { key: 'iScore', label: '6', desc: '기관수급',  color: '#63b3ed', tip: '기관수급 — 기관·외국인의 순매수 유입 정도(스마트머니). 유입 강할수록 높음.' },
+  { key: 'mScore', label: '7', desc: '시장방향',  color: '#d6bcfa', tip: '시장방향(M) — 전체 시장의 추세(강세/약세). 종목과 무관한 시장 전반 신호.' },
 ]
 
 function FactorCard({ label, desc, value, color }: {
@@ -862,7 +862,7 @@ export default function StockDetailPanel({ securityId, onSelectStock, onBack }: 
           <div className="sh-map">
             {FACTORS.map(f => (
               <div key={f.key} className="sh-row" style={{ ['--c' as string]: f.color }}>
-                <span className="sh-label">{f.desc}</span>
+                <span className="sh-label sh-label-tip" title={f.tip}>{f.desc}</span>
                 <div className="sh-cells">
                   {heat.map((h, i) => {
                     const v = h[f.key]
