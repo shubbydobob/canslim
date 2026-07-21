@@ -221,6 +221,10 @@ export default function PriceChart({ securityId, height = 480, bars, live, ticke
       color: d.close >= d.open ? 'rgba(240,68,82,0.28)' : 'rgba(49,130,246,0.28)',
     })) as never)
 
+    // 전체 데이터를 차트 폭에 맞춰 펼침 — 봉이 적은 주/월봉·상장기간 짧은 종목이
+    // 기본 barSpacing으로 우측에만 몰려 좌측이 비는 문제 방지.
+    chart.timeScale().fitContent()
+
     // 생성 직후 현재 실시간값이 있으면 즉시 반영
     applyLive(live?.price ?? null)
 
