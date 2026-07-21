@@ -78,6 +78,7 @@ public class DerivedMetricsJob {
 
         int priceRows = 0;
         int rsRows    = 0;
+        int adRows    = 0;
         try {
             priceRows = txHelper.upsertPriceMetrics(marketIn, scoreDate);
         } catch (Exception e) {
@@ -88,8 +89,13 @@ public class DerivedMetricsJob {
         } catch (Exception e) {
             log.warn("[{}] rs_percentile 계산 실패: {}", market, e.getMessage());
         }
+        try {
+            adRows = txHelper.upsertAccumDist(marketIn, scoreDate);
+        } catch (Exception e) {
+            log.warn("[{}] accum_dist 계산 실패: {}", market, e.getMessage());
+        }
 
-        log.info("[{}] DerivedMetricsJob 완료 — price_metrics {}건, rs_percentile {}건",
-                market, priceRows, rsRows);
+        log.info("[{}] DerivedMetricsJob 완료 — price_metrics {}건, rs_percentile {}건, accum_dist {}건",
+                market, priceRows, rsRows, adRows);
     }
 }

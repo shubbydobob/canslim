@@ -77,6 +77,14 @@ public class DerivedMetric {
     @Column(name = "inst_accum_breadth")
     private Short instAccumBreadth;           // 상위보유기관 증가수-감소수 (분기 순매집 breadth)
 
+    /**
+     * Accumulation/Distribution 점수(0~100, 50=중립). Java DerivedMetricsJob이 price_daily로 매일 계산.
+     * 상승일 대량 거래=기관 매집(+), 하락일 대량=분산(-)의 최근 50거래일 지수가중 요약(오닐/IBD A/D).
+     * US I 팩터의 실시간 프록시 — 13F(분기)와 블렌드. 시장 무관(KR도 채워지나 KR I는 실측 순매수 사용).
+     */
+    @Column(name = "accum_dist_score")
+    private BigDecimal accumDistScore;
+
     @Column(name = "created_at")
     private LocalDateTime createdAt;
 
@@ -98,4 +106,5 @@ public class DerivedMetric {
     public BigDecimal getInstPctHeld() { return instPctHeld; }
     public Integer getInstHoldersCount() { return instHoldersCount; }
     public Short getInstAccumBreadth() { return instAccumBreadth; }
+    public BigDecimal getAccumDistScore() { return accumDistScore; }
 }

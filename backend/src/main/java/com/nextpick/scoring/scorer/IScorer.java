@@ -13,13 +13,16 @@ import org.springframework.stereotype.Component;
  *   trendBonus     = instTrendFlag × 5  (-1→-5, 0→0, 1→+5, 2→+10)
  *   최종 = clamp(50 + instBuyScore + foreignScore + trendBonus, 0, 100)
  *
- * ── US (13F 분기 기관보유) — 채점 (기준점 50):
- *   ownershipScore = clamp((instPctHeld - 0.5) × 40, -20, +20)   // 50% 중립, 보유 강할수록 +
- *   breadthScore   = clamp(instAccumBreadth / 10 × 15, -15, +15) // 상위기관 순매집 breadth
- *   최종 = clamp(50 + ownershipScore + breadthScore, 0, 100)
- *   근거: 오닐 원전 I는 '기관 스폰서십의 존재+증가'. US는 일별 플로우가 없어 13F(분기·yfinance 집계) 사용.
+ * ── US (13F 분기 기관보유 + A/D 실시간 프록시 블렌드) — 채점 (기준점 50):
+ *   ownership      = clamp(50 + clamp((instPctHeld-0.5)×40,±20) + clamp(breadth/10×15,±15), 0,100)
+ *   accum          = accumDistScore (0~100, DerivedMetricsJob가 price·volume로 매일 계산)
+ *   최종 = 13F 있으면 0.5·ownership + 0.5·accum,  13F 없으면(예: CBOE) accum 단독.
+ *   근거: US는 일별 기관 플로우가 무료로 없어 13F(분기·45일 지연)만으론 느림. 오닐/IBD의
+ *   Accumulation-Distribution(가격·거래량 매집 추정)을 블렌드해 I를 분기→일 단위로 신선화하고
+ *   13F 결측 종목의 I null도 제거. (진짜 실시간 기관 순매수는 유료 소스 필요.)
  *
- * 데이터 없음 → null 반환. weightedComposite의 "null 분모 제외"로 5팩터 정규화(50 고정 시 랭킹 왜곡).
+ * ── 폴백: 13F·KR순매수 모두 없어도 accum이 있으면 accum 단독(가격만 있으면 I 산출). 전부 없으면 null.
+ * 데이터 없음 → null 반환. weightedComposite의 "null 분모 제외"로 정규화(50 고정 시 랭킹 왜곡).
  * iNetBuyThreshold: 유의미한 순매수로 간주할 기준 금액(또는 수량). DB 설정값.
  */
 @Component
@@ -28,7 +31,10 @@ public class IScorer {
     public Double score(DerivedMetric dm, MarketConfig cfg) {
         if (dm == null) return null;
 
-        // ── US 13F 분기 (inst_pct_held가 채워진 종목) ─────────────
+        // A/D 실시간 프록시(가격·거래량). 시장 무관으로 채워짐. US 블렌드/폴백에 사용.
+        Double accum = dm.getAccumDistScore() != null ? dm.getAccumDistScore().doubleValue() : null;
+
+        // ── US 13F 분기 (inst_pct_held가 채워진 종목) + A/D 블렌드 ──
         if (dm.getInstPctHeld() != null) {
             double pct = dm.getInstPctHeld().doubleValue();          // 0~1
             double ownershipScore = clamp((pct - 0.5) * 40.0, -20.0, 20.0);
@@ -36,14 +42,16 @@ public class IScorer {
             if (dm.getInstAccumBreadth() != null) {
                 breadthScore = clamp(dm.getInstAccumBreadth() / 10.0 * 15.0, -15.0, 15.0);
             }
-            return clamp(50.0 + ownershipScore + breadthScore, 0.0, 100.0);
+            double ownership = clamp(50.0 + ownershipScore + breadthScore, 0.0, 100.0);
+            // 구조적 13F + 실시간 A/D 반반 블렌드. accum 없으면 ownership 단독.
+            return accum != null ? clamp(0.5 * ownership + 0.5 * accum, 0.0, 100.0) : ownership;
         }
 
-        // ── KR 일별 순매수 — 데이터가 전혀 없으면 null (weightedComposite가 분모 제외) ──
+        // ── KR 일별 순매수 — 데이터가 전혀 없으면 A/D 폴백, 그것도 없으면 null ──
         if (dm.getInstNetBuy10d() == null
                 && dm.getForeignNetBuy10d() == null
                 && dm.getInstTrendFlag() == null) {
-            return null;
+            return accum;  // 가격만 있으면 A/D 단독(예: US CBOE 13F 결측) — I null 제거. 전부 없으면 null.
         }
 
         double threshold = cfg.getINetBuyThreshold() != null

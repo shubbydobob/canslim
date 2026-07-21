@@ -163,4 +163,58 @@ public class DerivedMetricsTxHelper {
                 .setParameter("scoreDate", scoreDate)
                 .executeUpdate();
     }
+
+    /**
+     * Accumulation/Distribution 점수(0~100) 계산 — I 팩터의 가격·거래량 프록시.
+     *
+     * 최근 50거래일에서 상승일 거래량은 +, 하락일 거래량은 −로 집계하되 최근일에 지수가중(0.95^n).
+     *   udv = Σ(sign(Δclose)·vol·w) / Σ(vol·w)  ∈ [−1,+1]   (양수=매집 우세, 음수=분산 우세)
+     *   score = 50 + 50·udv  ∈ [0,100]
+     * 최소 20거래일 이력이 있어야 산출(신규주 노이즈 방지). 시장 무관 — price_daily만 사용.
+     */
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public int upsertAccumDist(String marketIn, LocalDate scoreDate) {
+        String sql = ("""
+            WITH win AS (
+                SELECT
+                    p.security_id,
+                    p.close_adj,
+                    p.volume,
+                    LAG(p.close_adj) OVER (PARTITION BY p.security_id ORDER BY p.trade_date) AS prev_close,
+                    ROW_NUMBER()     OVER (PARTITION BY p.security_id ORDER BY p.trade_date DESC) AS rn
+                FROM price_daily p
+                JOIN instruments i ON i.id = p.security_id
+                    AND i.market IN (%s) AND i.is_active = TRUE
+                WHERE p.trade_date <= :scoreDate
+                  AND p.trade_date >  CAST(:scoreDate AS date) - INTERVAL '120 days'
+            ),
+            recent AS (
+                SELECT
+                    security_id,
+                    POWER(0.95, rn - 1)          AS w,
+                    SIGN(close_adj - prev_close) AS dir,
+                    volume
+                FROM win
+                WHERE rn <= 50 AND prev_close IS NOT NULL AND volume > 0
+            ),
+            ad AS (
+                SELECT
+                    security_id,
+                    SUM(dir * volume * w) / NULLIF(SUM(volume * w), 0) AS udv
+                FROM recent
+                GROUP BY security_id
+                HAVING COUNT(*) >= 20
+            )
+            INSERT INTO derived_metrics (security_id, as_of_date, accum_dist_score, created_at)
+            SELECT security_id, :scoreDate,
+                   ROUND(CAST(50 + 50 * udv AS NUMERIC), 2), NOW()
+            FROM ad
+            ON CONFLICT (security_id, as_of_date) DO UPDATE SET
+                accum_dist_score = EXCLUDED.accum_dist_score
+            """).formatted(marketIn);
+
+        return em.createNativeQuery(sql)
+                .setParameter("scoreDate", scoreDate)
+                .executeUpdate();
+    }
 }
