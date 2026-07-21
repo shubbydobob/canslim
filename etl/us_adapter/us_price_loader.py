@@ -126,10 +126,17 @@ def backfill(start_date: date, end_date: date, delay_sec: float = 0.2) -> None:
                 done, skipped, empty_count, failed)
 
 
-def load_daily(target_date: date = None) -> None:
-    """당일 가격 수집 (일배치용). source=YF_PRICE_US, target=수집일."""
+def load_daily(target_date: date = None, lookback_days: int = 7) -> None:
+    """당일 가격 수집 (일배치용). source=YF_PRICE_US, target=수집일.
+
+    ⚠️ target_date 하나만 조회하면 안 됨: EC2 크론은 KST 06:30에 도는데 그 시각 미국은
+    아직 전일 장중~마감 직후라 date.today()(KST)는 미국에 존재하지 않는 미래 거래일이 됨
+    → yfinance 빈 응답 → 매 실행 0건. 트레일링 창(기본 7일)으로 조회해 주말/휴일/타임존
+    갭을 자가치유한다. yfinance 캘린더는 실제 거래일만 반환하고 upsert가 중복을 제거하므로
+    이미 있는 날은 갱신 0으로 안전."""
     if target_date is None:
         target_date = date.today()
+    from_date = target_date - timedelta(days=lookback_days)
 
     run_id = start_run(SOURCE_DAILY, target_date, market="US")
     if run_id is None:
@@ -138,11 +145,12 @@ def load_daily(target_date: date = None) -> None:
 
     try:
         securities = _get_all_securities()
-        logger.info("US 일별 가격 수집: %d 종목, %s", len(securities), target_date)
+        logger.info("US 일별 가격 수집(트레일링 %d일): %d 종목, %s ~ %s",
+                    lookback_days, len(securities), from_date, target_date)
 
         total_ins = total_upd = 0
         for security_id, ticker in securities:
-            rows = _fetch_ohlcv(ticker, target_date, target_date)
+            rows = _fetch_ohlcv(ticker, from_date, target_date)
             for row in rows:
                 row["security_id"] = security_id
             ins, upd = upsert_price_daily(rows)

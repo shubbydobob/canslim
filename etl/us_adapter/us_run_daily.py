@@ -70,11 +70,19 @@ def _maybe_reset_us_financials(target_date: date) -> None:
         logger.info("US 재무 ingestion_meta 월별 리셋: %d건 삭제(EDGAR 재수집 예약)", deleted)
 
 
-def trigger_scoring() -> bool:
+def trigger_scoring(score_date: date | None = None) -> bool:
+    """스코어링 트리거. ⚠️ score_date(=최신 US 거래일)를 반드시 ?date로 명시한다:
+    운영 서버는 UTC 타임존이라 백엔드 기본값 LocalDate.now()가 KST 새벽엔 실제 최신
+    거래일보다 앞선 날짜가 됨 → DerivedMetricsJob이 그날 가격 없는 '그림자' 파생행(inst 등
+    null)을 만들어 완전한 최신행을 가리고 I 팩터 사망/degenerate 채점을 유발. as_of로 고정."""
+    url = SCORING_URL
+    if score_date is not None:
+        sep = "&" if "?" in url else "?"
+        url = f"{url}{sep}date={score_date.isoformat()}"
     try:
-        r = requests.post(SCORING_URL, timeout=600)
+        r = requests.post(url, timeout=600)
         if r.ok:
-            logger.info("스코어링 완료: %s", r.json())
+            logger.info("스코어링 완료(date=%s): %s", score_date, r.json())
             return True
         logger.warning("스코어링 응답 오류: %s %s", r.status_code, r.text[:200])
     except Exception as e:
@@ -179,8 +187,9 @@ def _run_pipeline(target_date: date, *, backfill: bool, refresh_universe: bool,
         logger.warning("[7/8] market_state 갱신 실패(비치명적): %s", e)
 
     # ── 8. 스코어링 트리거 ───────────────────────────────────
-    logger.info("[8/8] 스코어링 트리거")
-    if trigger_scoring():
+    #   as_of(=최신 US 거래일) 명시 → UTC 그림자 파생행/degenerate 채점 방지.
+    logger.info("[8/8] 스코어링 트리거 (date=%s)", as_of)
+    if trigger_scoring(as_of):
         logger.info("[8/8] 스코어링 완료")
     else:
         logger.warning("[8/8] 스코어링 실패 — 수동 트리거 필요")

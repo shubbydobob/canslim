@@ -62,6 +62,27 @@ WHERE dm.security_id = prev.security_id
   AND dm.inst_net_buy_10d IS NULL
 """
 
+# 기관(13F) 컬럼 carry-forward (US inst_pct_held 등. 13F는 분기 공시라 매일 재조회 불필요 →
+# 종목갱신 주기(주1회)에만 로드하고 그 사이 날짜는 직전 값을 이월. 없으면 I 팩터가 매일 null).
+INST_CARRY_FORWARD_SQL = """
+UPDATE derived_metrics dm
+SET
+    inst_pct_held      = prev.inst_pct_held,
+    inst_holders_count = prev.inst_holders_count,
+    inst_accum_breadth = prev.inst_accum_breadth
+FROM (
+    SELECT DISTINCT ON (security_id)
+        security_id, inst_pct_held, inst_holders_count, inst_accum_breadth
+    FROM derived_metrics
+    WHERE as_of_date < :as_of_date
+      AND inst_pct_held IS NOT NULL
+    ORDER BY security_id, as_of_date DESC
+) prev
+WHERE dm.security_id = prev.security_id
+  AND dm.as_of_date  = :as_of_date
+  AND dm.inst_pct_held IS NULL
+"""
+
 UPSERT_SQL = """
 WITH price_stats AS (
     SELECT
@@ -160,6 +181,11 @@ def calculate(as_of_date: date | None = None) -> int:
         result = sess.execute(text(UPSERT_SQL), {"as_of_date": as_of_date})
         updated = result.rowcount
         logger.info("derived_metrics upsert 완료: %d 행", updated)
+
+        # 3) 기관(13F) 컬럼 carry-forward — upsert로 행이 생성된 뒤 실행해야
+        #    새 as_of 날짜(직전 정규화가 행을 안 만든 경우 포함)에도 확실히 채워짐.
+        cf3 = sess.execute(text(INST_CARRY_FORWARD_SQL), {"as_of_date": as_of_date})
+        logger.info("기관(13F) 컬럼 carry-forward: %d 행", cf3.rowcount)
         return updated
 
 
