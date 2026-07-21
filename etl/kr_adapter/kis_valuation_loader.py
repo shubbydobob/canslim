@@ -65,13 +65,20 @@ def _inquire_valuation(ticker: str, cfg: dict, token: str, mkt: str) -> dict | N
             return None
         out = d.get("output") or {}
         # 현재가가 0이면(미지원/거래정지 등) 밸류에이션도 신뢰 불가 → 폴백/스킵.
-        if _to_float(out.get("stck_prpr")) in (None, 0.0):
+        prpr = _to_float(out.get("stck_prpr"))
+        if prpr in (None, 0.0):
             return None
+        vol = _to_float(out.get("acml_vol"))
         return {
             "per": _to_float(out.get("per")),
             "pbr": _to_float(out.get("pbr")),
             "eps": _to_float(out.get("eps")),
             "bps": _to_float(out.get("bps")),
+            # KIS 통합(UN=KRX+NXT) EOD — 장외에도 증권사(키움)와 일치하도록 표시에 우선 반영.
+            "kis_close":      prpr,
+            "kis_change_pct": _to_float(out.get("prdy_ctrt")),
+            "kis_volume":     int(vol) if vol is not None else None,
+            "kis_turnover":   _to_float(out.get("acml_tr_pbmn")),
         }
     except Exception as e:
         logger.debug("[%s] 밸류에이션 요청 실패: %s", ticker, e)
@@ -85,8 +92,8 @@ def _fetch_valuation(ticker: str, cfg: dict, token: str) -> dict | None:
         row = _inquire_valuation(ticker, cfg, token, "J")
     if row is None:
         return None
-    # per/pbr/eps/bps 모두 없으면(0/빈값) 적재 의미 없음.
-    if all(row.get(k) in (None, 0.0) for k in ("per", "pbr", "eps", "bps")):
+    # 통합 종가(kis_close)가 있으면(가격 유효) 밸류에이션이 비어도 적재(통합 EOD 표시용).
+    if row.get("kis_close") in (None, 0.0) and all(row.get(k) in (None, 0.0) for k in ("per", "pbr", "eps", "bps")):
         return None
     return row
 
@@ -97,7 +104,9 @@ def _upsert_valuation(rows: list[dict]) -> int:
         return 0
     sql = text("""
         UPDATE derived_metrics
-        SET per = :per, pbr = :pbr, eps = :eps, bps = :bps
+        SET per = :per, pbr = :pbr, eps = :eps, bps = :bps,
+            kis_close = :kis_close, kis_change_pct = :kis_change_pct,
+            kis_volume = :kis_volume, kis_turnover = :kis_turnover
         WHERE security_id = :security_id AND as_of_date = :as_of_date
     """)
     with get_session() as session:

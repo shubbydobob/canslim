@@ -646,25 +646,27 @@ public class ScreenerController {
             ),
             flow AS (
                 SELECT security_id, inst_net_buy_10d, foreign_net_buy_10d, program_net_buy_10d,
-                       after_hours_close, after_hours_change_pct, per, pbr, eps, bps
+                       after_hours_close, after_hours_change_pct, per, pbr, eps, bps,
+                       kis_close, kis_change_pct, kis_volume, kis_turnover
                 FROM derived_metrics
                 WHERE as_of_date = (SELECT MAX(as_of_date) FROM derived_metrics WHERE inst_net_buy_10d IS NOT NULL)
             )
             SELECT r.security_id,
-                   -- 메인 표시(종가·등락률·시총)는 정규장 종가 기준(키움 등 증권사 헤드라인과 일치).
-                   -- 시간외 단일가는 오버레이하지 않고 after_hours_close/after_hours_change_pct로 별도 노출.
-                   -- (과거엔 COALESCE(after_hours,close)를 종가·등락률에 섞어, 시간외가 정규장과 다른 종목이
-                   --  전일 정규장 종가 대비로 계산돼 등락률이 부풀던 버그: 예 엘티씨 시간외56000 vs 정규55100 →
-                   --  +8.53% 오표기, 실제 정규장 +6.78%.)
-                   r.close_adj AS effective_close,
-                   r.volume, r.turnover,
-                   -- 전일이 거래정지(거래량 0) 구간이면 전일종가가 stale(정지 전 고정값)이라
-                   -- 재개일 갭이 253% 같은 허위 등락률을 만든다 → 신뢰 불가로 null 처리.
-                   -- 정상 상한가(전일 거래량>0)는 영향 없음. 실시간 창에서만 KIS 정확값 표시.
-                   CASE WHEN r.prev_close > 0 AND COALESCE(r.prev_volume, 0) > 0
-                        THEN ROUND((r.close_adj - r.prev_close) / r.prev_close * 100, 2)
-                   END AS change_rate,
-                   r.close_adj * i.total_shares AS market_cap,
+                   -- 메인 표시(종가·등락률·거래량·거래대금·시총)는 KIS 통합(KRX+NXT) EOD 우선 →
+                   -- 장 마감 후에도 증권사(키움)와 일치. 통합값 없으면(kis_* null) 정규장(pykrx) 폴백.
+                   -- 시간외 단일가(after_hours_close)는 여기에 섞지 않음(별도 필드로만 노출).
+                   -- 통합 등락률(kis_change_pct)은 KIS가 정지 재기준가로 산정해 정지 갭 허위 등락률도 방지.
+                   COALESCE(f.kis_close, r.close_adj) AS effective_close,
+                   COALESCE(f.kis_volume, r.volume) AS volume,
+                   COALESCE(f.kis_turnover, r.turnover) AS turnover,
+                   -- 폴백 등락률: 전일이 거래정지(거래량 0) 구간이면 전일종가가 stale라 허위 갭 → null.
+                   COALESCE(
+                       f.kis_change_pct,
+                       CASE WHEN r.prev_close > 0 AND COALESCE(r.prev_volume, 0) > 0
+                            THEN ROUND((r.close_adj - r.prev_close) / r.prev_close * 100, 2)
+                       END
+                   ) AS change_rate,
+                   COALESCE(f.kis_close, r.close_adj) * i.total_shares AS market_cap,
                    f.inst_net_buy_10d, f.foreign_net_buy_10d, f.program_net_buy_10d,
                    f.after_hours_close, f.after_hours_change_pct,
                    f.per, f.pbr, f.eps, f.bps
