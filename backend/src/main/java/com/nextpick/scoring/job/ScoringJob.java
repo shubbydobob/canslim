@@ -52,10 +52,15 @@ public class ScoringJob {
         log.info("=== ScoringJob 시작 (scoreDate={}) ===", scoreDate);
         long t0 = System.currentTimeMillis();
 
-        // Step 1: 가격 파생 지표 (시장별)
+        // Step 1: 가격 파생 지표 (시장별) — 채점일을 시장별 실제 최신 거래일로 앵커링.
+        //   미장은 KST/UTC '오늘'이 아직 미 마감이라 미래 날짜가 되어 그림자 행을 만드는 것을 방지.
         for (MarketDataPort port : marketAdapters) {
+            LocalDate eff = derivedMetricsJob.resolveEffectiveDate(port.getDbMarkets(), scoreDate);
+            if (!eff.equals(scoreDate)) {
+                log.info("[{}] 파생 기준일 {} → 최신 거래일 {} 앵커", port.getMarket(), scoreDate, eff);
+            }
             try {
-                derivedMetricsJob.computeForMarket(port.getMarket(), port.getDbMarkets(), scoreDate);
+                derivedMetricsJob.computeForMarket(port.getMarket(), port.getDbMarkets(), eff);
             } catch (Exception e) {
                 log.error("[{}] DerivedMetricsJob 실패: {}", port.getMarket(), e.getMessage(), e);
             }

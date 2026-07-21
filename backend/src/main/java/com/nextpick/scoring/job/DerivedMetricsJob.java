@@ -38,6 +38,30 @@ public class DerivedMetricsJob {
     }
 
     /**
+     * 채점/파생 기준일을 해당 시장의 실제 마지막 거래일로 앵커링.
+     *
+     * 배경: 안전망 @Scheduled(21:30 KST)나 admin(LocalDate.now, 서버 UTC)이 KST/UTC '오늘'로
+     * 채점하면, 미국장은 그 날짜의 세션이 아직 없어(미 마감) 미래 날짜가 됨 → DerivedMetricsJob이
+     * 가격 없는(그리고 inst 없는) 그림자 행을 그 날짜에 만들어 완전한 최신행을 가리고 I 팩터가
+     * null이 됨. scoreDate 이하 최신 거래일로 되돌리면 그림자 없이 실제 세션을 멱등 재채점한다.
+     * (KR은 당일 세션이 이미 있으므로 보통 scoreDate 그대로.)
+     *
+     * @return min(scoreDate, 최신 거래일). 가격이 없거나 조회 실패 시 scoreDate 그대로.
+     */
+    public LocalDate resolveEffectiveDate(List<String> dbMarkets, LocalDate scoreDate) {
+        String marketIn = dbMarkets.stream()
+                .map(m -> "'" + m + "'")
+                .collect(Collectors.joining(","));
+        try {
+            LocalDate latest = txHelper.latestTradeDate(marketIn, scoreDate);
+            return (latest != null && latest.isBefore(scoreDate)) ? latest : scoreDate;
+        } catch (Exception e) {
+            log.warn("최신 거래일 앵커 조회 실패({}) — scoreDate {} 사용: {}", dbMarkets, scoreDate, e.getMessage());
+            return scoreDate;
+        }
+    }
+
+    /**
      * 지정 시장의 가격 파생 지표 전체 재계산. ScoringJob 에서 먼저 호출.
      *
      * @param market    어댑터 식별자 (예: "KR")

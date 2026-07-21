@@ -3,6 +3,7 @@ package com.nextpick.scoring;
 import com.nextpick.domain.*;
 import com.nextpick.repository.NextpickScoreRepository;
 import com.nextpick.repository.InstrumentRepository;
+import com.nextpick.scoring.job.DerivedMetricsJob;
 import com.nextpick.scoring.model.ScoringResult;
 import com.nextpick.scoring.port.MarketDataPort;
 import com.nextpick.scoring.scorer.*;
@@ -38,6 +39,7 @@ public class NextpickScoringService {
 
     private final List<MarketDataPort> marketAdapters;
     private final NextpickScoreRepository scoreRepository;
+    private final DerivedMetricsJob derivedMetricsJob;
     private final MGateChecker mGateChecker;
     private final CScorer cScorer;
     private final AScorer aScorer;
@@ -54,12 +56,14 @@ public class NextpickScoringService {
 
     public NextpickScoringService(List<MarketDataPort> marketAdapters,
                                  NextpickScoreRepository scoreRepository,
+                                 DerivedMetricsJob derivedMetricsJob,
                                  MGateChecker mGateChecker,
                                  CScorer cScorer, AScorer aScorer, NScorer nScorer,
                                  SScorer sScorer, LScorer lScorer, IScorer iScorer,
                                  ObjectProvider<NextpickScoringService> selfProvider) {
         this.marketAdapters  = marketAdapters;
         this.scoreRepository = scoreRepository;
+        this.derivedMetricsJob = derivedMetricsJob;
         this.mGateChecker    = mGateChecker;
         this.cScorer = cScorer;
         this.aScorer = aScorer;
@@ -82,9 +86,16 @@ public class NextpickScoringService {
         for (MarketDataPort port : marketAdapters) {
             String market = port.getMarket();
 
+            // 채점일을 시장별 실제 최신 거래일로 앵커링(파생 단계와 동일). 미래 날짜의
+            // 그림자 점수행(inst null → I 사망, MAX(score_date) 왜곡) 생성을 방지.
+            LocalDate eff = derivedMetricsJob.resolveEffectiveDate(port.getDbMarkets(), scoreDate);
+            if (!eff.equals(scoreDate)) {
+                log.info("[{}] 채점일 {} → 최신 거래일 {} 앵커", market, scoreDate, eff);
+            }
+
             // 1) 점수 산출 + 랭킹 — 마켓 단위 독립 트랜잭션
             try {
-                self.scoreMarket(port, scoreDate);
+                self.scoreMarket(port, eff);
             } catch (Exception e) {
                 log.error("[{}] 채점 실패 (해당 마켓만 롤백): {}", market, e.getMessage(), e);
                 continue; // 점수 커밋 실패 시 스냅샷은 무의미
@@ -93,7 +104,7 @@ public class NextpickScoringService {
             // 2) 가격 스냅샷 — 점수 커밋 후 별도 트랜잭션(비치명적).
             //    같은 트랜잭션에 두면 스냅샷 실패가 그 마켓 점수를 롤백시키므로 분리.
             try {
-                self.updatePriceSnapshot(scoreDate, market);
+                self.updatePriceSnapshot(eff, market);
                 log.info("[{}] 가격 스냅샷 적재 완료", market);
             } catch (Exception e) {
                 log.warn("[{}] 가격 스냅샷 적재 실패 (비치명적): {}", market, e.getMessage());

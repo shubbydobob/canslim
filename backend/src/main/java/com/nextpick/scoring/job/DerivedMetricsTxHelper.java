@@ -22,6 +22,28 @@ public class DerivedMetricsTxHelper {
     @PersistenceContext
     private EntityManager em;
 
+    /**
+     * 해당 시장에서 scoreDate 이하의 최신 거래일(price_daily 기준). 없으면 null.
+     * 채점일을 실제 마지막 세션으로 앵커링해 미래 날짜의 '그림자' 파생/점수행 생성을 막는 데 사용.
+     */
+    @Transactional(propagation = Propagation.REQUIRES_NEW, readOnly = true)
+    public LocalDate latestTradeDate(String marketIn, LocalDate scoreDate) {
+        String sql = ("""
+            SELECT MAX(p.trade_date)
+            FROM price_daily p
+            JOIN instruments i ON i.id = p.security_id
+                AND i.market IN (%s) AND i.is_active = TRUE
+            WHERE p.trade_date <= :scoreDate
+            """).formatted(marketIn);
+        Object r = em.createNativeQuery(sql)
+                .setParameter("scoreDate", scoreDate)
+                .getSingleResult();
+        if (r == null) return null;
+        if (r instanceof java.sql.Date d) return d.toLocalDate();
+        if (r instanceof LocalDate d) return d;
+        return LocalDate.parse(r.toString());
+    }
+
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public int upsertPriceMetrics(String marketIn, LocalDate scoreDate) {
         String sql = ("""
