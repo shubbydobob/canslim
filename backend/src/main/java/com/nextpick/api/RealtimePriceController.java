@@ -12,9 +12,12 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.DayOfWeek;
 import java.time.Instant;
+import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.ZoneId;
+import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.LinkedHashMap;
@@ -56,11 +59,19 @@ public class RealtimePriceController {
     private static final String INVESTOR_EST_PATH = "/uapi/domestic-stock/v1/quotations/investor-trend-estimate";
     // US 해외주식 현재가 (KIS HHDFS00000300). EXCD(NAS/NYS/AMS)+SYMB로 조회.
     private static final String OVERSEAS_PRICE_PATH = "/uapi/overseas-price/v1/quotations/price";
+    // 국내 분봉 — 당일(FHKST03010200, 30개/호출)·과거일(FHKST03010230, 120개/호출). 1분 단위, 시각 역순.
+    private static final String MIN_TODAY_PATH = "/uapi/domestic-stock/v1/quotations/inquire-time-itemchartprice";
+    private static final String MIN_PAST_PATH  = "/uapi/domestic-stock/v1/quotations/inquire-time-dailychartprice";
+    private static final DateTimeFormatter YMD = DateTimeFormatter.ofPattern("yyyyMMdd");
+    private static final DateTimeFormatter YMDHMS = DateTimeFormatter.ofPattern("yyyyMMddHHmmss");
     private static final ZoneId KST = ZoneId.of("Asia/Seoul");
     private static final ZoneId ET = ZoneId.of("America/New_York");
     private static final int MAX_BATCH = 60;             // 배치 상한 (쿼터 보호)
     private static final long QUOTE_TTL_MS = 3_000;      // 시세 캐시 3초 (3~5초 폴링이 fresh 받도록)
     private static final long INVESTOR_TTL_MS = 15_000;  // 투자자 캐시 15초 (수급은 느린 폴링 + 쿼터 절약)
+    private static final long MINUTE_TTL_MS = 30_000;    // 분봉 캐시 30초 (on-demand·상세 1종목)
+    private static final int  MINUTE_MAX_DAYS = 5;       // 분봉 최대 조회 세션수 (쿼터 보호)
+    private static final int  MINUTE_PAGE_CAP = 15;      // 하루 페이징 상한(당일 30개×15=450분>세션)
     private static final int MAX_KIS_PER_SEC = 15;       // KIS 초당 호출 상한(한도 20, ETL·다중사용자 여유 5)
     private static final int KIS_POOL = 8;               // 배치 조회 병렬도
 
@@ -99,8 +110,10 @@ public class RealtimePriceController {
     // 시세 캐시 (ticker → {data, ts})
     private final Map<String, CachedQuote> quoteCache = new ConcurrentHashMap<>();
     private final Map<String, CachedQuote> investorCache = new ConcurrentHashMap<>();
+    private final Map<String, CachedList> minuteCache = new ConcurrentHashMap<>();  // "ticker|days" → 분봉
 
     private record CachedQuote(Map<String, Object> data, long ts) {}
+    private record CachedList(List<Map<String, Object>> data, long ts) {}
 
     @GetMapping("/price")
     public ResponseEntity<Map<String, Object>> getPrice(
@@ -681,6 +694,134 @@ public class RealtimePriceController {
             r.put("error", String.valueOf(e));
         }
         return ResponseEntity.ok(r);
+    }
+
+    // ───────────────────────── 국내 분봉 (상세 차트) ─────────────────────────
+
+    /**
+     * GET /api/realtime/minute?ticker=005930&days=1
+     *   → 1분봉 배열(오름차순) [{ time(epoch초·KST벽시계), open, high, low, close, volume }]
+     * days = 조회할 최근 거래일 수(1~5, 주말·휴장일 스킵). 오늘=당일TR, 과거=과거일TR.
+     * 장외에도 최근 세션을 반환(실시간 갱신은 프론트가 live 시세로 현재봉만). 실패 시 빈 배열.
+     */
+    @GetMapping("/minute")
+    public ResponseEntity<List<Map<String, Object>>> getMinute(
+            @RequestParam("ticker") String ticker,
+            @RequestParam(value = "days", defaultValue = "1") int days) {
+        try {
+            int d = Math.max(1, Math.min(MINUTE_MAX_DAYS, days));
+            String key = ticker + "|" + d;
+            long now = System.currentTimeMillis();
+            CachedList c = minuteCache.get(key);
+            if (c != null && now - c.ts() < MINUTE_TTL_MS) return ResponseEntity.ok(c.data());
+
+            List<Map<String, Object>> bars = fetchMinuteBars(ticker, d);
+            minuteCache.put(key, new CachedList(bars, now));
+            return ResponseEntity.ok(bars);
+        } catch (Exception e) {
+            log.warn("KIS 분봉 조회 실패 ({}): {}", ticker, e.getMessage());
+            return ResponseEntity.ok(List.of());
+        }
+    }
+
+    /** 최근 days개 거래일의 1분봉을 모아 시각 오름차순으로 반환. */
+    private List<Map<String, Object>> fetchMinuteBars(String ticker, int days) throws Exception {
+        Map<String, Object> cfg = kis.getConfig();
+        String token = kis.getToken();
+        ZonedDateTime today = ZonedDateTime.now(KST);
+        // epoch(초) → bar 로 정렬·중복제거 (TreeMap = 오름차순)
+        Map<Long, Map<String, Object>> byTime = new java.util.TreeMap<>();
+        int collected = 0;
+        for (int back = 0; back <= days + 4 && collected < days; back++) {
+            ZonedDateTime day = today.minusDays(back);
+            DayOfWeek dow = day.getDayOfWeek();
+            if (dow == DayOfWeek.SATURDAY || dow == DayOfWeek.SUNDAY) continue;  // 주말 스킵(휴장일은 빈 응답→스킵)
+            String dateStr = day.format(YMD);
+            List<Map<String, Object>> raw = pageMinuteDate(ticker, cfg, token, dateStr, back == 0);
+            if (raw.isEmpty()) continue;
+            for (Map<String, Object> b : raw) {
+                String ds = String.valueOf(b.get("stck_bsop_date"));
+                String ts = String.valueOf(b.get("stck_cntg_hour"));
+                if (ds.length() != 8 || ts.length() != 6) continue;
+                long epoch;
+                try {
+                    epoch = LocalDateTime.parse(ds + ts, YMDHMS).toEpochSecond(ZoneOffset.UTC);
+                } catch (Exception e) { continue; }
+                if (byTime.containsKey(epoch)) continue;
+                Map<String, Object> bar = new LinkedHashMap<>();
+                bar.put("time",   epoch);
+                bar.put("open",   parseLong((String) b.getOrDefault("stck_oprc", "0")));
+                bar.put("high",   parseLong((String) b.getOrDefault("stck_hgpr", "0")));
+                bar.put("low",    parseLong((String) b.getOrDefault("stck_lwpr", "0")));
+                bar.put("close",  parseLong((String) b.getOrDefault("stck_prpr", "0")));
+                bar.put("volume", parseLong((String) b.getOrDefault("cntg_vol", "0")));
+                byTime.put(epoch, bar);
+            }
+            collected++;
+        }
+        return new ArrayList<>(byTime.values());
+    }
+
+    /** 한 거래일의 1분봉을 페이징으로 전 세션 수집(KIS는 시각 역순 반환). */
+    private List<Map<String, Object>> pageMinuteDate(
+            String ticker, Map<String, Object> cfg, String token, String dateStr, boolean isToday) {
+        List<Map<String, Object>> out = new ArrayList<>();
+        String anchor = "153000";       // 세션 마감에서 역방향으로
+        String prevEarliest = null;
+        for (int i = 0; i < MINUTE_PAGE_CAP; i++) {
+            List<Map<String, Object>> page = isToday
+                    ? callMinute(ticker, cfg, token, anchor, dateStr, true)
+                    : callMinute(ticker, cfg, token, anchor, dateStr, false);
+            if (page == null || page.isEmpty()) break;
+            out.addAll(page);
+            String earliest = String.valueOf(page.get(page.size() - 1).get("stck_cntg_hour"));
+            if (earliest == null || earliest.length() != 6) break;
+            if (earliest.compareTo("090100") <= 0) break;     // 장 시작 도달
+            if (earliest.equals(prevEarliest)) break;          // 더 이상 진전 없음
+            prevEarliest = earliest;
+            anchor = minusOneMinute(earliest);
+        }
+        return out;
+    }
+
+    /** 분봉 1콜 → output2(캔들 배열). 실패 시 null. today=당일TR / false=과거일TR. */
+    @SuppressWarnings("unchecked")
+    private List<Map<String, Object>> callMinute(
+            String ticker, Map<String, Object> cfg, String token, String anchor, String dateStr, boolean today) {
+        if (!acquireRate()) return null;
+        String tr = today ? "FHKST03010200" : "FHKST03010230";
+        HttpHeaders headers = new HttpHeaders();
+        headers.set("authorization", "Bearer " + token);
+        headers.set("appkey",   (String) cfg.get("app_key"));
+        headers.set("appsecret", (String) cfg.get("app_secret"));
+        headers.set("tr_id",    tr);
+        headers.set("custtype", "P");
+        String url = today
+                ? KIS_BASE + MIN_TODAY_PATH + "?FID_ETC_CLS_CODE=&FID_COND_MRKT_DIV_CODE=J"
+                    + "&FID_INPUT_ISCD=" + ticker + "&FID_INPUT_HOUR_1=" + anchor + "&FID_PW_DATA_INCU_YN=Y"
+                : KIS_BASE + MIN_PAST_PATH + "?FID_COND_MRKT_DIV_CODE=J"
+                    + "&FID_INPUT_ISCD=" + ticker + "&FID_INPUT_HOUR_1=" + anchor
+                    + "&FID_INPUT_DATE_1=" + dateStr + "&FID_PW_DATA_INCU_YN=Y&FID_FAKE_TICK_INCU_YN=N";
+        try {
+            ResponseEntity<Map> resp = rest.exchange(url, HttpMethod.GET, new HttpEntity<>(headers), Map.class);
+            if (!resp.getStatusCode().is2xxSuccessful() || resp.getBody() == null) return null;
+            if (!"0".equals(String.valueOf(resp.getBody().get("rt_cd")))) return null;
+            Object o2 = resp.getBody().get("output2");
+            return (o2 instanceof List) ? (List<Map<String, Object>>) o2 : null;
+        } catch (Exception e) {
+            log.debug("KIS 분봉 조회 실패 ({}, tr={}, {}): {}", ticker, tr, anchor, e.getMessage());
+            return null;
+        }
+    }
+
+    /** "HHmmss" − 1분 → "HHmmss". 09:00 이하로는 내려가지 않음. */
+    private String minusOneMinute(String hhmmss) {
+        try {
+            LocalTime t = LocalTime.parse(
+                    hhmmss.substring(0, 2) + ":" + hhmmss.substring(2, 4) + ":" + hhmmss.substring(4, 6));
+            LocalTime prev = t.minusMinutes(1);
+            return String.format("%02d%02d%02d", prev.getHour(), prev.getMinute(), prev.getSecond());
+        } catch (Exception e) { return "090000"; }
     }
 
     private long parseLong(String s) {

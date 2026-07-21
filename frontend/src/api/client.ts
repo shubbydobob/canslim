@@ -209,6 +209,25 @@ export async function fetchStockPrices(securityId: number, days = 365): Promise<
   return res.json()
 }
 
+/** 분봉 1개 = epoch초(KST 벽시계) + OHLCV. KR 상세 차트 전용(장중 실시간 갱신은 live 시세). */
+export interface MinuteBar {
+  time: number
+  open: number
+  high: number
+  low: number
+  close: number
+  volume: number
+}
+
+/** KR 국내 1분봉 (최근 days 거래일, 1~5). KIS on-demand — 분봉 인터벌 선택 시에만 호출. */
+export async function fetchMinuteBars(ticker: string, days = 1): Promise<MinuteBar[]> {
+  try {
+    const res = await fetch(`${BASE}/realtime/minute?ticker=${encodeURIComponent(ticker)}&days=${days}`)
+    if (!res.ok) return []
+    return res.json()
+  } catch { return [] }
+}
+
 export interface SectorPeer {
   securityId: number; ticker: string; name: string; compositeScore: number
   cScore: number | null; aScore: number | null; nScore: number | null

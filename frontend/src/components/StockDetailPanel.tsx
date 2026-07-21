@@ -590,17 +590,21 @@ export default function StockDetailPanel({ securityId, onSelectStock, onBack }: 
               <SectionTitle>주가 · 기술적 분석</SectionTitle>
               <div className="tech-chart-head-right">
                 {alignMeta && <span className={`tech-align ${alignMeta.cls}`}>{alignMeta.label}</span>}
-                <div className="chart-mode-toggle">
-                  <button onClick={() => { chartTouchedRef.current = true; setChartMode('native') }}
-                    className={chartMode === 'native' ? 'chart-mode-btn on' : 'chart-mode-btn'}>기본</button>
-                  <button onClick={() => { chartTouchedRef.current = true; setChartMode('tv') }}
-                    className={chartMode === 'tv' ? 'chart-mode-btn on' : 'chart-mode-btn'}>트레이딩뷰</button>
-                </div>
+                {/* 트레이딩뷰 토글은 US만 — KRX는 TradingView 임베드가 데이터 라이선스로 차단되어(에러 팝업)
+                    KR은 KIS 실시간 네이티브 차트(분봉·일·주·월)만 노출. */}
+                {stock.market === 'US' && (
+                  <div className="chart-mode-toggle">
+                    <button onClick={() => { chartTouchedRef.current = true; setChartMode('native') }}
+                      className={chartMode === 'native' ? 'chart-mode-btn on' : 'chart-mode-btn'}>기본</button>
+                    <button onClick={() => { chartTouchedRef.current = true; setChartMode('tv') }}
+                      className={chartMode === 'tv' ? 'chart-mode-btn on' : 'chart-mode-btn'}>트레이딩뷰</button>
+                  </div>
+                )}
               </div>
             </div>
-            {chartMode === 'tv'
+            {chartMode === 'tv' && stock.market === 'US'
               ? <TradingViewChart ticker={stock.ticker} market={stock.market} exchange={stock.exchange} height={360} />
-              : <PriceChart securityId={id} height={360} bars={prices} live={live} />}
+              : <PriceChart securityId={id} height={360} bars={prices} live={live} ticker={stock.ticker} market={stock.market} />}
 
             {tech && (
               <div className="tech-block">
