@@ -587,7 +587,7 @@ export default function StockDetailPanel({ securityId, onSelectStock, onBack }: 
               </div>
             </div>
             {chartMode === 'tv'
-              ? <TradingViewChart ticker={stock.ticker} market={stock.market} height={360} />
+              ? <TradingViewChart ticker={stock.ticker} market={stock.market} exchange={stock.exchange} height={360} />
               : <PriceChart securityId={id} height={360} bars={prices} live={live} />}
 
             {tech && (

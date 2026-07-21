@@ -759,7 +759,7 @@ public class ScreenerController {
         String sql = "SELECT cs.security_id, cs.score_date, cs.market, cs.market_rank, cs.market_percentile,"
                 + " cs.composite_score, cs.c_score, cs.a_score, cs.n_score,"
                 + " cs.s_score, cs.l_score, cs.i_score, cs.m_score,"
-                + " i.ticker, i.name, i.sector,"
+                + " i.ticker, i.name, i.sector, i.exchange,"
                 + " cs.close_price, cs.change_rate, cs.volume, cs.turnover, cs.market_cap,"
                 + " f.inst_net_buy_10d, f.foreign_net_buy_10d, f.program_net_buy_10d,"
                 + " f.after_hours_close, f.after_hours_change_pct,"
@@ -806,7 +806,8 @@ public class ScreenerController {
                 null,
                 false, null,
                 arrToStrings(rs.getArray("statuses")),
-                null, null, null, null   // per/pbr/eps/bps — 아래 withPriceFlow가 loadPriceAndFlow 값으로 오버레이
+                null, null, null, null,  // per/pbr/eps/bps — 아래 withPriceFlow가 loadPriceAndFlow 값으로 오버레이
+                rs.getString("exchange")
             );
         }, dataParams.toArray());
 
@@ -849,7 +850,7 @@ public class ScreenerController {
                 coalesce(d[7], it.marketCap()),
                 it.sector(), it.scoreDelta(), it.breakoutToday(), it.baseDays(), it.statuses(),
                 coalesce(d[11], it.per()), coalesce(d[12], it.pbr()),
-                coalesce(d[13], it.eps()), coalesce(d[14], it.bps())
+                coalesce(d[13], it.eps()), coalesce(d[14], it.bps()), it.exchange()
         );
     }
 
