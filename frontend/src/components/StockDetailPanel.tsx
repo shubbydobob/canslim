@@ -858,7 +858,29 @@ export default function StockDetailPanel({ securityId, onSelectStock, onBack }: 
             <SectionTitle>스코어 히스토리</SectionTitle>
             <span className="sh-legend">낮음<i className="sh-legend-bar" />높음</span>
           </div>
-          <p className="sh-desc">7개 팩터 점수(0~100)가 시간에 따라 어떻게 변해왔는지 — 색이 진할수록 높은 점수. 왼쪽이 과거, 오른쪽이 최근입니다. 칸에 마우스를 올리면 날짜·점수가 보입니다.</p>
+          <p className="sh-desc">종합점수(굵은 선)와 7개 팩터 점수(0~100)가 시간에 따라 어떻게 변해왔는지 — 선에 마우스를 올리면 날짜별 정확한 점수가 보입니다. 아래 히트맵은 같은 데이터의 색상 요약(진할수록 높음).</p>
+          {history.length >= 2 && (
+            <div className="sh-trend">
+              <ResponsiveContainer width="100%" height={200}>
+                <ComposedChart data={history} margin={{ top: 6, right: 10, left: -20, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" strokeOpacity={0.35} />
+                  <XAxis dataKey="scoreDate" tickFormatter={(d: string) => d.slice(2, 7).replace('-', '.')}
+                    tick={{ fontSize: 10, fill: 'var(--text-4)' }} minTickGap={44} stroke="var(--border)" />
+                  <YAxis domain={[0, 100]} ticks={[0, 50, 100]} tick={{ fontSize: 10, fill: 'var(--text-4)' }} width={26} stroke="var(--border)" />
+                  <Tooltip
+                    contentStyle={{ background: 'var(--bg-surface)', border: '1px solid var(--border)', borderRadius: 8, fontSize: 11 }}
+                    formatter={(v) => (v == null ? '—' : Math.round(Number(v)))} />
+                  <Legend wrapperStyle={{ fontSize: 10, paddingTop: 4 }} iconType="plainline" />
+                  {FACTORS.map(f => (
+                    <Line key={f.key} type="monotone" dataKey={f.key} name={f.desc} stroke={f.color}
+                      strokeWidth={1} dot={false} strokeOpacity={0.5} isAnimationActive={false} connectNulls />
+                  ))}
+                  <Line type="monotone" dataKey="compositeScore" name="종합점수" stroke="var(--accent)"
+                    strokeWidth={2.5} dot={false} isAnimationActive={false} connectNulls />
+                </ComposedChart>
+              </ResponsiveContainer>
+            </div>
+          )}
           <div className="sh-map">
             {FACTORS.map(f => (
               <div key={f.key} className="sh-row" style={{ ['--c' as string]: f.color }}>
