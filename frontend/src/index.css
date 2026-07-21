@@ -775,6 +775,14 @@ button {
 .stat-value { font-family: var(--font-num); font-size: 26px; font-weight: 800; color: var(--sv, var(--text-1)); line-height: 1; letter-spacing: -0.02em; }
 .stat-unit { font-size: 12px; color: var(--text-3); font-weight: 500; }
 .stat-sub { font-size: 11px; color: var(--text-4); }
+/* 모바일: 3열 stat 카드가 좁아 값+단위(예: "1,234 / 2,558")가 overflow:hidden에 잘리던 것
+   → 폰트·패딩 축소 + 값행 줄바꿈 허용(단위가 다음 줄로 내려가 잘리지 않음). */
+.dash.mobile .stat-card { padding: 12px 11px; gap: 5px; }
+.dash.mobile .stat-label { font-size: 10px; letter-spacing: 0.02em; line-height: 1.25; }
+.dash.mobile .stat-value-row { flex-wrap: wrap; gap: 2px 4px; }
+.dash.mobile .stat-value { font-size: 18px; }
+.dash.mobile .stat-unit { font-size: 10px; }
+.dash.mobile .stat-sub { font-size: 10px; }
 .dash-panel { background: var(--bg-surface); border: 1px solid var(--border); border-radius: 16px; box-shadow: var(--shadow-sm); overflow: hidden; margin-bottom: 24px; }
 .dash.mobile .dash-panel { margin-bottom: 14px; }
 .dash-panel-head { padding: 14px 18px 12px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 8px; }
