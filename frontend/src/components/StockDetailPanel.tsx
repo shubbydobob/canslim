@@ -11,6 +11,7 @@ import {
 import { fetchStockScore, fetchStockHistory, fetchStockFinancials, fetchStockNews, fetchSectorPeers, fetchCorrelations, fetchLiveQuotes, fetchInvestorFlow, fetchStockPrices } from '../api/client'
 import type { NewsItem, SectorPeer, CorrelationStock, LiveQuote, InvestorFlow } from '../api/client'
 import PriceChart from './PriceChart'
+import TradingViewChart from './TradingViewChart'
 import StatusBadges from './StatusBadges'
 import type { ScreenerItem, ScoreHistory, FinancialRecord, PriceBar } from '../types'
 
@@ -115,6 +116,7 @@ export default function StockDetailPanel({ securityId, onSelectStock, onBack }: 
   const [investor, setInvestor] = useState<InvestorFlow | null>(null)
   const [priceFlash, setPriceFlash] = useState<'up' | 'down' | null>(null)
   const [prices, setPrices] = useState<PriceBar[]>([])
+  const [chartMode, setChartMode] = useState<'tv' | 'native'>('tv')
   const prevPxRef = useRef<number | null>(null)
   const userIsPremium = isPremium()
   const userIsLoggedIn = isLoggedIn()
@@ -574,9 +576,19 @@ export default function StockDetailPanel({ securityId, onSelectStock, onBack }: 
           <Card className="mb">
             <div className="tech-chart-head">
               <SectionTitle>주가 · 기술적 분석</SectionTitle>
-              {alignMeta && <span className={`tech-align ${alignMeta.cls}`}>{alignMeta.label}</span>}
+              <div className="tech-chart-head-right">
+                {alignMeta && <span className={`tech-align ${alignMeta.cls}`}>{alignMeta.label}</span>}
+                <div className="chart-mode-toggle">
+                  <button onClick={() => setChartMode('tv')}
+                    className={chartMode === 'tv' ? 'chart-mode-btn on' : 'chart-mode-btn'}>트레이딩뷰</button>
+                  <button onClick={() => setChartMode('native')}
+                    className={chartMode === 'native' ? 'chart-mode-btn on' : 'chart-mode-btn'}>기본</button>
+                </div>
+              </div>
             </div>
-            <PriceChart securityId={id} height={360} bars={prices} live={live} />
+            {chartMode === 'tv'
+              ? <TradingViewChart ticker={stock.ticker} market={stock.market} height={360} />
+              : <PriceChart securityId={id} height={360} bars={prices} live={live} />}
 
             {tech && (
               <div className="tech-block">
