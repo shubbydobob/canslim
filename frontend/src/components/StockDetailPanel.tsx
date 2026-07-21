@@ -116,7 +116,10 @@ export default function StockDetailPanel({ securityId, onSelectStock, onBack }: 
   const [investor, setInvestor] = useState<InvestorFlow | null>(null)
   const [priceFlash, setPriceFlash] = useState<'up' | 'down' | null>(null)
   const [prices, setPrices] = useState<PriceBar[]>([])
-  const [chartMode, setChartMode] = useState<'tv' | 'native'>('tv')
+  // 차트 모드: KR은 기본 차트(KIS 4초 실시간)가 기본값 — KRX는 TradingView 임베드 데이터 라이선스로 미지원.
+  // US는 TradingView가 기본값(임베드 정상). 사용자가 직접 토글하면 그 선택 유지.
+  const [chartMode, setChartMode] = useState<'tv' | 'native'>('native')
+  const chartTouchedRef = useRef(false)
   const prevPxRef = useRef<number | null>(null)
   const userIsPremium = isPremium()
   const userIsLoggedIn = isLoggedIn()
@@ -147,6 +150,15 @@ export default function StockDetailPanel({ securityId, onSelectStock, onBack }: 
       .finally(() => { if (!cancelled) setLoading(false) })
     return () => { cancelled = true }
   }, [id])
+
+  // 종목 이동 시 차트 모드 수동선택 초기화 (마켓 기본값 재적용)
+  useEffect(() => { chartTouchedRef.current = false }, [id])
+
+  // 마켓별 차트 기본값: US=TradingView, KR=기본. 사용자가 토글하지 않았을 때만 적용.
+  useEffect(() => {
+    if (chartTouchedRef.current || !stock) return
+    setChartMode(stock.market === 'US' ? 'tv' : 'native')
+  }, [stock?.market])
 
   // 기술적 분석용 일별 가격 (이동평균·52주 레인지·거래량 계산). 오름차순.
   useEffect(() => {
@@ -579,10 +591,10 @@ export default function StockDetailPanel({ securityId, onSelectStock, onBack }: 
               <div className="tech-chart-head-right">
                 {alignMeta && <span className={`tech-align ${alignMeta.cls}`}>{alignMeta.label}</span>}
                 <div className="chart-mode-toggle">
-                  <button onClick={() => setChartMode('tv')}
-                    className={chartMode === 'tv' ? 'chart-mode-btn on' : 'chart-mode-btn'}>트레이딩뷰</button>
-                  <button onClick={() => setChartMode('native')}
+                  <button onClick={() => { chartTouchedRef.current = true; setChartMode('native') }}
                     className={chartMode === 'native' ? 'chart-mode-btn on' : 'chart-mode-btn'}>기본</button>
+                  <button onClick={() => { chartTouchedRef.current = true; setChartMode('tv') }}
+                    className={chartMode === 'tv' ? 'chart-mode-btn on' : 'chart-mode-btn'}>트레이딩뷰</button>
                 </div>
               </div>
             </div>
