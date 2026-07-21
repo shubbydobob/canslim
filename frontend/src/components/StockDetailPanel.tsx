@@ -828,6 +828,7 @@ export default function StockDetailPanel({ securityId, onSelectStock, onBack }: 
             <SectionTitle>스코어 히스토리</SectionTitle>
             <span className="sh-legend">낮음<i className="sh-legend-bar" />높음</span>
           </div>
+          <p className="sh-desc">7개 팩터 점수(0~100)가 시간에 따라 어떻게 변해왔는지 — 색이 진할수록 높은 점수. 왼쪽이 과거, 오른쪽이 최근입니다. 칸에 마우스를 올리면 날짜·점수가 보입니다.</p>
           <div className="sh-map">
             {FACTORS.map(f => (
               <div key={f.key} className="sh-row" style={{ ['--c' as string]: f.color }}>

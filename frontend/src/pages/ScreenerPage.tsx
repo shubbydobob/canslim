@@ -823,11 +823,13 @@ export default function ScreenerPage() {
           : { bg: 'rgba(248,113,113,0.08)', border: '#f87171', label: '약세 구간 — 신규 매수 자제', desc: '하락 압력 우세' }
         const dot = avgM >= 60 ? '🟢' : avgM >= 40 ? '🟡' : '🔴'
         return (
-          <div className="m-banner" style={{ ['--mb-bg' as string]: bg, ['--mb-bd' as string]: border }}>
+          <div className="m-banner" style={{ ['--mb-bg' as string]: bg, ['--mb-bd' as string]: border }}
+            title={`시장 신호 = 현재 목록 종목들의 평균 시장방향(M) 점수 ${Math.round(avgM)}점 기준.\n· 60↑ 매수 구간(모멘텀 양호)  · 40~59 관망(추세 불확실)  · 40미만 약세(하락 압력).\nM점수는 지수 추세·시장 폭 등 전체 시장 방향을 나타내며, 개별 종목이 아니라 시장 전반의 신호입니다.`}>
             <span className="m-banner-title">
               {dot} 시장 신호 · {label}
+              <span className="m-banner-info" aria-hidden="true">ⓘ</span>
             </span>
-            <span className="m-banner-desc">{desc}</span>
+            <span className="m-banner-desc">{desc} · 평균 M {Math.round(avgM)}</span>
           </div>
         )
       })()}
@@ -925,11 +927,13 @@ export default function ScreenerPage() {
         if (risers.length === 0) return null
         return (
           <div className="rising-wrap">
-            <div className="rising-inner">
-              <span className="rising-label">이번주 상승</span>
+            <div className="rising-inner"
+              title="이번주 종합 SCORE가 가장 많이 오른 종목(1주 전 대비 점수 변화). 주가 등락률이 아니라 팩터 점수 상승폭입니다. 칩의 +N = 종합점수 +N점.">
+              <span className="rising-label">이번주 점수↑ <span className="rising-info" aria-hidden="true">ⓘ</span></span>
               <div className="rising-chips">
                 {risers.map(item => (
                   <div key={item.securityId} className="rising-chip"
+                    title={`${item.name} · 종합점수 1주간 +${Math.round(item.scoreDelta ?? 0)}점`}
                     onClick={() => { setSelectedStockId(item.securityId); setViewTab('detail') }}>
                     <span className="rising-chip-name">{item.name}</span>
                     <span className="rising-chip-delta">+{Math.round(item.scoreDelta ?? 0)}</span>

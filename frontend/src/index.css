@@ -547,9 +547,11 @@ button {
 [data-theme='light'] .theme-knob { background: #fabd44; left: 16px; }
 
 /* ── M 지수 배너 (bg·border는 시장상태에 따라 --mb-* 변수로 주입) ── */
-.m-banner { margin: 8px 20px 4px; background: var(--mb-bg); border: 1px solid var(--mb-bd); border-radius: 6px; padding: 5px 14px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 4px; }
+.m-banner { margin: 8px 20px 4px; background: var(--mb-bg); border: 1px solid var(--mb-bd); border-radius: 6px; padding: 5px 14px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 4px; cursor: help; }
 .m-banner-title { font-size: 13px; font-weight: 600; color: var(--text-1); }
 .m-banner-desc { font-size: 11px; color: var(--text-3); }
+.m-banner-info, .rising-info { font-size: 10px; opacity: 0.55; margin-left: 3px; font-weight: 400; }
+.sh-desc { font-size: 11px; color: var(--text-4); line-height: 1.5; margin: 2px 0 12px; padding: 0 2px; }
 
 /* ── 필터 패널 ───────────────────────────────────────── */
 .screener-filter-wrap { background: var(--bg-nav); border-bottom: 2px solid var(--border); padding: 12px 20px; }
