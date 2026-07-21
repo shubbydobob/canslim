@@ -46,7 +46,9 @@ public record ScreenerItemResponse(
         BigDecimal pbr,
         BigDecimal eps,
         BigDecimal bps,
-        String exchange      // US 전용: KIS EXCD(NAS/NYS/AMS). KR은 null. 프론트 TradingView 심볼 프리픽스용.
+        String exchange,     // US 전용: KIS EXCD(NAS/NYS/AMS). KR은 null. 프론트 TradingView 심볼 프리픽스용.
+        BigDecimal instPctHeld,      // US 전용: 13F 기관 보유비중(0~1). KR은 null(일별 순매수 사용).
+        BigDecimal accumDistScore    // A/D 매집강도(0~100, 50=중립). US I 프록시. KR도 채워짐(참고용).
 ) {
     /** idx: [0]=close [1]=inst [2]=foreign [3]=changeRate [4]=52wHigh [5]=volume [6]=turnover [7]=marketCap [8]=program [9]=ahClose [10]=ahChg [11]=per [12]=pbr [13]=eps [14]=bps */
     public static ScreenerItemResponse of(NextpickScore score, Instrument inst, BigDecimal[] pf, String[] statuses) {
@@ -59,7 +61,8 @@ public record ScreenerItemResponse(
                 score.getSScore(), score.getLScore(), score.getIScore(), score.getMScore(),
                 pf[0], pf[3], pf[4], pf[5], pf[6], pf[1], pf[2], pf[8], pf[9], pf[10], pf[7],
                 inst.getSector(), null, false, null, statuses,
-                pf[11], pf[12], pf[13], pf[14], inst.getExchange()
+                pf[11], pf[12], pf[13], pf[14], inst.getExchange(),
+                pf[15], pf[16]
         );
     }
 
@@ -73,7 +76,8 @@ public record ScreenerItemResponse(
                 score.getSScore(), score.getLScore(), score.getIScore(), score.getMScore(),
                 pf[0], pf[3], pf[4], pf[5], pf[6], pf[1], pf[2], pf[8], pf[9], pf[10], pf[7],
                 inst.getSector(), scoreDelta, false, null, statuses,
-                pf[11], pf[12], pf[13], pf[14], inst.getExchange()
+                pf[11], pf[12], pf[13], pf[14], inst.getExchange(),
+                pf[15], pf[16]
         );
     }
 
@@ -89,7 +93,8 @@ public record ScreenerItemResponse(
                 score.getSScore(), score.getLScore(), score.getIScore(), score.getMScore(),
                 pf[0], pf[3], pf[4], pf[5], pf[6], pf[1], pf[2], pf[8], pf[9], pf[10], pf[7],
                 inst.getSector(), scoreDelta, breakoutToday, baseDays, statuses,
-                pf[11], pf[12], pf[13], pf[14], inst.getExchange()
+                pf[11], pf[12], pf[13], pf[14], inst.getExchange(),
+                pf[15], pf[16]
         );
     }
 }

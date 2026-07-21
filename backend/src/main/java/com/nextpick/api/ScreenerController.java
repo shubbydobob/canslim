@@ -143,7 +143,7 @@ public class ScreenerController {
             List<ScreenerItemResponse> allResult = filtered.stream()
                     .map(s -> {
                         Instrument inst = allInst.get(s.getSecurityId());
-                        BigDecimal[] data = pf.getOrDefault(s.getSecurityId(), new BigDecimal[15]);
+                        BigDecimal[] data = pf.getOrDefault(s.getSecurityId(), new BigDecimal[17]);
                         BigDecimal delta = deltaMap.get(s.getSecurityId());
                         boolean breakout = breakouts.contains(s.getSecurityId());
                         return ScreenerItemResponse.of(s, inst, data, delta, breakout, null, statusMap.get(s.getSecurityId()));
@@ -197,7 +197,7 @@ public class ScreenerController {
                 .filter(s -> instMap.containsKey(s.getSecurityId()))
                 .map(s -> {
                     Instrument inst = instMap.get(s.getSecurityId());
-                    BigDecimal[] data = priceFlow.getOrDefault(s.getSecurityId(), new BigDecimal[15]);
+                    BigDecimal[] data = priceFlow.getOrDefault(s.getSecurityId(), new BigDecimal[17]);
                     BigDecimal delta = deltaMap.get(s.getSecurityId());
                     return ScreenerItemResponse.of(s, inst, data, delta, false, null, statusMap.get(s.getSecurityId()));
                 })
@@ -386,7 +386,7 @@ public class ScreenerController {
         if (score.isEmpty()) return ResponseEntity.notFound().build();
 
         Map<Long, BigDecimal[]> pf = loadPriceAndFlow(List.of(securityId), scoreDate);
-        BigDecimal[] data = pf.getOrDefault(securityId, new BigDecimal[15]);
+        BigDecimal[] data = pf.getOrDefault(securityId, new BigDecimal[17]);
         String[] statuses = loadStatuses(List.of(securityId)).get(securityId);
         return ResponseEntity.ok(ScreenerItemResponse.of(score.get(), inst, data, statuses));
     }
@@ -631,7 +631,7 @@ public class ScreenerController {
         if (ids.isEmpty()) return Map.of();
 
         Map<Long, BigDecimal[]> result = new HashMap<>();
-        for (Long id : ids) result.put(id, new BigDecimal[15]);
+        for (Long id : ids) result.put(id, new BigDecimal[17]);
 
         Long[] idArr = ids.toArray(new Long[0]);
 
@@ -645,11 +645,17 @@ public class ScreenerController {
                 WHERE security_id = ANY(?) AND trade_date >= CURRENT_DATE - INTERVAL '14 days'
             ),
             flow AS (
-                SELECT security_id, inst_net_buy_10d, foreign_net_buy_10d, program_net_buy_10d,
+                -- 종목별 '자기' 최신 파생행(14일 내). 과거엔 KR 수급행 있는 단일 날짜로 고정했으나
+                -- US는 그 날짜(KR 거래일)에 파생행이 없어 per/기관보유/매집이 전부 null이 됐다.
+                -- 종목별 최신으로 바꿔 KR·US 각자의 최신 거래일(예: KR 07-21, US 07-20)을 읽는다.
+                SELECT DISTINCT ON (security_id)
+                       security_id, inst_net_buy_10d, foreign_net_buy_10d, program_net_buy_10d,
                        after_hours_close, after_hours_change_pct, per, pbr, eps, bps,
-                       kis_close, kis_change_pct, kis_volume, kis_turnover
+                       kis_close, kis_change_pct, kis_volume, kis_turnover,
+                       inst_pct_held, accum_dist_score
                 FROM derived_metrics
-                WHERE as_of_date = (SELECT MAX(as_of_date) FROM derived_metrics WHERE inst_net_buy_10d IS NOT NULL)
+                WHERE security_id = ANY(?) AND as_of_date >= CURRENT_DATE - INTERVAL '14 days'
+                ORDER BY security_id, as_of_date DESC
             )
             SELECT r.security_id,
                    -- 메인 표시(종가·등락률·거래량·거래대금·시총)는 KIS 통합(KRX+NXT) EOD 우선 →
@@ -669,7 +675,8 @@ public class ScreenerController {
                    COALESCE(f.kis_close, r.close_adj) * i.total_shares AS market_cap,
                    f.inst_net_buy_10d, f.foreign_net_buy_10d, f.program_net_buy_10d,
                    f.after_hours_close, f.after_hours_change_pct,
-                   f.per, f.pbr, f.eps, f.bps
+                   f.per, f.pbr, f.eps, f.bps,
+                   f.inst_pct_held, f.accum_dist_score
             FROM ranked r
             JOIN instruments i ON i.id = r.security_id
             LEFT JOIN flow f ON f.security_id = r.security_id
@@ -678,7 +685,8 @@ public class ScreenerController {
         try {
             jdbc.query(con -> {
                 PreparedStatement ps = con.prepareStatement(sql);
-                ps.setArray(1, con.createArrayOf("bigint", idArr));
+                ps.setArray(1, con.createArrayOf("bigint", idArr));   // ranked CTE
+                ps.setArray(2, con.createArrayOf("bigint", idArr));   // flow CTE
                 return ps;
             }, rs -> {
                 long sid = rs.getLong("security_id");
@@ -698,6 +706,8 @@ public class ScreenerController {
                 row[12] = rs.getBigDecimal("pbr");
                 row[13] = rs.getBigDecimal("eps");
                 row[14] = rs.getBigDecimal("bps");
+                row[15] = rs.getBigDecimal("inst_pct_held");    // US 13F 기관보유% (0~1)
+                row[16] = rs.getBigDecimal("accum_dist_score"); // A/D 매집강도 (0~100)
             });
         } catch (Exception e) {
             log.warn("price+flow 조회 실패: {}", e.getMessage());
@@ -815,7 +825,8 @@ public class ScreenerController {
                 false, null,
                 arrToStrings(rs.getArray("statuses")),
                 null, null, null, null,  // per/pbr/eps/bps — 아래 withPriceFlow가 loadPriceAndFlow 값으로 오버레이
-                rs.getString("exchange")
+                rs.getString("exchange"),
+                null, null               // instPctHeld/accumDistScore — withPriceFlow 오버레이
             );
         }, dataParams.toArray());
 
@@ -858,7 +869,8 @@ public class ScreenerController {
                 coalesce(d[7], it.marketCap()),
                 it.sector(), it.scoreDelta(), it.breakoutToday(), it.baseDays(), it.statuses(),
                 coalesce(d[11], it.per()), coalesce(d[12], it.pbr()),
-                coalesce(d[13], it.eps()), coalesce(d[14], it.bps()), it.exchange()
+                coalesce(d[13], it.eps()), coalesce(d[14], it.bps()), it.exchange(),
+                coalesce(d[15], it.instPctHeld()), coalesce(d[16], it.accumDistScore())
         );
     }
 

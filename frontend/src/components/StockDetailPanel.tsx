@@ -532,7 +532,32 @@ export default function StockDetailPanel({ securityId, onSelectStock, onBack }: 
           </ResponsiveContainer>
         </Card>
         <Card className="side">
-          {(() => {
+          {stock.market === 'US' ? (() => {
+            // US: 외인/기관/프로그램 일별 순매수 공시가 없음 → 13F 기관보유% + A/D 매집강도 + RS로 표시.
+            const instPct = stock.instPctHeld != null ? stock.instPctHeld * 100 : null
+            const accum = stock.accumDistScore ?? null
+            const accumColor = accum == null ? '#a0aec0' : accum >= 55 ? '#4ade80' : accum <= 45 ? '#f87171' : '#a0aec0'
+            return <>
+            <SectionTitle>기관·매집<span className="det-live-tag batch">13F·A/D</span></SectionTitle>
+            <div className="det-flow-list">
+              <div>
+                <div className="det-flow-head"><span className="det-flow-label">기관 보유</span><span className="det-flow-tag">13F</span></div>
+                <div className="det-flow-val" style={{ ['--fv' as string]: '#63b3ed' }}>{instPct != null ? `${instPct.toFixed(1)}%` : '—'}</div>
+                <div className="det-flow-track">{instPct != null && <div className="det-flow-fill" style={{ ['--fw' as string]: `${Math.min(100, instPct)}%`, ['--ff' as string]: '#63b3ed' }} />}</div>
+              </div>
+              <div>
+                <div className="det-flow-head"><span className="det-flow-label">매집강도</span><span className="det-flow-tag">A/D</span></div>
+                <div className="det-flow-val" style={{ ['--fv' as string]: accumColor }}>{accum != null ? `${accum.toFixed(0)} / 100` : '—'}</div>
+                <div className="det-flow-track">{accum != null && <div className="det-flow-fill" style={{ ['--fw' as string]: `${Math.min(100, accum)}%`, ['--ff' as string]: accum >= 50 ? '#4ade80' : '#f87171' }} />}</div>
+              </div>
+              <div className="det-flow-rs">
+                <div className="det-flow-label">RS 백분위</div>
+                <div className="det-flow-rs-val">{(stock.marketPercentile * 100).toFixed(1)}%</div>
+                <div className="det-flow-tag">상위 {(100 - stock.marketPercentile * 100).toFixed(1)}%</div>
+              </div>
+            </div>
+            </>
+          })() : (() => {
           // 외인/기관 당일 순매수(원): 확정이면 원값, 장중 추정이면 수량(주)×현재가 환산.
           // (KIS 추정가집계 TR은 수량만 주므로 프론트에서 금액 환산 — 키움 '잠정 N차'와 동일 소스.)
           const flowPx = live?.price ?? stock.closePrice ?? null

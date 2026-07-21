@@ -36,6 +36,8 @@ export interface ScreenerItem {
   eps?: number | null
   bps?: number | null
   exchange?: string | null     // US 전용: KIS EXCD(NAS/NYS/AMS). KR은 null. TradingView 심볼 프리픽스용.
+  instPctHeld?: number | null    // US 전용: 13F 기관 보유비중(0~1). KR은 null.
+  accumDistScore?: number | null // A/D 매집강도(0~100, 50=중립). US I 프록시.
   // 장중 실시간 당일 순매수(원) — 프론트에서 라이브 오버레이 병합용 (백엔드 응답엔 없음)
   foreignNetBuyToday?: number | null
   instNetBuyToday?: number | null
