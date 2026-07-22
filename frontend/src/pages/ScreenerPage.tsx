@@ -271,10 +271,20 @@ export default function ScreenerPage() {
   useEffect(() => {
     setLoading(true)
     setError(null)
-    const { minCap, maxCap } = CAP_PARAMS[capRange]
     const seq = ++reqSeqRef.current   // 최신 요청만 반영 (응답 레이스 방지)
-    const fetchSize = mainTab === 'ranking' ? Math.max(size, 50) : size
-    fetchScreener(MARKET, page, fetchSize, debouncedQuery.trim(), sector, minCap, maxCap, sortKey, sortDir, minScore)
+    // 대시보드·랭킹은 '전체 시장 종합점수 상위'를 보여줘야 하므로 스크리너의
+    // 정렬/필터/페이지 상태와 분리한다. (탭 간 공유 상태로 인해 세 뷰의 상위 종목
+    // 풀이 어긋나던 문제 방지 — 무필터·compositeScore desc·page0·상위 50 고정.)
+    const rankMode = mainTab === 'dashboard' || mainTab === 'ranking'
+    const { minCap, maxCap } = rankMode ? { minCap: undefined, maxCap: undefined } : CAP_PARAMS[capRange]
+    const fetchSize  = rankMode ? 50 : size
+    const effPage    = rankMode ? 0 : page
+    const effQuery   = rankMode ? '' : debouncedQuery.trim()
+    const effSector  = rankMode ? '' : sector
+    const effSortBy  = rankMode ? 'compositeScore' : sortKey
+    const effSortDir = rankMode ? 'desc' : sortDir
+    const effMinScore = rankMode ? undefined : minScore
+    fetchScreener(MARKET, effPage, fetchSize, effQuery, effSector, minCap, maxCap, effSortBy, effSortDir, effMinScore)
       .then(d => {
         if (seq !== reqSeqRef.current) return   // 늦게 도착한 옛 응답 무시
         setItems(d.items)
