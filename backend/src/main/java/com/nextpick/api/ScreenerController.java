@@ -470,7 +470,7 @@ public class ScreenerController {
         return ResponseEntity.ok(result);
     }
 
-    record SectorPeer(String ticker, String name, double compositeScore,
+    record SectorPeer(Long securityId, String ticker, String name, double compositeScore,
                       Double cScore, Double aScore, Double nScore,
                       Double sScore, Double iScore, BigDecimal closePrice,
                       boolean isSelf) {}
@@ -480,8 +480,13 @@ public class ScreenerController {
         Instrument self = instRepo.findById(securityId).orElse(null);
         if (self == null || self.getSector() == null) return ResponseEntity.ok(List.of());
 
+        // 자기 종목의 채점 마켓(KR/US)으로 앵커·필터 — US 종목엔 US 피어를 반환.
+        String selfMarket = scoreRepo.findFirstBySecurityIdOrderByScoreDateDesc(securityId)
+                .map(NextpickScore::getMarket)
+                .orElse("KR");
+
         String sql = """
-            SELECT i.ticker, i.name, cs.composite_score,
+            SELECT i.id, i.ticker, i.name, cs.composite_score,
                    cs.c_score, cs.a_score, cs.n_score, cs.s_score, cs.i_score,
                    p.close_adj
             FROM nextpick_scores cs
@@ -493,7 +498,7 @@ public class ScreenerController {
             ) p ON true
             WHERE cs.score_date = (SELECT MAX(score_date) FROM nextpick_scores WHERE market = ?)
               AND i.sector = ?
-              AND i.market IN ('KOSPI','KOSDAQ')
+              AND cs.market = ?
             ORDER BY cs.composite_score DESC
             LIMIT 7
             """;
@@ -506,6 +511,7 @@ public class ScreenerController {
                     java.math.BigDecimal s = rs.getBigDecimal("s_score");
                     java.math.BigDecimal ii = rs.getBigDecimal("i_score");
                     return new SectorPeer(
+                        rs.getLong("id"),
                         rs.getString("ticker"),
                         rs.getString("name"),
                         rs.getDouble("composite_score"),
@@ -517,7 +523,7 @@ public class ScreenerController {
                         rs.getBigDecimal("close_adj"),
                         rs.getString("ticker").equals(self.getTicker()));
                 },
-                "KR", self.getSector());
+                selfMarket, self.getSector(), selfMarket);
 
         return ResponseEntity.ok(peers);
     }
@@ -529,22 +535,24 @@ public class ScreenerController {
         Instrument self = instRepo.findById(securityId).orElse(null);
         if (self == null) return ResponseEntity.notFound().build();
 
+        var selfScoreOpt = scoreRepo.findFirstBySecurityIdOrderByScoreDateDesc(securityId);
+        double selfScore = selfScoreOpt.map(s -> s.getCompositeScore().doubleValue()).orElse(50.0);
+        // 자기 종목의 채점 마켓(KR/US)으로 앵커·필터 — US 종목엔 US 유사종목을 반환.
+        String selfMarket = selfScoreOpt.map(NextpickScore::getMarket).orElse("KR");
+        String selfSector = self.getSector() != null ? self.getSector() : "";
+
         String sql = """
             SELECT i.id, i.ticker, i.name, cs.composite_score, i.sector
             FROM nextpick_scores cs
             JOIN instruments i ON i.id = cs.security_id
-            WHERE cs.score_date = (SELECT MAX(score_date) FROM nextpick_scores WHERE market = 'KR')
+            WHERE cs.score_date = (SELECT MAX(score_date) FROM nextpick_scores WHERE market = ?)
+              AND cs.market = ?
               AND cs.security_id != ?
               AND i.sector = ?
               AND cs.composite_score IS NOT NULL
             ORDER BY ABS(cs.composite_score - ?) ASC
             LIMIT 5
             """;
-
-        double selfScore = scoreRepo.findFirstBySecurityIdOrderByScoreDateDesc(securityId)
-                .map(s -> s.getCompositeScore().doubleValue())
-                .orElse(50.0);
-        String selfSector = self.getSector() != null ? self.getSector() : "";
 
         List<CorrelationStock> result = jdbc.query(sql,
                 (rs, i) -> new CorrelationStock(
@@ -553,7 +561,7 @@ public class ScreenerController {
                         rs.getString("name"),
                         rs.getDouble("composite_score"),
                         rs.getString("sector")),
-                securityId, selfSector, selfScore);
+                selfMarket, selfMarket, securityId, selfSector, selfScore);
 
         // sector가 없거나 결과 부족하면 전체에서 비슷한 점수 종목으로 보완
         if (result.size() < 5) {
@@ -561,7 +569,8 @@ public class ScreenerController {
                 SELECT i.id, i.ticker, i.name, cs.composite_score, i.sector
                 FROM nextpick_scores cs
                 JOIN instruments i ON i.id = cs.security_id
-                WHERE cs.score_date = (SELECT MAX(score_date) FROM nextpick_scores WHERE market = 'KR')
+                WHERE cs.score_date = (SELECT MAX(score_date) FROM nextpick_scores WHERE market = ?)
+                  AND cs.market = ?
                   AND cs.security_id != ?
                   AND cs.composite_score IS NOT NULL
                 ORDER BY ABS(cs.composite_score - ?) ASC
@@ -574,7 +583,7 @@ public class ScreenerController {
                             rs.getString("name"),
                             rs.getDouble("composite_score"),
                             rs.getString("sector")),
-                    securityId, selfScore);
+                    selfMarket, selfMarket, securityId, selfScore);
         }
 
         return ResponseEntity.ok(result);
