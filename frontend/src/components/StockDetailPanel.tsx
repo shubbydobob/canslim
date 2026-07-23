@@ -865,7 +865,7 @@ export default function StockDetailPanel({ securityId, onSelectStock, onBack }: 
                 {correlations.map(c => {
                   const scoreClr = c.compositeScore >= 70 ? '#4ade80' : c.compositeScore >= 55 ? '#fabd44' : '#f87171'
                   return (
-                    <tr key={c.ticker}>
+                    <tr key={c.ticker} onClick={() => c.securityId != null && handleSelectPeer(c.securityId)}>
                       <td className="name">{c.name}</td>
                       <td className="name ticker">{c.ticker}</td>
                       <td className="score f" style={{ ['--fc' as string]: scoreClr }}>{c.compositeScore.toFixed(1)}</td>

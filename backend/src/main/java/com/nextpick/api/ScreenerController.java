@@ -522,7 +522,7 @@ public class ScreenerController {
         return ResponseEntity.ok(peers);
     }
 
-    record CorrelationStock(String ticker, String name, double compositeScore, String sector) {}
+    record CorrelationStock(Long securityId, String ticker, String name, double compositeScore, String sector) {}
 
     @GetMapping("/{securityId}/correlations")
     public ResponseEntity<List<CorrelationStock>> getCorrelations(@PathVariable Long securityId) {
@@ -530,7 +530,7 @@ public class ScreenerController {
         if (self == null) return ResponseEntity.notFound().build();
 
         String sql = """
-            SELECT i.ticker, i.name, cs.composite_score, i.sector
+            SELECT i.id, i.ticker, i.name, cs.composite_score, i.sector
             FROM nextpick_scores cs
             JOIN instruments i ON i.id = cs.security_id
             WHERE cs.score_date = (SELECT MAX(score_date) FROM nextpick_scores WHERE market = 'KR')
@@ -548,6 +548,7 @@ public class ScreenerController {
 
         List<CorrelationStock> result = jdbc.query(sql,
                 (rs, i) -> new CorrelationStock(
+                        rs.getLong("id"),
                         rs.getString("ticker"),
                         rs.getString("name"),
                         rs.getDouble("composite_score"),
@@ -557,7 +558,7 @@ public class ScreenerController {
         // sector가 없거나 결과 부족하면 전체에서 비슷한 점수 종목으로 보완
         if (result.size() < 5) {
             String fallbackSql = """
-                SELECT i.ticker, i.name, cs.composite_score, i.sector
+                SELECT i.id, i.ticker, i.name, cs.composite_score, i.sector
                 FROM nextpick_scores cs
                 JOIN instruments i ON i.id = cs.security_id
                 WHERE cs.score_date = (SELECT MAX(score_date) FROM nextpick_scores WHERE market = 'KR')
@@ -568,6 +569,7 @@ public class ScreenerController {
                 """;
             result = jdbc.query(fallbackSql,
                     (rs, i) -> new CorrelationStock(
+                            rs.getLong("id"),
                             rs.getString("ticker"),
                             rs.getString("name"),
                             rs.getDouble("composite_score"),

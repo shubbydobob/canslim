@@ -260,6 +260,7 @@ export async function fetchMacroQuotes(): Promise<MacroQuote[]> {
 }
 
 export interface CorrelationStock {
+  securityId: number
   ticker: string
   name: string
   compositeScore: number
