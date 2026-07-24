@@ -397,7 +397,7 @@ export default function StockDetailPanel({ securityId, onSelectStock, onBack }: 
           return [
           { label: '현재가', value: fmtPrice(liveClose), mono: true },
           { label: '등락률', value: fmtRate(liveRate), color: liveRate !== null ? (liveRate > 0 ? 'var(--up)' : liveRate < 0 ? 'var(--down)' : 'var(--text-3)') : 'var(--text-3)' },
-          { label: '52주 신고가', value: fmtPrice(stock.weekHigh52) },
+          { label: '52주 신고가', value: fmtPrice(stock.weekHigh52 ?? (tech?.hi52 != null ? Math.round(tech.hi52) : null)) },
           { label: '시가총액', value: fmtMarketCap(stock.marketCap) },
           { label: '거래대금', value: fmtAmt(liveTurn) },
           { label: '거래량', value: fmtVol(liveVol) },

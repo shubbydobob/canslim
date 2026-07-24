@@ -272,6 +272,10 @@ public class RealtimePriceController {
         q.put("volume",     parseLong((String) output.getOrDefault("acml_vol", "0")));        // 누적 거래량(주)
         q.put("turnover",   parseLong((String) output.getOrDefault("acml_tr_pbmn", "0")));    // 누적 거래대금(원)
         q.put("programNetVol", parseLong((String) output.getOrDefault("pgtr_ntby_qty", "0"))); // 프로그램 순매수(주) — 3단계
+        // 당일 프로그램 순매수 금액(원) = 순매수 수량 × 현재가. 단일 /price·배치 /quotes 모두 일관 제공
+        // (기존엔 buildQuoteRow(배치)에서만 계산돼 상세의 단일 /price엔 프로그램 값이 안 실렸음).
+        q.put("programNetBuyToday",
+                ((Number) q.get("programNetVol")).longValue() * ((Number) q.get("price")).longValue());
         // 밸류에이션 — inquire-price가 직접 제공(추가 콜 없음). 손실주 등은 빈값→0.
         q.put("per",        parseDouble((String) output.getOrDefault("per", "0")));            // 주가수익비율
         q.put("pbr",        parseDouble((String) output.getOrDefault("pbr", "0")));            // 주가순자산비율
